@@ -1,49 +1,89 @@
-﻿// BombExplosion
+﻿// Assets/Scripts/Planet/BombExplosion.cs
 using UnityEngine;
 
+/// <summary>
+/// BombExplosion:
+/// - Spawn olduktan 0.1s sonra çarpışmaya (ve patlamaya) izin verir.
+/// - Çarptığı DestructiblePlanet objesini ExplodeWithForce() ile patlatır.
+/// - Patlama yarıçapı içindeki tüm Rigidbody2D’ler itilir ve IDamageable objelere hasar uygulanır.
+/// - Partikül efekti (varsa) instantiate edilir, bomba yok edilir.
+/// </summary>
+[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class BombExplosion : MonoBehaviour
 {
-    public float explosionRadius = 1f;       // Dünya birimi cinsinden yarıçap
-    public float explosionForce = 10f;       // Kuvvet büyüklüğü
-    public GameObject explosionEffectPrefab; // Opsiyonel: particle efekti
+    [Header("Patlama Ayarları")]
+    [Tooltip("Patlamanın etki yarıçapı (dünya birimi)")]
+    public float explosionRadius = 1f;
+    [Tooltip("Patlama kuvveti (Impulse büyüklüğü)")]
+    public float explosionForce = 10f;
+    [Tooltip("Patlama anında uygulanacak hasar (yarıçapa göre falloff uygulanacak)")]
+    public float maxDamage = 50f;
+    [Tooltip("Opsiyonel: Patlama efekti prefab’ı")]
+    public GameObject explosionEffectPrefab;
 
-    // Patlamaya izin vermek için kısa bir gecikme ekliyoruz
     private bool launched = false;
 
-    void Start()
+    private void Start()
     {
-        // Oluştuğunda hemen çarpışma kontrolü yapmasın
+        // Oluştuktan hemen sonra kendi collider’ına çarpmasını engellemek için kısa gecikme
         Invoke(nameof(EnableLaunch), 0.1f);
     }
 
-    void EnableLaunch()
+    private void EnableLaunch()
     {
         launched = true;
     }
 
-    void OnCollisionEnter2D(Collision2D col)
+    private void OnCollisionEnter2D(Collision2D col)
     {
-        // Eğer henüz ‘launched’ false ise (0.1 sn geçmediyse), patlamayı engelle
         if (!launched) return;
 
-        // 1) Patlama merkezini belirle
-        Vector2 patlamaPos = transform.position;
+        Vector2 explosionPos = transform.position;
 
-        // 2) Çarpılan nesnenin “DestructiblePlanet” script’i var mı kontrol et
-        DestructiblePlanet dp = col.gameObject.GetComponent<DestructiblePlanet>();
-        if (dp != null)
+        // Çarptığı obje DestructiblePlanet ise patlat
+        if (col.collider.TryGetComponent<DestructiblePlanet>(out var dp))
         {
-            // 3) Patlamayı tetikle
-            dp.ExplodeWithForce(patlamaPos, explosionRadius, explosionForce);
+            dp.ExplodeWithForce(explosionPos, explosionRadius, explosionForce);
         }
 
-        // 4) Opsiyonel: Partikül efekti yarat
+        // Patlama yarıçapındaki tüm objelere hem fiziksel itme hem hasar uygula
+        Collider2D[] hits = Physics2D.OverlapCircleAll(explosionPos, explosionRadius);
+        foreach (var hit in hits)
+        {
+            // Fiziksel itme (Impulse)
+            Rigidbody2D rbHit = hit.attachedRigidbody;
+            if (rbHit != null)
+            {
+                Vector2 dir = (rbHit.position - explosionPos).normalized;
+                float dist = Vector2.Distance(rbHit.position, explosionPos);
+                float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
+                rbHit.AddForce(dir * explosionForce * falloff, ForceMode2D.Impulse);
+            }
+
+            // IDamageable objelere hasar uygula
+            if (hit.TryGetComponent<IDamageable>(out var dmgTarget))
+            {
+                float dist = Vector2.Distance(hit.transform.position, explosionPos);
+                float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
+                float damageAmount = maxDamage * falloff;
+                dmgTarget.TakeDamage(damageAmount);
+            }
+        }
+
+        // Patlama efekti instantiate (varsa)
         if (explosionEffectPrefab != null)
         {
-            Instantiate(explosionEffectPrefab, patlamaPos, Quaternion.identity);
+            Instantiate(explosionEffectPrefab, explosionPos, Quaternion.identity);
         }
 
-        // 5) Bomb objesini yok et
+        // Bombayı yok et
         Destroy(gameObject);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        // Editörde patlama yarıçapını görebilmek için
+        Gizmos.color = new Color(1f, 0.5f, 0f, 0.4f);
+        Gizmos.DrawWireSphere(transform.position, explosionRadius);
     }
 }
