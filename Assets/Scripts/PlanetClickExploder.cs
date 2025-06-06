@@ -23,8 +23,8 @@ public class PlanetClickExploder : MonoBehaviour
 
     private void Update()
     {
-        // 1) “4” tuşuna basıldığında patlama modunu aktif et
-        if (Input.GetKeyDown(KeyCode.Alpha4))
+        // 1) "E" tuşuna basıldığında patlama modunu aktif et
+        if (Input.GetKeyDown(KeyCode.E))
         {
             awaitingClick = true;
         }

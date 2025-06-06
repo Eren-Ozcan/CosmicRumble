@@ -16,6 +16,8 @@ GameObject:
   - component: {fileID: -3966031095743428083}
   - component: {fileID: -7704374925379757778}
   - component: {fileID: 357469141399644898}
+  - component: {fileID: 8162994099159720512}
+  - component: {fileID: 5256841432601722940}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -169,9 +171,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 650f02fc4df1034469a114e8ee677010, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  normalJumpForce: 5
-  superJumpForce: 12
   isActive: 0
+  maxWalkSpeed: 3
+  maxAirSpeed: 3
+  smoothing: 0
+  jumpForce: 5
+  superMultiplier: 2
+  jumpCooldown: 10
+  nextJumpIsSuper: 0
 --- !u!114 &-3966031095743428083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -187,6 +194,7 @@ MonoBehaviour:
   maxHealth: 100
   deathEffectPrefab: {fileID: 0}
   destroyDelay: 0.5
+  isShielded: 0
 --- !u!114 &-7704374925379757778
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -216,3 +224,40 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f04d9396643bf8f4fa6fe4c313482e83, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  speedParam: Speed
+--- !u!95 &8162994099159720512
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 0}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5256841432601722940
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1fff69d1cb99a3e41bff73c27cf50f60, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  characterHealth: {fileID: 0}
+  cooldownTime: 5

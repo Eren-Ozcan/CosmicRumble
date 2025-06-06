@@ -19,6 +19,9 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     [Tooltip("Ölüm efektinin oynatılmasından sonra GameObject'in yok edilme süresi")]
     public float destroyDelay = 0.5f;
 
+    [HideInInspector]
+    public bool isShielded = false; // Shield aktifse true, alınan hasarı %50 indirir
+
     private bool isDead = false;
 
     // Sağlık değiştiğinde dışarıya bildirmek için event
@@ -41,8 +44,11 @@ public class CharacterHealth : MonoBehaviour, IDamageable
         if (isDead)
             return;
 
+        // Eğer shield aktifse, hasarı %50 indir
+        float finalDamage = isShielded ? amount * 0.5f : amount;
+
         // Mevcut canı azalt, 0-maximum aralığında tut
-        currentHealth -= amount;
+        currentHealth -= finalDamage;
         currentHealth = Mathf.Clamp(currentHealth, 0f, maxHealth);
 
         // Sağlık değiştiğinde event'i tetikle
