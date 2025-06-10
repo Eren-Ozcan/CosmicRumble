@@ -1,4 +1,5 @@
 ﻿// Assets/Scripts/Gravity/GravitySource.cs
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(CircleCollider2D))]
@@ -9,10 +10,16 @@ public class GravitySource : MonoBehaviour
     public float baseRadius = 5f;
     [Tooltip("Çekim kuvvetinin büyüklüğü")]
     public float baseGravityForce = 9.81f;
-
+    public float mass = 10f;
     [Header("Optional Multiplier")]
     [Tooltip("Ekstra kuvvet çarpanı (1 bırakabilirsin)")]
     public float forceMultiplier = 1f;
+
+
+    public static List<GravitySource> AllSources = new List<GravitySource>();
+
+    void OnEnable() { AllSources.Add(this); }
+    void OnDisable() { AllSources.Remove(this); }
 
     // Runtime’da hesaplanan değerler (read-only inspector’da görmek istersen [ReadOnly] attribute ekleyebilirsiniz)
     [HideInInspector] public float scaledRadius;

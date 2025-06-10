@@ -1,120 +1,136 @@
-﻿// Assets/Scripts/Projectile/Projectile.cs
-using UnityEngine;
+﻿using UnityEngine;
+using System.Collections;
 
-/// <summary>
-/// Projectile:
-/// - Spawn olduğunda ileri yönde sabit hızla hareket eder.
-/// - Çarptığında patlama efekti yaratır, DestructiblePlanet ve IDamageable hedeflere etki eder.
-/// - Sahneden çıkınca veya TTL dolunca kendini yok eder.
-/// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Projectile : MonoBehaviour
 {
-    [Header("Hareket & Yaşam Süresi")]
-    [Tooltip("Mermi hızı (birim/saniye)")]
-    public float speed = 10f;
-    [Tooltip("Merminin sahneden çıktıktan sonra yok olma süresi (saniye)")]
-    public float timeToLive = 5f;
-    [Tooltip("Merminin Rigidbody2D gravityScale değeri (genellikle 0)")]
+    [Header("Owner Ignoring")]
+    public GameObject owner;
+    public float ignoreOwnerTime = 1f;
+
+    [Header("Movement & TTL")]
+    [Tooltip("Merminin sahnede kalabileceği maksimum süre (saniye)")]
+    public float timeToLive = 15f;      // ← 15 sn  
     public float gravityScale = 0f;
 
-    [Header("Patlama & Hasar")]
-    [Tooltip("Mermi çarptığında instantiate edilecek efekt prefab’ı")]
+    [Header("Explosion & Damage")]
     public GameObject splashEffectPrefab;
-    [Tooltip("Patlama yarıçapı (dünya birimi); 0 ise tek vuruş")]
-    public float explosionRadius = 0f;
-    [Tooltip("Patlama kuvveti (Impulse mag)")]
+    public float explosionRadius = 1f;
     public float explosionForce = 5f;
-    [Tooltip("Maksimum hasar (mesafeye göre falloff yapabiliriz)")]
     public float maxDamage = 10f;
 
-    private Rigidbody2D rb;
-    private float spawnTime;
+    Rigidbody2D rb;
+    Collider2D col;
+    float spawnTime;
 
-    private void Awake()
+    void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
+        col = GetComponent<Collider2D>();
         rb.gravityScale = gravityScale;
-    }
 
-    private void Start()
-    {
-        // Mermiyi ileri yöne doğru hareket ettir
-        rb.linearVelocity = transform.right * speed;
+        // TTL sayacını başlat
         spawnTime = Time.time;
     }
 
-    private void Update()
+    /// <summary>
+    /// Atış anında çağrılır, hem hızı atar hem de TTL'yi sıfırlar.
+    /// </summary>
+    public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 1f)
     {
-        // TTL bittiğinde yok et
+        owner = ownerObj;
+        ignoreOwnerTime = ignoreTime;
+        // TTL'yi yeniden başlat
+        spawnTime = Time.time;
+
+        // Owner collision ignore
+        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+            Physics2D.IgnoreCollision(col, oc, true);
+
+        // İlk hızı ata
+        rb.linearVelocity = initialVelocity;
+
+        Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
+    }
+
+    void Update()
+    {
+        // TTL kontrolü: 15 saniye dolduysa yok et
         if (Time.time - spawnTime >= timeToLive)
         {
             Destroy(gameObject);
+            return;
         }
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
+    void FixedUpdate()
     {
+        // Hızı takip edip sprite'ı hizalar
+        Vector2 vel = rb.linearVelocity;
+        if (vel.sqrMagnitude > 0.01f)
+            transform.right = vel.normalized;
+    }
+
+    // -----------------------------------
+    // → EKLENDİ: Ekrandan çıktığında çağrılır
+    void OnBecameInvisible()
+    {
+        Destroy(gameObject);
+    }
+    // -----------------------------------
+
+    private void ReenableOwnerCollision()
+    {
+        if (owner == null) return;
+        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+            Physics2D.IgnoreCollision(col, oc, false);
+    }
+
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if (collision.gameObject == owner && Time.time - spawnTime < ignoreOwnerTime)
+            return;
+
         Vector2 hitPos = transform.position;
-
-        // 1) Splash/Patlama efekti
         if (splashEffectPrefab != null)
-        {
             Instantiate(splashEffectPrefab, hitPos, Quaternion.identity);
-        }
 
-        // 2) DestructiblePlanet var mı?
         if (collision.collider.TryGetComponent<DestructiblePlanet>(out var dp))
-        {
             dp.ExplodeWithForce(hitPos, explosionRadius, explosionForce);
-        }
 
-        // 3) Hasar uygulama (IDamageable interface’li objelere)
         if (explosionRadius <= 0f)
         {
-            // Tek vuruş hasarı
-            if (collision.collider.TryGetComponent<IDamageable>(out var dmgTarget))
-            {
-                dmgTarget.TakeDamage(maxDamage);
-            }
+            if (collision.collider.TryGetComponent<IDamageable>(out var dmg)
+                && collision.gameObject != owner)
+                dmg.TakeDamage(maxDamage);
         }
         else
         {
-            // Alan hasarı: OverlapCircleAll içinde kalanlara
-            Collider2D[] hits = Physics2D.OverlapCircleAll(hitPos, explosionRadius);
+            var hits = Physics2D.OverlapCircleAll(hitPos, explosionRadius);
             foreach (var hit in hits)
             {
+                if (hit.gameObject == owner) continue;
                 if (hit.TryGetComponent<IDamageable>(out var dmg))
                 {
-                    float dist = Vector2.Distance(hit.transform.position, hitPos);
-                    float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
-                    float damage = maxDamage * falloff;
-                    dmg.TakeDamage(damage);
+                    float d = Vector2.Distance(hit.transform.position, hitPos);
+                    float falloff = 1f - Mathf.Clamp01(d / explosionRadius);
+                    dmg.TakeDamage(maxDamage * falloff);
                 }
-
                 if (hit.attachedRigidbody != null)
                 {
                     Vector2 dir = (hit.attachedRigidbody.position - hitPos).normalized;
-                    float dist = Vector2.Distance(hit.attachedRigidbody.position, hitPos);
-                    float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
+                    float d = Vector2.Distance(hit.attachedRigidbody.position, hitPos);
+                    float falloff = 1f - Mathf.Clamp01(d / explosionRadius);
                     hit.attachedRigidbody.AddForce(dir * explosionForce * falloff, ForceMode2D.Impulse);
                 }
             }
         }
 
-        // 4) Mermiyi yok et
         Destroy(gameObject);
     }
 
-    private void OnBecameInvisible()
+    void OnDrawGizmosSelected()
     {
-        // Kamera dışına tamamen çıktığında mermiyi yok et
-        Destroy(gameObject);
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        // Inspector’da patlama yarıçapını göstermek için
         if (explosionRadius > 0f)
         {
             Gizmos.color = Color.yellow;
