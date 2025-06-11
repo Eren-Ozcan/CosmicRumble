@@ -428,6 +428,8 @@ GameObject:
   - component: {fileID: 8419486536768381218}
   - component: {fileID: -4980835287136157885}
   - component: {fileID: 5769217940073446569}
+  - component: {fileID: -7917154408194715751}
+  - component: {fileID: -7348377678887645225}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -628,6 +630,12 @@ MonoBehaviour:
   maxRpgAmmo: 4
   rpgAmmoRemaining: 0
   pistolAmmo: -1
+  maxShotgunAmmo: 5
+  shotgunAmmoRemaining: 0
+  maxGrenades: 2
+  grenadesRemaining: 0
+  maxShields: 1
+  shieldsRemaining: 0
 --- !u!114 &357469141399644898
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -692,6 +700,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 49
   cooldownTime: 5
+  filterImage: {fileID: 0}
+  pistolCountText: {fileID: 0}
+  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
+  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
+  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 3892696180545929677, guid: 0d1f824112bd37d48bf3d3a9f4a4a6f4, type: 3}
   maxDragDistance: 3
@@ -711,7 +724,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a422066b658765e4c808905f6dccb342, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  activationKey: 50
+  activationKey: 51
   cooldownTime: 7
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 8311390682789985667, guid: 5a7086ec0c209d4419494256471d6ab8, type: 3}
@@ -732,8 +745,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60009754d31dd1044a45763fde2c2645, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  activationKey: 51
+  activationKey: 52
   cooldownTime: 6
+  filterImage: {fileID: 0}
+  grenadeCountText: {fileID: 0}
+  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
+  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
+  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 7521313236242814105, guid: 76b7522226204154b8945a62f7786d0b, type: 3}
   maxDragDistance: 3
@@ -855,6 +873,45 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
+--- !u!114 &-7917154408194715751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b59419393869534997ac3c9f08fe4eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  activationKey: 50
+  cooldownTime: 5
+  filterImage: {fileID: 0}
+  shotgunCountText: {fileID: 0}
+  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
+  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
+  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
+--- !u!114 &-7348377678887645225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3f2406439e46d8479ddb9b226c18d0b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  activationKey: 53
+  cooldownTime: 5
+  filterImage: {fileID: 0}
+  usesLeftText: {fileID: 0}
+  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
+  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
+  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
+  gravityBody: {fileID: 8524290364605902407}
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0

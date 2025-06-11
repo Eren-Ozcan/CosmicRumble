@@ -8,7 +8,7 @@ public class Bomb : WeaponBase
 
     void Start()
     {
-        ActivationKey = KeyCode.Alpha4;
+        ActivationKey = KeyCode.Alpha0;
     }
 
     protected override void FireProjectile(Vector2 direction, float power)

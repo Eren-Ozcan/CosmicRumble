@@ -16,7 +16,7 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
 
     void Start()
     {
-        // "0" tuşu super jump için atanır
+        // "5" tuşu super jump için atanır
         ActivationKey = KeyCode.Alpha5;
         IsSelected = false;
     }

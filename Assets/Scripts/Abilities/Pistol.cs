@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 [RequireComponent(typeof(LineRenderer), typeof(GravityBody))]
 public class Pistol : MonoBehaviour
@@ -10,6 +12,13 @@ public class Pistol : MonoBehaviour
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
+
+    [Header("UI Filter & Count")]
+    public Image filterImage;                   // Inspector’da atayacağın FilterImage
+    public TextMeshProUGUI pistolCountText;     // Inspector’da atayacağın skill sayısı text’i
+    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f); // sarı yarı saydam
+    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f); // yeşil yarı saydam
+    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f); // kırmızı yarı saydam
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -29,6 +38,9 @@ public class Pistol : MonoBehaviour
     private Vector2 dragStart;
     private bool wasActive = false;
 
+    // --- NEW for ammo management ---
+    private CharacterAbilities charAbilities;
+
     void Awake()
     {
         lr = GetComponent<LineRenderer>();
@@ -37,13 +49,33 @@ public class Pistol : MonoBehaviour
 
         lr.enabled = false;
         lr.positionCount = 0;
+
+        // get CharacterAbilities and subscribe to its ammo-change event
+        charAbilities = GetComponent<CharacterAbilities>();
+        if (charAbilities != null)
+        {
+            charAbilities.PistolAmmoChanged += UpdateAmmoUI;
+            UpdateAmmoUI();
+        }
+
+        if (filterImage != null)
+            filterImage.color = Color.clear;
+    }
+
+    void OnDestroy()
+    {
+        // clean up subscription
+        if (charAbilities != null)
+            charAbilities.PistolAmmoChanged -= UpdateAmmoUI;
     }
 
     void Update()
     {
+        // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
+        // Turn start / end reset
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
@@ -64,21 +96,39 @@ public class Pistol : MonoBehaviour
             return;
         }
 
+        // Skill seçimi (sadece ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
+            // UI highlight
+            UIManager.Instance.HighlightSkill(0);  // 0 = pistol slot index
+
+            // check ammo
+            if (charAbilities != null && charAbilities.GetPistolAmmo() == 0)
+                return;
+
             awaitingConfirmation = true;
+            if (filterImage != null)
+                filterImage.color = selectionColor;  // sarı filtre
         }
 
+        // Onay / iptal
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
+                // UI confirm
+                UIManager.Instance.ConfirmSkill(0);
+
                 fireAllowed = true;
                 awaitingConfirmation = false;
+                if (filterImage != null)
+                    filterImage.color = confirmColor;  // yeşil filtre
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
                 awaitingConfirmation = false;
+                if (filterImage != null)
+                    filterImage.color = Color.clear;    // temizle
             }
             return;
         }
@@ -86,6 +136,7 @@ public class Pistol : MonoBehaviour
         if (!fireAllowed)
             return;
 
+        // Drag & fire
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (Input.GetMouseButtonDown(0))
@@ -104,32 +155,33 @@ public class Pistol : MonoBehaviour
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            Fire();
+            // attempt to use one ammo
+            bool canFire = true;
+            if (charAbilities != null)
+                canFire = charAbilities.UsePistol();
+
+            if (canFire)
+            {
+                Fire();
+                cooldownTimer = cooldownTime;
+                UpdateAmmoUI();
+                // if now empty, show red filter
+                if (charAbilities.GetPistolAmmo() == 0 && filterImage != null)
+                    filterImage.color = emptyColor;
+            }
+
             lr.positionCount = 0;
             CancelDrag();
             fireAllowed = false;
-        }
-    }
 
-    void OnGUI()
-    {
-        if (awaitingConfirmation)
-        {
-            var style = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 20
-            };
-            GUI.Label(
-                new Rect(Screen.width / 2f - 250, Screen.height / 2f - 15, 500, 30),
-                "Pistol skillini kullanmak ister misiniz?  [Enter]=Evet  [Esc]=Hayır", style
-            );
+            // clear any selection highlight if still ammo remains
+            if (canFire && charAbilities.GetPistolAmmo() > 0 && filterImage != null)
+                filterImage.color = Color.clear;
         }
     }
 
     private void DrawTrajectory(Vector2 initialVelocity)
     {
-        // 🛡️ Güvenlik kontrolü
         if (!lr.enabled || lr.positionCount != trajectoryPoints)
         {
             lr.enabled = true;
@@ -152,7 +204,7 @@ public class Pistol : MonoBehaviour
 
             vel += acc * timeStep;
             pos += vel * timeStep;
-            if (i < lr.positionCount) lr.SetPosition(i, pos); // güvenli set
+            lr.SetPosition(i, pos);
         }
     }
 
@@ -162,7 +214,6 @@ public class Pistol : MonoBehaviour
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
-        cooldownTimer = cooldownTime;
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var proj = bulletGO.GetComponent<Projectile>();
         if (proj != null)
@@ -179,5 +230,11 @@ public class Pistol : MonoBehaviour
         isDragging = false;
         lr.enabled = false;
         lr.positionCount = 0;
+    }
+
+    private void UpdateAmmoUI()
+    {
+        if (pistolCountText != null && charAbilities != null)
+            pistolCountText.text = charAbilities.GetPistolAmmo().ToString();
     }
 }

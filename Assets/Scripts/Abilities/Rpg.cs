@@ -5,7 +5,7 @@ using UnityEngine;
 public class RPG : MonoBehaviour
 {
     [Header("Onay & Cooldown")]
-    public KeyCode activationKey = KeyCode.Alpha2;
+    public KeyCode activationKey = KeyCode.Alpha3;
     public float cooldownTime = 7f;
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;

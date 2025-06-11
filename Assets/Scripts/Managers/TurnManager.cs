@@ -2,10 +2,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-/// <summary>
-/// Karakterler arasında sıra tabanlı geçiş yapar.
-/// Collider çakışmalarını Physics2D ayarlarından halledin (Character layer’ı çakışmasın).
-/// </summary>
 public class TurnManager : MonoBehaviour
 {
     [Header("Sıra Tabanlı Oynanacak Karakterler")]
@@ -39,6 +35,7 @@ public class TurnManager : MonoBehaviour
 
     /// <summary>
     /// Belirlenen indeksteki karakteri aktif yap, eski karakteri pasif hale getir.
+    /// Ayrıca UIManager'a yeni karakterin abilities bileşenini bildirir.
     /// </summary>
     /// <param name="newIndex">Yeni aktif karakter indeksi</param>
     private void ActivateCharacter(int newIndex)
@@ -59,6 +56,13 @@ public class TurnManager : MonoBehaviour
             newGb.isActive = true;
             newGb.OnTurnStart();
             Debug.Log($"[TurnManager] Yeni aktif karakter: {newGb.gameObject.name}");
+
+            // → UI güncellemesi için CharacterAbilities bileşenini UIManager'a bildir
+            var abilities = newGb.GetComponent<CharacterAbilities>();
+            if (abilities != null)
+            {
+                UIManager.Instance.SetCharacter(abilities);
+            }
         }
     }
 }
