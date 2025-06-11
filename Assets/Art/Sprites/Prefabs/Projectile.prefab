@@ -12,8 +12,8 @@ GameObject:
   - component: {fileID: 6322217141735363654}
   - component: {fileID: 369906165453460851}
   - component: {fileID: 2819810241016036735}
-  - component: {fileID: 8191825407384521093}
   - component: {fileID: 7347130671071717039}
+  - component: {fileID: 5886856562664729342}
   m_Layer: 0
   m_Name: Projectile
   m_TagString: Untagged
@@ -33,7 +33,8 @@ Transform:
   m_LocalPosition: {x: -3.8146653, y: 2.0583637, z: 0}
   m_LocalScale: {x: 1.24, y: 1.24, z: 1.24}
   m_ConstrainProportionsScale: 1
-  m_Children: []
+  m_Children:
+  - {fileID: 5445976658306859017}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 1.334, z: 0}
 --- !u!212 &6322217141735363654
@@ -106,7 +107,7 @@ Rigidbody2D:
   m_Mass: 1
   m_LinearDamping: 0
   m_AngularDamping: 0.05
-  m_GravityScale: 1
+  m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -153,28 +154,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
---- !u!114 &8191825407384521093
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 479944923228645718}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 57a310d0ad7790741be3ccfc5966ecba, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  owner: {fileID: 0}
-  ignoreOwnerTime: 2
-  timeToLive: 15
-  gravityScale: 0
-  fuseTime: 15
-  splashEffectPrefab: {fileID: 0}
-  explosionRadius: 1
-  explosionForce: 5
-  maxDamage: 10
+  m_Radius: 0.27
 --- !u!96 &7347130671071717039
 TrailRenderer:
   serializedVersion: 3
@@ -282,3 +262,54 @@ TrailRenderer:
   m_Autodestruct: 0
   m_Emitting: 1
   m_ApplyActiveColorSpace: 1
+--- !u!114 &5886856562664729342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 479944923228645718}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57a310d0ad7790741be3ccfc5966ecba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  owner: {fileID: 0}
+  ignoreOwnerTime: 1
+  timeToLive: 15
+  gravityScale: 0
+  splashEffectPrefab: {fileID: 0}
+  explosionRadius: 1
+  explosionForce: 5
+  maxDamage: 10
+--- !u!1 &9207190367217508712
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5445976658306859017}
+  m_Layer: 0
+  m_Name: Projectile
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5445976658306859017
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9207190367217508712}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.0116411, z: -0, w: 0.9999323}
+  m_LocalPosition: {x: 2.5041232, y: -0.31169885, z: 0.058313355}
+  m_LocalScale: {x: 0.80645156, y: 0.8064517, z: 0.80645156}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4484088564174329200}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}

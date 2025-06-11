@@ -10,7 +10,7 @@ public class CharacterHealth : MonoBehaviour, IDamageable
 {
     [Header("Can Ayarları")]
     [Tooltip("Karakterin maksimum can değeri")]
-    public float maxHealth = 100f;
+    public float maxHealth = 10f;
     private float currentHealth;
 
     [Header("Ölüm Efekti")]

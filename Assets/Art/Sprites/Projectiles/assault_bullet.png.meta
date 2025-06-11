@@ -116,10 +116,10 @@ TextureImporter:
       name: assault_bullet_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 512
-        height: 512
+        x: 19
+        y: 208
+        width: 478
+        height: 113
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}

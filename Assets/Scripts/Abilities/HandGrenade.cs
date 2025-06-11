@@ -2,11 +2,11 @@
 using UnityEngine;
 
 [RequireComponent(typeof(LineRenderer), typeof(GravityBody))]
-public class Pistol : MonoBehaviour
+public class HandGrenade : MonoBehaviour
 {
     [Header("Onay & Cooldown")]
-    public KeyCode activationKey = KeyCode.Alpha1;
-    public float cooldownTime = 5f;
+    public KeyCode activationKey = KeyCode.Alpha3;
+    public float cooldownTime = 6f;
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
@@ -16,7 +16,7 @@ public class Pistol : MonoBehaviour
     public GameObject projectilePrefab;
     public float maxDragDistance = 3f;
     public float powerMultiplier = 5f;
-    public float ignoreOwnerDuration = 1f;
+    public float ignoreOwnerDuration = 0.5f;
 
     [Header("Trajectory Preview")]
     public int trajectoryPoints = 60;
@@ -120,16 +120,17 @@ public class Pistol : MonoBehaviour
                 alignment = TextAnchor.MiddleCenter,
                 fontSize = 20
             };
+            var msg = "El bombası fırlatılsın mı?  [Enter]=Evet  [Esc]=Hayır";
             GUI.Label(
                 new Rect(Screen.width / 2f - 250, Screen.height / 2f - 15, 500, 30),
-                "Pistol skillini kullanmak ister misiniz?  [Enter]=Evet  [Esc]=Hayır", style
+                msg, style
             );
         }
     }
 
     private void DrawTrajectory(Vector2 initialVelocity)
     {
-        // 🛡️ Güvenlik kontrolü
+        // 🛡️ Güvenlik: LineRenderer düzgün ayarlanmış mı kontrol et
         if (!lr.enabled || lr.positionCount != trajectoryPoints)
         {
             lr.enabled = true;
@@ -152,7 +153,9 @@ public class Pistol : MonoBehaviour
 
             vel += acc * timeStep;
             pos += vel * timeStep;
-            if (i < lr.positionCount) lr.SetPosition(i, pos); // güvenli set
+
+            if (i < lr.positionCount) // 🛡️ Bound check
+                lr.SetPosition(i, pos);
         }
     }
 
@@ -164,9 +167,9 @@ public class Pistol : MonoBehaviour
 
         cooldownTimer = cooldownTime;
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        var proj = bulletGO.GetComponent<Projectile>();
-        if (proj != null)
-            proj.Init(initial, gameObject, ignoreOwnerDuration);
+        var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();
+        if (grenade != null)
+            grenade.Init(initial, gameObject, ignoreOwnerDuration);
         else
         {
             var rb = bulletGO.GetComponent<Rigidbody2D>();
