@@ -29,6 +29,9 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
         if (gravityBody == null || !gravityBody.isActive)
             return;
 
+             if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+                     return;
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
@@ -44,7 +47,7 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation)
         {
             Debug.Log("[SuperJumpSkill] 5 tuşuna basıldı – seçim yapılıyor");
-            UIManager.Instance.HighlightSkill(4); // sarı filtre
+            UIManager.Instance.HighlightSkill(4);
             awaitingConfirmation = true;
         }
 
@@ -52,12 +55,13 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                Debug.Log("[SuperJumpSkill] Enter tuşu algılandı – onaylama denenecek");
-
                 gravityBody.nextJumpIsSuper = true;
-                Debug.Log("[SuperJumpSkill] SuperJump hazırlandı – nextJumpIsSuper = true");
+                Debug.Log("[SuperJumpSkill] SuperJump hazırlandı");
 
-                UIManager.Instance.ConfirmSkill(4); // yeşil filtre
+                UIManager.Instance.ConfirmSkill(4);
+
+                // Turn hakkı bitir
+                charAbilities.HasUsedSkillThisTurn = true;
 
                 cooldownTimer = cooldownTime;
                 IsSelected = false;
@@ -70,6 +74,7 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
             }
         }
     }
+
     public void ResetCooldown()
     {
         cooldownTimer = 0f;

@@ -1,5 +1,4 @@
-﻿// Assets/Scripts/UIManager.cs
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System;
@@ -54,30 +53,63 @@ public class UIManager : MonoBehaviour
         currentAb.GrenadeChanged += () => UpdateSlot(3);
         currentAb.ShieldChanged += () => UpdateSlot(5);
     }
+
     public void ClearSkillColor(int slotIndex, bool isEmpty)
     {
         if (slotIndex < 0 || slotIndex >= filterImages.Length) return;
-
         filterImages[slotIndex].color = isEmpty ? emptyColor : Color.clear;
     }
 
     private void UpdateSlot(int slotIndex)
     {
-        // Her slot için UI öğelerini aktif et
+        // UI’ları aktif et
         filterImages[slotIndex].gameObject.SetActive(true);
         countTexts[slotIndex].gameObject.SetActive(true);
 
-        // Kalan miktarı al
+        // Sayıyı al ve yaz
         int left = currentAb.GetSkillRemaining(slotIndex);
         countTexts[slotIndex].text = left.ToString();
 
-        // Stoğa göre renklendirme
+        // Stoğa göre renklendir
         filterImages[slotIndex].color = (left == 0 ? emptyColor : Color.clear);
     }
 
+    /// <summary>
+    /// Tüm skill slot’larını gri yapar (turda skill kullanıldığında)
+    /// </summary>
+    public void LockAllSkillsUI()
+    {
+        for (int i = 0; i < filterImages.Length; i++)
+        {
+            if (filterImages[i] != null)
+                filterImages[i].color = new Color(0.5f, 0.5f, 0.5f, 0.6f); // gri
+        }
+    }
+
+    /// <summary>
+    /// Yeni tur başında filtreleri sıfırlar (stoğa göre boşsa kırmızı kalır)
+    /// </summary>
+    public void ClearAllSkillFilters()
+    {
+        for (int i = 0; i < filterImages.Length; i++)
+        {
+            if (filterImages[i] != null)
+            {
+                int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
+                filterImages[i].color = (remaining == 0) ? emptyColor : Color.clear;
+            }
+        }
+    }
+
     public void HighlightSkill(int slot)
-        => filterImages[slot].color = selectionColor;
+    {
+        if (slot >= 0 && slot < filterImages.Length)
+            filterImages[slot].color = selectionColor;
+    }
 
     public void ConfirmSkill(int slot)
-        => filterImages[slot].color = confirmColor;
+    {
+        if (slot >= 0 && slot < filterImages.Length)
+            filterImages[slot].color = confirmColor;
+    }
 }

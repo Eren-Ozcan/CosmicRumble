@@ -71,6 +71,9 @@ public class Pistol : MonoBehaviour
 
     void Update()
     {
+             if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+                     return;
+
         // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
@@ -99,36 +102,31 @@ public class Pistol : MonoBehaviour
         // Skill seçimi (sadece ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
-            // UI highlight
-            UIManager.Instance.HighlightSkill(0);  // 0 = pistol slot index
+            UIManager.Instance.HighlightSkill(0);
 
-            // check ammo
             if (charAbilities != null && charAbilities.GetPistolAmmo() == 0)
                 return;
 
             awaitingConfirmation = true;
             if (filterImage != null)
-                filterImage.color = selectionColor;  // sarı filtre
+                filterImage.color = selectionColor;
         }
 
-        // Onay / iptal
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                // UI confirm
                 UIManager.Instance.ConfirmSkill(0);
-
                 fireAllowed = true;
                 awaitingConfirmation = false;
                 if (filterImage != null)
-                    filterImage.color = confirmColor;  // yeşil filtre
+                    filterImage.color = confirmColor;
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
                 awaitingConfirmation = false;
                 if (filterImage != null)
-                    filterImage.color = Color.clear;    // temizle
+                    filterImage.color = Color.clear;
             }
             return;
         }
@@ -136,7 +134,6 @@ public class Pistol : MonoBehaviour
         if (!fireAllowed)
             return;
 
-        // Drag & fire
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (Input.GetMouseButtonDown(0))
@@ -155,30 +152,35 @@ public class Pistol : MonoBehaviour
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            // attempt to use one ammo
             bool canFire = true;
             if (charAbilities != null)
                 canFire = charAbilities.UsePistol();
 
             if (canFire)
             {
-                Fire();
+                Fire(); // mermi fırlat
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
-                // if now empty, show red filter
+
+                // Skill kullanıldığı için bu turn başka skill kullanımı engellenir
+                charAbilities.HasUsedSkillThisTurn = true;
+                UIManager.Instance.LockAllSkillsUI(); // ✅ Tüm UI'ları kilitle
+
+                // Eğer mermi bittiyse kırmızı filtre göster
                 if (charAbilities.GetPistolAmmo() == 0 && filterImage != null)
                     filterImage.color = emptyColor;
             }
+
 
             lr.positionCount = 0;
             CancelDrag();
             fireAllowed = false;
 
-            // clear any selection highlight if still ammo remains
             if (canFire && charAbilities.GetPistolAmmo() > 0 && filterImage != null)
                 filterImage.color = Color.clear;
         }
     }
+
 
     private void DrawTrajectory(Vector2 initialVelocity)
     {

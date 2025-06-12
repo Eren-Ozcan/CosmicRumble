@@ -78,6 +78,9 @@ public class HandGrenade : MonoBehaviour
 
     void Update()
     {
+        if (charAbilities.HasUsedSkillThisTurn)
+            return; // Bu tur zaten skill kullanıldıysa çık
+
         // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
@@ -169,13 +172,16 @@ public class HandGrenade : MonoBehaviour
 
             if (canFire)
             {
+                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn hakkı kullanıldı
+                UIManager.Instance.LockAllSkillsUI();       // ✅ UI’ı kilitle
+
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
-                // if now empty, show red filter
                 if (charAbilities.GetGrenadesRemaining() == 0 && filterImage != null)
                     filterImage.color = emptyColor;
             }
+
 
             lr.positionCount = 0;
             CancelDrag();

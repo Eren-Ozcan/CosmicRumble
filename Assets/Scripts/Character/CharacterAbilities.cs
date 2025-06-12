@@ -6,6 +6,9 @@ public class CharacterAbilities : MonoBehaviour
 {
     private const int TotalSlots = 10;
 
+    // Her turn sadece bir skill kullanabilme kontrolü
+    public bool HasUsedSkillThisTurn { get; set; }
+
     [Header("Super Jump Ayarları")]
     public int maxSuperJumps = 3;
     [HideInInspector] public int superJumpsRemaining;

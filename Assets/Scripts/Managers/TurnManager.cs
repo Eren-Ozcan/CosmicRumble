@@ -1,5 +1,4 @@
-﻿// Assets/Scripts/Managers/TurnManager.cs
-using UnityEngine;
+﻿using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.TextCore.Text;
 
@@ -12,7 +11,12 @@ public class TurnManager : MonoBehaviour
     [Tooltip("Sıra değişim tuşu")]
     public KeyCode nextTurnKey = KeyCode.Tab;
 
+    [Header("Tur Süresi Ayarları")]
+    [Tooltip("Her karakterin tur süresi (saniye cinsinden)")]
+    public float turnDuration = 15f;
+
     private int currentIndex = 0;
+    private float turnTimer = 0f;
 
     private void Start()
     {
@@ -28,9 +32,26 @@ public class TurnManager : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(nextTurnKey) && characters.Count > 1)
+        if (characters.Count < 2) return;
+
+        // Manuel geçiş
+        if (Input.GetKeyDown(nextTurnKey))
         {
-            ActivateCharacter((currentIndex + 1) % characters.Count);
+            NextTurn();
+        }
+
+        // Otomatik zamanlayıcı
+        if (turnTimer > 0f)
+        {
+            turnTimer -= Time.deltaTime;
+
+            // ⏱ Radial UI güncellemesi
+            TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
+
+            if (turnTimer <= 0f)
+            {
+                NextTurn();
+            }
         }
     }
 
@@ -61,15 +82,33 @@ public class TurnManager : MonoBehaviour
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
-                UIManager.Instance.SetCharacter(abilities);
+                abilities.HasUsedSkillThisTurn = false;                   // ✅ skill hakkını yenile
+                UIManager.Instance.SetCharacter(abilities);              // ✅ UI’ı bu karaktere bağla
+                UIManager.Instance.ClearAllSkillFilters();               // ✅ UI’daki gri kilitleri kaldır
             }
 
             // ✅ SuperJump UI sistemi için aktif et
             var superJump = newGb.GetComponent<SuperJumpSkill>();
             if (superJump != null)
+            {
                 superJump.IsSelected = true;
                 superJump.ResetCooldown(); // cooldown sıfırlansın
+            }
         }
+
+        // Yeni turn süresi başlat
+        turnTimer = turnDuration;
+
+        // ⏱ UI başlatma (ilk dolu gösterim)
+        TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
     }
 
+    /// <summary>
+    /// Sıradaki karaktere geç.
+    /// </summary>
+    private void NextTurn()
+    {
+        int nextIndex = (currentIndex + 1) % characters.Count;
+        ActivateCharacter(nextIndex);
+    }
 }

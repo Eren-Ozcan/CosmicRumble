@@ -67,6 +67,9 @@ public class RPG : MonoBehaviour
 
     void Update()
     {
+        if (charAbilities.HasUsedSkillThisTurn)
+            return; // Bu tur zaten skill kullanıldıysa çık
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
@@ -146,6 +149,9 @@ public class RPG : MonoBehaviour
 
             if (canFire)
             {
+                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn skill hakkı kullanıldı
+                UIManager.Instance.LockAllSkillsUI();       // ✅ tüm UI’ı gri yap
+
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
