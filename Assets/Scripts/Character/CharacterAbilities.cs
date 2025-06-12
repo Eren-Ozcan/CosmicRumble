@@ -1,55 +1,63 @@
-﻿using UnityEngine;
+﻿// Assets/Scripts/CharacterAbilities.cs
+using UnityEngine;
 using System;
 
 public class CharacterAbilities : MonoBehaviour
 {
-    private const int TotalSlots = 10;  // Toplam slot sayısı
+    private const int TotalSlots = 10;
 
-    [Header("Super Jump Ayarlari")]
+    [Header("Super Jump Ayarları")]
     public int maxSuperJumps = 3;
     [HideInInspector] public int superJumpsRemaining;
 
-    [Header("RPG Ammo Ayarlari")]
+    [Header("RPG Ammo Ayarları")]
     public int maxRpgAmmo = 4;
     [HideInInspector] public int rpgAmmoRemaining;
 
-    [Header("Tabanca Ammo Ayarlari")]
-    public int pistolAmmo = -1;  // -1 = sinirsiz
+    [Header("Tabanca Ammo Ayarları")]
+    public int pistolAmmo = -1;  // -1 = sınırsız
 
-    [Header("Shotgun Ayarlari")]
+    [Header("Shotgun Ayarları")]
     public int maxShotgunAmmo = 5;
     [HideInInspector] public int shotgunAmmoRemaining;
 
-    [Header("El Bombasi Ayarlari")]
+    [Header("El Bombası Ayarları")]
     public int maxGrenades = 2;
     [HideInInspector] public int grenadesRemaining;
 
-    [Header("Shield Ayarlari")]
+    [Header("Shield Ayarları")]
     public int maxShields = 1;
     [HideInInspector] public int shieldsRemaining;
 
-    // Bireysel event'ler
+    // Bireysel event’ler
     public event Action SuperJumpChanged;
     public event Action RpgAmmoChanged;
     public event Action PistolAmmoChanged;
     public event Action ShotgunAmmoChanged;
+    public event Action GrenadeChanged;
+    public event Action ShieldChanged;
 
     // Genel slot-change event
     public event Action<int> SkillChanged;
 
     private void Awake()
     {
+        // Başlangıç değerleri
         superJumpsRemaining = maxSuperJumps;
         rpgAmmoRemaining = maxRpgAmmo;
         shotgunAmmoRemaining = maxShotgunAmmo;
         grenadesRemaining = maxGrenades;
         shieldsRemaining = maxShields;
 
+        // İlk UI güncellemesi için tüm event’leri tetikle
         SuperJumpChanged?.Invoke();
         RpgAmmoChanged?.Invoke();
         PistolAmmoChanged?.Invoke();
         ShotgunAmmoChanged?.Invoke();
+        GrenadeChanged?.Invoke();
+        ShieldChanged?.Invoke();
 
+        // Her slot’u güncelle
         for (int i = 0; i < TotalSlots; i++)
             SkillChanged?.Invoke(i);
     }
@@ -73,7 +81,7 @@ public class CharacterAbilities : MonoBehaviour
         {
             rpgAmmoRemaining--;
             RpgAmmoChanged?.Invoke();
-            SkillChanged?.Invoke(2);
+            SkillChanged?.Invoke(2); // slot index
             return true;
         }
         return false;
@@ -81,10 +89,8 @@ public class CharacterAbilities : MonoBehaviour
 
     public bool UsePistol()
     {
-        if (pistolAmmo == 0)
-            return false;
-        if (pistolAmmo > 0)
-            pistolAmmo--;
+        if (pistolAmmo == 0) return false;
+        if (pistolAmmo > 0) pistolAmmo--;
         PistolAmmoChanged?.Invoke();
         SkillChanged?.Invoke(0);
         return true;
@@ -104,23 +110,23 @@ public class CharacterAbilities : MonoBehaviour
 
     public bool UseGrenade()
     {
-        if (grenadesRemaining == 0)
-            return false;
+        if (grenadesRemaining == 0) return false;
         grenadesRemaining--;
+        GrenadeChanged?.Invoke();
         SkillChanged?.Invoke(3);
         return true;
     }
 
     public bool UseShield()
     {
-        if (shieldsRemaining == 0)
-            return false;
+        if (shieldsRemaining == 0) return false;
         shieldsRemaining--;
+        ShieldChanged?.Invoke();
         SkillChanged?.Invoke(5);
         return true;
     }
 
-    // Getter metodlar
+    // Getter’lar
     public int GetSuperJumpsRemaining() => superJumpsRemaining;
     public int GetRpgAmmoRemaining() => rpgAmmoRemaining;
     public int GetPistolAmmo() => pistolAmmo;

@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 [RequireComponent(typeof(LineRenderer), typeof(GravityBody))]
 public class RPG : MonoBehaviour
@@ -10,6 +12,13 @@ public class RPG : MonoBehaviour
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
+
+    [Header("UI Filter & Count")]
+    public Image filterImage;
+    public TextMeshProUGUI rpgCountText;
+    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f);
+    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);
+    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -25,6 +34,7 @@ public class RPG : MonoBehaviour
     private LineRenderer lr;
     private GravityBody gravityBody;
     private GravitySource[] gravitySources;
+    private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
     private bool wasActive = false;
@@ -34,9 +44,25 @@ public class RPG : MonoBehaviour
         lr = GetComponent<LineRenderer>();
         gravityBody = GetComponent<GravityBody>();
         gravitySources = FindObjectsOfType<GravitySource>();
+        charAbilities = GetComponent<CharacterAbilities>();
 
         lr.enabled = false;
         lr.positionCount = 0;
+
+        if (charAbilities != null)
+        {
+            charAbilities.RpgAmmoChanged += UpdateAmmoUI;
+            UpdateAmmoUI();
+        }
+
+        if (filterImage != null)
+            filterImage.color = Color.clear;
+    }
+
+    void OnDestroy()
+    {
+        if (charAbilities != null)
+            charAbilities.RpgAmmoChanged -= UpdateAmmoUI;
     }
 
     void Update()
@@ -66,7 +92,13 @@ public class RPG : MonoBehaviour
 
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
+            if (charAbilities != null && charAbilities.GetRpgAmmoRemaining() == 0)
+                return;
+
+            UIManager.Instance.HighlightSkill(2); // Slot index 2: RPG
             awaitingConfirmation = true;
+            if (filterImage != null)
+                filterImage.color = selectionColor;
         }
 
         if (awaitingConfirmation)
@@ -75,16 +107,20 @@ public class RPG : MonoBehaviour
             {
                 fireAllowed = true;
                 awaitingConfirmation = false;
+                UIManager.Instance.ConfirmSkill(2);
+                if (filterImage != null)
+                    filterImage.color = confirmColor;
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
                 awaitingConfirmation = false;
+                if (filterImage != null)
+                    filterImage.color = Color.clear;
             }
             return;
         }
 
-        if (!fireAllowed)
-            return;
+        if (!fireAllowed) return;
 
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
@@ -104,32 +140,29 @@ public class RPG : MonoBehaviour
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            Fire();
-            lr.positionCount = 0;
+            bool canFire = true;
+            if (charAbilities != null)
+                canFire = charAbilities.UseRpg();
+
+            if (canFire)
+            {
+                Fire();
+                cooldownTimer = cooldownTime;
+                UpdateAmmoUI();
+                if (charAbilities.GetRpgAmmoRemaining() == 0 && filterImage != null)
+                    filterImage.color = emptyColor;
+            }
+
             CancelDrag();
             fireAllowed = false;
-        }
-    }
 
-    void OnGUI()
-    {
-        if (awaitingConfirmation)
-        {
-            var style = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 20
-            };
-            GUI.Label(
-                new Rect(Screen.width / 2f - 250, Screen.height / 2f - 15, 500, 30),
-                "RPG skillini kullanmak ister misiniz?  [Enter]=Evet  [Esc]=Hayır", style
-            );
+            if (canFire && charAbilities.GetRpgAmmoRemaining() > 0 && filterImage != null)
+                filterImage.color = Color.clear;
         }
     }
 
     private void DrawTrajectory(Vector2 initialVelocity)
     {
-        // 🛡️ Güvenlik kontrolü
         if (!lr.enabled || lr.positionCount != trajectoryPoints)
         {
             lr.enabled = true;
@@ -152,7 +185,7 @@ public class RPG : MonoBehaviour
 
             vel += acc * timeStep;
             pos += vel * timeStep;
-            if (i < lr.positionCount) lr.SetPosition(i, pos); // Güvenli set
+            lr.SetPosition(i, pos);
         }
     }
 
@@ -162,7 +195,6 @@ public class RPG : MonoBehaviour
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
-        cooldownTimer = cooldownTime;
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var proj = bulletGO.GetComponent<Projectile>();
         if (proj != null)
@@ -179,5 +211,11 @@ public class RPG : MonoBehaviour
         isDragging = false;
         lr.enabled = false;
         lr.positionCount = 0;
+    }
+
+    private void UpdateAmmoUI()
+    {
+        if (rpgCountText != null && charAbilities != null)
+            rpgCountText.text = charAbilities.GetRpgAmmoRemaining().ToString();
     }
 }

@@ -21,12 +21,10 @@ public class GravityBody : MonoBehaviour
     public float jumpCooldown = 10f;
 
     private float cooldownTimer = 0f;
-    private bool awaitingSuperConfirmation = false;
     public bool nextJumpIsSuper = false;
 
-    // Double jump için
-    private int jumpCount = 0;         // 0 = yerde, 1 = bir kez zıpladı, 2 = double jump yapıldı
-    private bool canDoubleJump = true; // Havada bir kez daha zıplama izni
+    private int jumpCount = 0;
+    private bool canDoubleJump = true;
 
     private void Awake()
     {
@@ -45,43 +43,33 @@ public class GravityBody : MonoBehaviour
 
         bool grounded = (currentSource != null);
 
-        // Süper zıplama onayı (yalnızca yerde ve cooldown bittiğinde)
-        if (!nextJumpIsSuper && cooldownTimer <= 0f && grounded)
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha5))
-                awaitingSuperConfirmation = true;
-
-            if (awaitingSuperConfirmation && Input.GetKeyDown(KeyCode.Return))
-            {
-                nextJumpIsSuper = true;
-                awaitingSuperConfirmation = false;
-            }
-        }
-
-        // Zıplama tuşu (W veya Space) ve cooldown bittiğinde
         if (cooldownTimer <= 0f && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.Space)))
         {
-            // 1) Eğer yerdeysek
+            Debug.Log($"[GravityBody] Zıplama denemesi – grounded: {grounded}, jumpCount: {jumpCount}, canDoubleJump: {canDoubleJump}, super: {nextJumpIsSuper}");
+
             if (grounded)
             {
                 PerformJump(nextJumpIsSuper);
+                Debug.Log("[GravityBody] Yerden zıplama gerçekleşti.");
+
                 jumpCount = 1;
                 canDoubleJump = true;
             }
-            // 2) Havadaysa ve bir kez zıplamış + doubleJump izni varsa
             else if (!grounded && jumpCount == 1 && canDoubleJump)
             {
                 PerformJump(nextJumpIsSuper);
+                Debug.Log("[GravityBody] Havadan double jump gerçekleşti.");
+
                 jumpCount = 2;
                 canDoubleJump = false;
             }
             else
             {
+                Debug.LogWarning("[GravityBody] Zıplama reddedildi – koşullar uygun değil.");
                 return;
             }
 
             cooldownTimer = jumpCooldown;
-            awaitingSuperConfirmation = false;
             nextJumpIsSuper = false;
         }
     }
@@ -138,18 +126,31 @@ public class GravityBody : MonoBehaviour
         if (other.TryGetComponent<GravitySource>(out var gs) && gs == currentSource)
         {
             currentSource = null;
-            // Havadayken jumpCount ve canDoubleJump durumu bozulmaz
         }
     }
 
     private void PerformJump(bool isSuper)
     {
         Vector2 outDir = (transform.position - currentSource.transform.position).normalized;
+        float force = isSuper ? jumpForce * superMultiplier : jumpForce;
+
+        Debug.Log($"[GravityBody] PerformJump() çağrıldı — isSuper: {isSuper}, force: {force}, direction: {outDir}");
+        rb.AddForce(outDir * force, ForceMode2D.Impulse);
+
+        // ✅ SuperJump hakkı buradan düşürülür
         if (isSuper)
-            rb.AddForce(outDir * jumpForce * superMultiplier, ForceMode2D.Impulse);
-        else
-            rb.AddForce(outDir * jumpForce, ForceMode2D.Impulse);
+        {
+            var abilities = GetComponent<CharacterAbilities>();
+            if (abilities != null)
+            {
+                abilities.UseSuperJump(); // sayaç azalt
+                UIManager.Instance.filterImages[4].color = Color.clear; // yeşil filtre temizle
+                Debug.Log("[GravityBody] SuperJump kullanıldı – sayaç düşürüldü, filtre temizlendi");
+            }
+        }
     }
+
+
 
     public void ZeroHorizontalVelocity()
     {
@@ -171,24 +172,13 @@ public class GravityBody : MonoBehaviour
     public void OnTurnStart()
     {
         cooldownTimer = 0f;
-        awaitingSuperConfirmation = false;
         nextJumpIsSuper = false;
         ZeroHorizontalVelocity();
         jumpCount = 0;
         canDoubleJump = true;
 
-        // Turn başında karaktere ait shield’i kaldır
         var ch = GetComponent<CharacterHealth>();
         if (ch != null)
             ch.isShielded = false;
-    }
-
-    private void OnGUI()
-    {
-        if (awaitingSuperConfirmation)
-        {
-            GUI.Label(new Rect(Screen.width / 2f - 150, Screen.height / 2f - 25, 300, 50),
-                      "Super Jump için onaylıyor musunuz? [Enter]");
-        }
     }
 }

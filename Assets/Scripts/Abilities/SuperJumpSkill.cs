@@ -3,52 +3,78 @@ using UnityEngine;
 
 public class SuperJumpSkill : MonoBehaviour, IAbility
 {
-    public KeyCode ActivationKey { get; private set; }
+    [Header("Selection & Cooldown")]
+    public KeyCode activationKey = KeyCode.Alpha5;
+    public float cooldownTime = 5f;
+
+    private float cooldownTimer = 0f;
+    private bool awaitingConfirmation = false;
+
     public bool IsSelected { get; set; }
+    public KeyCode ActivationKey => activationKey;
 
     [Tooltip("Karakterin GravityBody bileşeni")]
     public GravityBody gravityBody;
 
-    [Tooltip("Super jump onayı sonrası cooldown süresi (saniye)")]
-    public float cooldownTime = 5f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
+    private CharacterAbilities charAbilities;
 
     void Start()
     {
-        // "5" tuşu super jump için atanır
-        ActivationKey = KeyCode.Alpha5;
+        charAbilities = GetComponent<CharacterAbilities>();
         IsSelected = false;
     }
 
     void Update()
     {
-        // Cooldown çalışıyorsa azalt
+        if (gravityBody == null || !gravityBody.isActive)
+            return;
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Eğer bu skill seçili değilse ya da cooldown devam ediyorsa hiçbir şey yapma
         if (!IsSelected || cooldownTimer > 0f)
             return;
 
-        // "0" tuşuna basıldığında onay bekleme moduna gir
-        if (Input.GetKeyDown(KeyCode.Alpha0) && !awaitingConfirmation)
+        if (charAbilities.GetSuperJumpsRemaining() <= 0)
         {
+            Debug.LogWarning("[SuperJumpSkill] Hakkın kalmadı – seçim yapılmadı");
+            return;
+        }
+
+        if (Input.GetKeyDown(activationKey) && !awaitingConfirmation)
+        {
+            Debug.Log("[SuperJumpSkill] 5 tuşuna basıldı – seçim yapılıyor");
+            UIManager.Instance.HighlightSkill(4); // sarı filtre
             awaitingConfirmation = true;
         }
 
-        // Onay bekleme modundayken "Enter" tuşuna basılırsa süper zıplama aktif olsun
-        if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Return))
+        if (awaitingConfirmation)
         {
-            if (gravityBody != null)
-                gravityBody.nextJumpIsSuper = true;
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                Debug.Log("[SuperJumpSkill] Enter tuşu algılandı – onaylama denenecek");
 
-            awaitingConfirmation = false;
-            cooldownTimer = cooldownTime;
-            IsSelected = false;
+                gravityBody.nextJumpIsSuper = true;
+                Debug.Log("[SuperJumpSkill] SuperJump hazırlandı – nextJumpIsSuper = true");
+
+                UIManager.Instance.ConfirmSkill(4); // yeşil filtre
+
+                cooldownTimer = cooldownTime;
+                IsSelected = false;
+                awaitingConfirmation = false;
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                awaitingConfirmation = false;
+                UIManager.Instance.filterImages[4].color = Color.clear;
+            }
         }
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        Debug.Log("[SuperJumpSkill] Cooldown sıfırlandı (karakter değişimi)");
+    }
 
-    // IAbility arayüzündeki metot; burada doğrudan kullanılmıyor ama boş olarak implement edilmeli
     public void UseAbility() { }
 }

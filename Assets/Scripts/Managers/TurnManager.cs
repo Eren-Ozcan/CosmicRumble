@@ -1,6 +1,7 @@
 ﻿// Assets/Scripts/Managers/TurnManager.cs
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.TextCore.Text;
 
 public class TurnManager : MonoBehaviour
 {
@@ -55,14 +56,20 @@ public class TurnManager : MonoBehaviour
         {
             newGb.isActive = true;
             newGb.OnTurnStart();
-            Debug.Log($"[TurnManager] Yeni aktif karakter: {newGb.gameObject.name}");
 
-            // → UI güncellemesi için CharacterAbilities bileşenini UIManager'a bildir
+            // UIManager’a bağlı abilities güncelle
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
                 UIManager.Instance.SetCharacter(abilities);
             }
+
+            // ✅ SuperJump UI sistemi için aktif et
+            var superJump = newGb.GetComponent<SuperJumpSkill>();
+            if (superJump != null)
+                superJump.IsSelected = true;
+                superJump.ResetCooldown(); // cooldown sıfırlansın
         }
     }
+
 }
