@@ -224,4 +224,11 @@ public class RPG : MonoBehaviour
         if (rpgCountText != null && charAbilities != null)
             rpgCountText.text = charAbilities.GetRpgAmmoRemaining().ToString();
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        fireAllowed = false;
+        awaitingConfirmation = false;
+    }
+
 }

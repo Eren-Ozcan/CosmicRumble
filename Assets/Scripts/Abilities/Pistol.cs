@@ -239,4 +239,11 @@ public class Pistol : MonoBehaviour
         if (pistolCountText != null && charAbilities != null)
             pistolCountText.text = charAbilities.GetPistolAmmo().ToString();
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        fireAllowed = false;
+        awaitingConfirmation = false;
+    }
+
 }

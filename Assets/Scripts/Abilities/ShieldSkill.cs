@@ -91,4 +91,9 @@ public class ShieldSkill : MonoBehaviour
             );
         }
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+    }
+
 }

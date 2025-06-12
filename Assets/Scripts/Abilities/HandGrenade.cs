@@ -252,4 +252,11 @@ public class HandGrenade : MonoBehaviour
         if (grenadeCountText != null && charAbilities != null)
             grenadeCountText.text = charAbilities.GetGrenadesRemaining().ToString();
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        fireAllowed = false;
+        awaitingConfirmation = false;
+    }
+
 }

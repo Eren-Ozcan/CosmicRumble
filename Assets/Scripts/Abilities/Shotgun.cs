@@ -130,4 +130,11 @@ public class Shotgun : MonoBehaviour
         if (shotgunCountText != null && charAbilities != null)
             shotgunCountText.text = charAbilities.GetShotgunAmmo().ToString();
     }
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        fireAllowed = false;
+        awaitingConfirmation = false;
+    }
+
 }

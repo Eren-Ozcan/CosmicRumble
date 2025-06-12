@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using UnityEngine.TextCore.Text;
 
 public class TurnManager : MonoBehaviour
 {
@@ -62,7 +61,7 @@ public class TurnManager : MonoBehaviour
     /// <param name="newIndex">Yeni aktif karakter indeksi</param>
     private void ActivateCharacter(int newIndex)
     {
-        // 1) Önceki karakteri pasif hale getir
+        // Önceki karakteri pasif yap
         GravityBody oldGb = characters[currentIndex];
         if (oldGb != null)
         {
@@ -70,7 +69,7 @@ public class TurnManager : MonoBehaviour
             oldGb.ZeroHorizontalVelocity();
         }
 
-        // 2) Yeni karakteri aktif et
+        // Yeni karakteri aktif yap
         currentIndex = newIndex;
         GravityBody newGb = characters[currentIndex];
         if (newGb != null)
@@ -78,30 +77,35 @@ public class TurnManager : MonoBehaviour
             newGb.isActive = true;
             newGb.OnTurnStart();
 
-            // UIManager’a bağlı abilities güncelle
+            // Abilities ve UI sıfırlamaları
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
-                abilities.HasUsedSkillThisTurn = false;                   // ✅ skill hakkını yenile
-                UIManager.Instance.SetCharacter(abilities);              // ✅ UI’ı bu karaktere bağla
-                UIManager.Instance.ClearAllSkillFilters();               // ✅ UI’daki gri kilitleri kaldır
+                UIManager.Instance.SetCharacter(abilities);
+                abilities.HasUsedSkillThisTurn = false;             // 🔧 TUR BAŞINDA SIFIRLAMA
+                UIManager.Instance.ClearAllSkillFilters();
             }
 
-            // ✅ SuperJump UI sistemi için aktif et
             var superJump = newGb.GetComponent<SuperJumpSkill>();
             if (superJump != null)
             {
                 superJump.IsSelected = true;
-                superJump.ResetCooldown(); // cooldown sıfırlansın
+                superJump.ResetCooldown();
             }
         }
 
-        // Yeni turn süresi başlat
-        turnTimer = turnDuration;
+        var skills = newGb.GetComponents<MonoBehaviour>();
+        foreach (var skill in skills)
+        {
+            var method = skill.GetType().GetMethod("ResetCooldown");
+            if (method != null)
+                method.Invoke(skill, null);
+        }
 
-        // ⏱ UI başlatma (ilk dolu gösterim)
+        turnTimer = turnDuration;
         TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
     }
+
 
     /// <summary>
     /// Sıradaki karaktere geç.
