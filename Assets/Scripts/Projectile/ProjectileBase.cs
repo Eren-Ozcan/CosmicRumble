@@ -39,7 +39,7 @@ public class ProjectileBase : MonoBehaviour
     protected virtual void FixedUpdate()
     {
         Vector2 gravity = Physics2D.gravity * gravityScale * mass;
-        rb.AddForce(gravity * Time.fixedDeltaTime, ForceMode2D.Force);
+        rb.AddForce(gravity, ForceMode2D.Force);
     }
 
     protected virtual void OnCollisionEnter2D(Collision2D collision)
