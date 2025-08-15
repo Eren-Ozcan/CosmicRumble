@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+using UnityEngine;
+using System.Collections;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class HandGrenadeProjectile : MonoBehaviour
@@ -17,6 +18,7 @@ public class HandGrenadeProjectile : MonoBehaviour
     private Rigidbody2D rb;
     private Collider2D col;
     private GameObject owner;
+    private Collider2D[] ownerColliders;
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
@@ -26,12 +28,18 @@ public class HandGrenadeProjectile : MonoBehaviour
 
         rb.linearVelocity = initialVelocity;
 
-        // Owner ile çarpışma engelle
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+        ownerColliders = owner.GetComponentsInChildren<Collider2D>();
+        foreach (var oc in ownerColliders)
             Physics2D.IgnoreCollision(col, oc, true);
 
-        Invoke(nameof(ReenableOwnerCollision), ignoreTime);
-        Invoke(nameof(Explode), delayBeforeExplosion);
+        StartCoroutine(ReenableOwnerCollisionRoutine(ignoreTime));
+        StartCoroutine(ExplodeRoutine());
+    }
+
+    private IEnumerator ExplodeRoutine()
+    {
+        yield return new WaitForSecondsRealtime(delayBeforeExplosion);
+        Explode();
     }
 
     private void Explode()
@@ -71,12 +79,24 @@ public class HandGrenadeProjectile : MonoBehaviour
     }
 
 
+    private IEnumerator ReenableOwnerCollisionRoutine(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        ReenableOwnerCollision();
+    }
+
     private void ReenableOwnerCollision()
     {
-        if (owner == null || col == null) return;
+        if (ownerColliders == null || col == null) return;
 
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
-            Physics2D.IgnoreCollision(col, oc, false);
+        foreach (var oc in ownerColliders)
+            if (oc != null)
+                Physics2D.IgnoreCollision(col, oc, false);
+    }
+
+    private void OnDestroy()
+    {
+        ReenableOwnerCollision();
     }
 
     void OnDrawGizmosSelected()

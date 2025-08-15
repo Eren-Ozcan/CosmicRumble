@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -24,6 +24,7 @@ public class Projectile : MonoBehaviour
     Rigidbody2D rb;
     Collider2D col;
     float spawnTime;
+    Collider2D[] ownerColliders;
 
     void Awake()
     {
@@ -38,12 +39,12 @@ public class Projectile : MonoBehaviour
         owner = ownerObj;
         ignoreOwnerTime = ignoreTime;
         spawnTime = Time.time;
-
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+        ownerColliders = owner.GetComponentsInChildren<Collider2D>();
+        foreach (var oc in ownerColliders)
             Physics2D.IgnoreCollision(col, oc, true);
 
         rb.linearVelocity = initialVelocity;
-        Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
+        StartCoroutine(ReenableOwnerCollisionRoutine(ignoreOwnerTime));
     }
 
     void Update()
@@ -67,11 +68,23 @@ public class Projectile : MonoBehaviour
         Destroy(gameObject);
     }
 
+    private IEnumerator ReenableOwnerCollisionRoutine(float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        ReenableOwnerCollision();
+    }
+
     private void ReenableOwnerCollision()
     {
-        if (owner == null) return;
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
-            Physics2D.IgnoreCollision(col, oc, false);
+        if (ownerColliders == null) return;
+        foreach (var oc in ownerColliders)
+            if (oc != null)
+                Physics2D.IgnoreCollision(col, oc, false);
+    }
+
+    void OnDestroy()
+    {
+        ReenableOwnerCollision();
     }
 
     void OnCollisionEnter2D(Collision2D collision)

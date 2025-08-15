@@ -1,5 +1,6 @@
-﻿// Assets/Scripts/Planet/BombExplosion.cs
+// Assets/Scripts/Planet/BombExplosion.cs
 using UnityEngine;
+using System.Collections;
 
 /// <summary>
 /// BombExplosion:
@@ -26,11 +27,12 @@ public class BombExplosion : MonoBehaviour
     private void Start()
     {
         // Oluştuktan hemen sonra kendi collider’ına çarpmasını engellemek için kısa gecikme
-        Invoke(nameof(EnableLaunch), 0.1f);
+        StartCoroutine(EnableLaunchRoutine());
     }
 
-    private void EnableLaunch()
+    private IEnumerator EnableLaunchRoutine()
     {
+        yield return new WaitForSecondsRealtime(0.1f);
         launched = true;
     }
 
