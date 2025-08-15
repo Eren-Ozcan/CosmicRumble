@@ -8,6 +8,8 @@ using UnityEngine.TextCore.Text;
 
 public class TurnManager : MonoBehaviour
 {
+    public static TurnManager Instance { get; private set; }
+
     [Header("Sıra Tabanlı Oynanacak Karakterler")]
     [Tooltip("GravityBody içeren karakter objelerini buraya atayın.")]
     public List<GravityBody> characters;
@@ -21,6 +23,13 @@ public class TurnManager : MonoBehaviour
 
     private int currentIndex = 0;
     private float turnTimer = 0f;
+    private bool inputLocked = false;
+    public bool InputLocked => inputLocked;
+
+    private void Awake()
+    {
+        Instance = this;
+    }
 
     private void Start()
     {
@@ -121,13 +130,15 @@ public class TurnManager : MonoBehaviour
             }
         }
 #endif
+        inputLocked = true; // prevent movement input for a short window
         float timer = 0.1f;
         while (timer > 0f)
         {
-            Input.ResetInputAxes();
+            Input.ResetInputAxes(); // clear held keys
             timer -= Time.unscaledDeltaTime;
             yield return null;
         }
+        inputLocked = false;
     }
 
     /// <summary>
