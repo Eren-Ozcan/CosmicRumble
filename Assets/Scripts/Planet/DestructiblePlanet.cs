@@ -1,5 +1,6 @@
 ﻿// Assets/Scripts/Planet/DestructiblePlanet.cs
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// DestructiblePlanet:
@@ -15,6 +16,13 @@ public class DestructiblePlanet : MonoBehaviour
     private Texture2D runtimeTex;
     private PolygonCollider2D poly;
     private float ppu; // pixels per unit
+
+    // Flag to delay expensive collider rebuilds until LateUpdate
+    private bool colliderDirty;
+
+    // Skip points when rebuilding the collider to reduce complexity on big textures
+    [SerializeField, Min(1)]
+    private int colliderPointSkip = 1;
 
     private void Start()
     {
@@ -107,14 +115,39 @@ public class DestructiblePlanet : MonoBehaviour
 
         runtimeTex.Apply();
 
-        // Collider’ı yeniden oluştur
-        RebuildCollider();
+        // Collider'ı yeniden oluşturma isteği sıraya alınır
+        colliderDirty = true;
     }
 
     private void RebuildCollider()
     {
         if (poly != null) Destroy(poly);
         poly = gameObject.AddComponent<PolygonCollider2D>();
+
+        // Büyük gezegenler için collider noktalarını seyrekleştir
+        if (colliderPointSkip > 1)
+        {
+            for (int i = 0; i < poly.pathCount; i++)
+            {
+                Vector2[] path = poly.GetPath(i);
+                if (path.Length <= colliderPointSkip) continue;
+
+                List<Vector2> reduced = new List<Vector2>();
+                for (int p = 0; p < path.Length; p += colliderPointSkip)
+                {
+                    reduced.Add(path[p]);
+                }
+                poly.SetPath(i, reduced.ToArray());
+            }
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (!colliderDirty) return;
+
+        RebuildCollider();
+        colliderDirty = false;
     }
 
     private void ApplyExplosionForce(Vector2 worldPos, float radiusWorld, float forceStrength)
