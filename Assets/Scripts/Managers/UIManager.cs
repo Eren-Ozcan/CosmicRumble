@@ -58,10 +58,6 @@ public class UIManager : MonoBehaviour
 
         currentAb = ab;
 
-        // İlk durumu uygula
-        for (int i = 0; i < filterImages.Length; i++)
-            UpdateSlot(i);
-
         // Yeni karakter event bağla
         currentAb.SkillChanged += skillChangedHandler;        // FIX: use cached delegates
         currentAb.SuperJumpChanged += superJumpChangedHandler;
@@ -70,6 +66,10 @@ public class UIManager : MonoBehaviour
         currentAb.ShotgunAmmoChanged += shotgunAmmoChangedHandler;
         currentAb.GrenadeChanged += grenadeChangedHandler;
         currentAb.ShieldChanged += shieldChangedHandler;
+
+        // Abiliti durumunu hemen isteyip UI'ı eşitle
+        for (int i = 0; i < filterImages.Length; i++)
+            UpdateSlot(i);
     }
 
     private void OnDestroy()
