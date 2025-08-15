@@ -375,11 +375,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76123432ef60da443af5da6b33933d08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseRadius: 9.51
-  baseGravityForce: 15.95
-  forceMultiplier: 3.28
-  scaledRadius: 0
-  scaledGravityForce: 0
+  gravityForce: 15.95
+  gravityRadius: 9.51
 --- !u!1001 &1187032650919345773
 PrefabInstance:
   m_ObjectHideFlags: 0

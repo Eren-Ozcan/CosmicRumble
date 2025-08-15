@@ -5,25 +5,17 @@ using UnityEngine;
 [RequireComponent(typeof(CircleCollider2D))]
 public class GravitySource : MonoBehaviour
 {
-    [Header("Base Settings (Scale = 1 iken)")]
-    [Tooltip("Çekim alanının yarıçapı (Unity birimi)")]
-    public float baseRadius = 5f;
-    [Tooltip("Çekim kuvvetinin büyüklüğü")]
-    public float baseGravityForce = 9.81f;
-    public float mass = 10f;
-    [Header("Optional Multiplier")]
-    [Tooltip("Ekstra kuvvet çarpanı (1 bırakabilirsin)")]
-    public float forceMultiplier = 1f;
+    [Header("Gravity Settings")]
+    [Tooltip("Gravitational force magnitude")]
+    public float gravityForce = 9.81f;
+    [Tooltip("Radius where gravity affects objects")]
+    public float gravityRadius = 5f;
 
 
     public static List<GravitySource> AllSources = new List<GravitySource>();
 
     void OnEnable() { AllSources.Add(this); }
     void OnDisable() { AllSources.Remove(this); }
-
-    // Runtime’da hesaplanan değerler (read-only inspector’da görmek istersen [ReadOnly] attribute ekleyebilirsiniz)
-    [HideInInspector] public float scaledRadius;
-    [HideInInspector] public float scaledGravityForce;
 
     private CircleCollider2D gravityCollider;
 
@@ -41,13 +33,7 @@ public class GravitySource : MonoBehaviour
 
     private void Start()
     {
-        // 1) Transform scale ile skala etkileşimi:
-        float scaleFactor = transform.localScale.x;
-        scaledRadius = baseRadius * scaleFactor;
-        scaledGravityForce = baseGravityForce * scaleFactor * forceMultiplier;
-
-        // 2) Collider radius’u runtime’da ayarla:
-        gravityCollider.radius = scaledRadius;
+        gravityCollider.radius = gravityRadius;
     }
 
     private void OnTriggerStay2D(Collider2D other)
@@ -59,17 +45,16 @@ public class GravitySource : MonoBehaviour
         float distance = direction.magnitude;
         if (distance <= 0f) return;
 
-        // 1/r^2 formülü: F = GMm / r^2, burada baseGravityForce ~ G*M gibi düşünülebilir.
-        float forceMag = scaledGravityForce / (distance * distance);
+        // Inverse square law: F = G / r^2
+        float forceMag = gravityForce / (distance * distance);
         rb.AddForce(direction.normalized * forceMag, ForceMode2D.Force);
     }
 
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        float drawRadius = baseRadius * transform.localScale.x;
         Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
-        Gizmos.DrawWireSphere(transform.position, drawRadius);
+        Gizmos.DrawWireSphere(transform.position, gravityRadius);
     }
 #endif
 }
