@@ -57,8 +57,30 @@ public class GravityBody : MonoBehaviour
             }
             else if (!grounded && jumpCount == 1 && canDoubleJump)
             {
-                PerformJump(nextJumpIsSuper);
-                Debug.Log("[GravityBody] Havadan double jump gerçekleşti.");
+                if (currentSource != null)
+                {
+                    PerformJump(nextJumpIsSuper);
+                    Debug.Log("[GravityBody] Havadan double jump gerçekleşti.");
+                }
+                else
+                {
+                    Vector2 jumpDir = transform.up;
+                    float force = nextJumpIsSuper ? jumpForce * superMultiplier : jumpForce;
+
+                    Debug.Log("[GravityBody] Havadan double jump gerçekleşti (transform.up kullanıldı).");
+                    rb.AddForce(jumpDir * force, ForceMode2D.Impulse);
+
+                    if (nextJumpIsSuper)
+                    {
+                        var abilities = GetComponent<CharacterAbilities>();
+                        if (abilities != null)
+                        {
+                            abilities.UseSuperJump();
+                            UIManager.Instance.filterImages[4].color = Color.clear;
+                            Debug.Log("[GravityBody] SuperJump kullanıldı – sayaç düşürüldü, filtre temizlendi");
+                        }
+                    }
+                }
 
                 jumpCount = 2;
                 canDoubleJump = false;
@@ -131,7 +153,12 @@ public class GravityBody : MonoBehaviour
 
     private void PerformJump(bool isSuper)
     {
-        Vector2 outDir = (transform.position - currentSource.transform.position).normalized;
+        Vector2 outDir;
+        if (currentSource != null)
+            outDir = (transform.position - currentSource.transform.position).normalized;
+        else
+            outDir = -transform.up;
+
         float force = isSuper ? jumpForce * superMultiplier : jumpForce;
 
         Debug.Log($"[GravityBody] PerformJump() çağrıldı — isSuper: {isSuper}, force: {force}, direction: {outDir}");
