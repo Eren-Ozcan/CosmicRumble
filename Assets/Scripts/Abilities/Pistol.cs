@@ -164,7 +164,6 @@ public class Pistol : MonoBehaviour
 
                 // Skill kullanıldığı için bu turn başka skill kullanımı engellenir
                 charAbilities.HasUsedSkillThisTurn = true;
-                UIManager.Instance.LockAllSkillsUI(); // ✅ Tüm UI'ları kilitle
 
                 // Eğer mermi bittiyse kırmızı filtre göster
                 if (charAbilities.GetPistolAmmo() == 0 && filterImage != null)

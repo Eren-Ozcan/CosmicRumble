@@ -7,7 +7,26 @@ public class CharacterAbilities : MonoBehaviour
     private const int TotalSlots = 10;
 
     // Her turn sadece bir skill kullanabilme kontrolü
-    public bool HasUsedSkillThisTurn { get; set; }
+    private bool hasUsedSkillThisTurn;
+    public bool HasUsedSkillThisTurn
+    {
+        get => hasUsedSkillThisTurn;
+        set
+        {
+            if (hasUsedSkillThisTurn == value)
+                return;
+
+            hasUsedSkillThisTurn = value;
+
+            if (UIManager.Instance != null)
+            {
+                if (hasUsedSkillThisTurn)
+                    UIManager.Instance.LockAllSkillsUI();
+                else
+                    UIManager.Instance.ClearAllSkillFilters();
+            }
+        }
+    }
 
     [Header("Super Jump Ayarları")]
     public int maxSuperJumps = 3;
