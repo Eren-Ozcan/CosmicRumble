@@ -1,25 +1,54 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-
 public class HealthBarUI : MonoBehaviour
 {
-    public TextMeshProUGUI healthText;
-    public Image fillImage;
-    public CharacterHealth characterHealth;
+    [SerializeField] private TextMeshProUGUI healthText;
+    [SerializeField] private Image fillImage;
+    [SerializeField] private CharacterHealth characterHealth;
+
+    public CharacterHealth CharacterHealth
+    {
+        get => characterHealth;
+        set => SetCharacterHealth(value);
+    }
 
     private void Start()
     {
-        if (fillImage == null || characterHealth == null)
+        if (healthText == null || fillImage == null)
         {
             Debug.LogError("[HealthBarUI] Eksik referans!");
             enabled = false;
             return;
         }
 
-        characterHealth.OnHealthChanged += UpdateHealthBar;
-        UpdateHealthBar(characterHealth.GetCurrentHealth());
+        if (characterHealth == null)
+        {
+            Debug.LogWarning("[HealthBarUI] CharacterHealth referansı atanmadı.");
+            return;
+        }
+
+        SetCharacterHealth(characterHealth);
+    }
+
+    public void SetCharacterHealth(CharacterHealth newHealth)
+    {
+        if (characterHealth != null)
+        {
+            characterHealth.OnHealthChanged -= UpdateHealthBar;
+        }
+
+        characterHealth = newHealth;
+
+        if (characterHealth != null)
+        {
+            characterHealth.OnHealthChanged += UpdateHealthBar;
+            if (healthText != null && fillImage != null)
+            {
+                UpdateHealthBar(characterHealth.GetCurrentHealth());
+            }
+        }
     }
 
     private void UpdateHealthBar(float currentHealth)
@@ -49,4 +78,13 @@ public class HealthBarUI : MonoBehaviour
     {
         transform.rotation = Quaternion.identity;
     }
+
+    private void OnDestroy()
+    {
+        if (characterHealth != null)
+        {
+            characterHealth.OnHealthChanged -= UpdateHealthBar;
+        }
+    }
 }
+
