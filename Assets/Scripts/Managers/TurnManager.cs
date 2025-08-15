@@ -96,9 +96,8 @@ public class TurnManager : MonoBehaviour
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
-                abilities.HasUsedSkillThisTurn = false;                   // ✅ skill hakkını yenile
                 UIManager.Instance.SetCharacter(abilities);              // ✅ UI’ı bu karaktere bağla
-                UIManager.Instance.ClearAllSkillFilters();               // ✅ UI’daki gri kilitleri kaldır
+                abilities.HasUsedSkillThisTurn = false;                   // ✅ skill hakkını yenile (UI otomatik açılır)
             }
 
             // ✅ SuperJump UI sistemi için aktif et
