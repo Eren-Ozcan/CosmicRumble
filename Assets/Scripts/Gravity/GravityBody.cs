@@ -8,6 +8,8 @@ public class GravityBody : MonoBehaviour
 
     private Rigidbody2D rb;
     private GravitySource currentSource;
+    public GravityConfig config;
+    private Vector2 netGravity;
 
     [Header("Yürüme Ayarları")]
     public float maxWalkSpeed = 3f;
@@ -76,16 +78,29 @@ public class GravityBody : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (currentSource != null)
+        netGravity = Vector2.zero;
+
+        GravityConfig.GravityMode mode = config ? config.mode : GravityConfig.GravityMode.InverseSquared;
+        float globalScale = config ? config.globalScale : 1f;
+        float minDist = config ? config.minDistance : 0.1f;
+
+        foreach (var source in GravitySource.AllSources)
         {
-            Vector2 dir = (Vector2)(currentSource.transform.position - transform.position);
+            Vector2 dir = (Vector2)source.transform.position - rb.position;
             float dist = dir.magnitude;
-            if (dist <= currentSource.scaledRadius)
-            {
-                rb.AddForce(dir.normalized * currentSource.scaledGravityForce, ForceMode2D.Force);
-            }
-            transform.up = -dir.normalized;
+            if (dist > source.scaledRadius)
+                continue;
+
+            float clamped = Mathf.Max(dist, minDist);
+            float force = source.scaledGravityForce;
+            force /= (mode == GravityConfig.GravityMode.Linear) ? clamped : clamped * clamped;
+            netGravity += dir.normalized * force;
         }
+
+        netGravity *= globalScale;
+        rb.AddForce(netGravity, ForceMode2D.Force);
+        if (netGravity != Vector2.zero)
+            transform.up = -netGravity.normalized;
 
         if (!isActive)
             return;
@@ -94,9 +109,7 @@ public class GravityBody : MonoBehaviour
         bool grounded = (currentSource != null);
         float speedLimit = grounded ? maxWalkSpeed : maxAirSpeed;
 
-        Vector2 center = grounded
-            ? (Vector2)(currentSource.transform.position - transform.position)
-            : Vector2.up;
+        Vector2 center = grounded ? netGravity : Vector2.up;
         Vector2 tangent = new Vector2(center.y, -center.x).normalized;
 
         Vector2 vel = rb.linearVelocity;
@@ -131,7 +144,7 @@ public class GravityBody : MonoBehaviour
 
     private void PerformJump(bool isSuper)
     {
-        Vector2 outDir = (transform.position - currentSource.transform.position).normalized;
+        Vector2 outDir = transform.up;
         float force = isSuper ? jumpForce * superMultiplier : jumpForce;
 
         Debug.Log($"[GravityBody] PerformJump() çağrıldı — isSuper: {isSuper}, force: {force}, direction: {outDir}");
@@ -157,7 +170,7 @@ public class GravityBody : MonoBehaviour
         Vector2 vel = rb.linearVelocity;
         if (currentSource != null)
         {
-            Vector2 center = (Vector2)(currentSource.transform.position - transform.position);
+            Vector2 center = netGravity;
             Vector2 tangent = new Vector2(center.y, -center.x).normalized;
             float along = Vector2.Dot(vel, tangent);
             rb.linearVelocity = vel - tangent * along;
