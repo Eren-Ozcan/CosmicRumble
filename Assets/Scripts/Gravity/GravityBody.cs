@@ -45,6 +45,9 @@ public class GravityBody : MonoBehaviour
         if (!isActive)
             return;
 
+        if (TurnManager.Instance != null && TurnManager.Instance.InputLocked)
+            return;
+
         bool grounded = (currentSource != null);
 
         if (cooldownTimer <= 0f && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.Space)))
@@ -89,6 +92,8 @@ public class GravityBody : MonoBehaviour
             return;
 
         float h = -Input.GetAxisRaw("Horizontal");
+        if (TurnManager.Instance != null && TurnManager.Instance.InputLocked)
+            h = 0f;
         bool grounded = (currentSource != null);
         float speedLimit = grounded ? maxWalkSpeed : maxAirSpeed;
 
