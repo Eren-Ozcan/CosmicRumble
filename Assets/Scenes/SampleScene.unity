@@ -4749,12 +4749,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76123432ef60da443af5da6b33933d08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  baseRadius: 16.08
-  baseGravityForce: 9.81
-  mass: 10
-  forceMultiplier: 1
-  scaledRadius: 0
-  scaledGravityForce: 0
+  gravityForce: 9.81
+  gravityRadius: 16.08
 --- !u!58 &1672125609
 CircleCollider2D:
   m_ObjectHideFlags: 0

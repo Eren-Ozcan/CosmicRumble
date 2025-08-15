@@ -23,11 +23,11 @@ public static class GravitySolver
         {
             Vector2 dir = (Vector2)source.transform.position - position;
             float dist = dir.magnitude;
-            if (dist > source.scaledRadius)
+            if (dist > source.gravityRadius)
                 continue;
 
             float clamped = Mathf.Max(dist, minDist);
-            float force = source.scaledGravityForce;
+            float force = source.gravityForce;
             switch (mode)
             {
                 case GravityConfig.GravityMode.Linear:

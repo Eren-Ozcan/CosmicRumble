@@ -185,7 +185,7 @@ public class RPG : MonoBehaviour
                 Vector2 dir = (Vector2)src.transform.position - pos;
                 float r2 = dir.sqrMagnitude;
                 if (r2 < 0.001f) continue;
-                acc += dir.normalized * (src.scaledGravityForce / r2);
+                acc += dir.normalized * (src.gravityForce / r2);
             }
 
             vel += acc * timeStep;
