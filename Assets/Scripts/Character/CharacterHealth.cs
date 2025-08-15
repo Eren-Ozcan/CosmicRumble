@@ -31,7 +31,15 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     {
         // Oyuna başlarken canı maksimuma ayarla
         currentHealth = maxHealth;
-        // Başlangıçta UI'ın doğru gösterebilmesi için event tetikle
+    }
+
+    private void Start()
+    {
+        RefreshUI();
+    }
+
+    public void RefreshUI()
+    {
         OnHealthChanged?.Invoke(currentHealth);
     }
 

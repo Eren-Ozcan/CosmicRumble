@@ -19,7 +19,7 @@ public class HealthBarUI : MonoBehaviour
         }
 
         characterHealth.OnHealthChanged += UpdateHealthBar;
-        UpdateHealthBar(characterHealth.GetCurrentHealth());
+        characterHealth.RefreshUI();
     }
 
     private void UpdateHealthBar(float currentHealth)

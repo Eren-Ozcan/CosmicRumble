@@ -40,10 +40,6 @@ public class UIManager : MonoBehaviour
 
         currentAb = ab;
 
-        // İlk durumu uygula
-        for (int i = 0; i < filterImages.Length; i++)
-            UpdateSlot(i);
-
         // Yeni karakter event bağla
         currentAb.SkillChanged += UpdateSlot;
         currentAb.SuperJumpChanged += () => UpdateSlot(4);
@@ -52,6 +48,9 @@ public class UIManager : MonoBehaviour
         currentAb.ShotgunAmmoChanged += () => UpdateSlot(1);
         currentAb.GrenadeChanged += () => UpdateSlot(3);
         currentAb.ShieldChanged += () => UpdateSlot(5);
+
+        // Event'ler bağlandıktan sonra mevcut değerleri iste
+        currentAb.RefreshUI();
     }
 
     public void ClearSkillColor(int slotIndex, bool isEmpty)
