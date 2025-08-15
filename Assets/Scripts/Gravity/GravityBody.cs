@@ -80,9 +80,10 @@ public class GravityBody : MonoBehaviour
         {
             Vector2 dir = (Vector2)(currentSource.transform.position - transform.position);
             float dist = dir.magnitude;
-            if (dist <= currentSource.scaledRadius)
+            if (dist <= currentSource.gravityRadius)
             {
-                rb.AddForce(dir.normalized * currentSource.scaledGravityForce, ForceMode2D.Force);
+                float forceMag = currentSource.gravityForce / (dist * dist);
+                rb.AddForce(dir.normalized * forceMag, ForceMode2D.Force);
             }
             transform.up = -dir.normalized;
         }
