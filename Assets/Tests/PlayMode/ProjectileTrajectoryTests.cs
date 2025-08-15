@@ -1,6 +1,7 @@
 using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
+#if UNITY_EDITOR
 using UnityEngine.TestTools;
 
 public class ProjectileTrajectoryTests
@@ -17,7 +18,7 @@ public class ProjectileTrajectoryTests
         projectile.mass = 1f;
         projectile.gravityScale = 1f;
 
-        rb.velocity = new Vector2(10f, 10f);
+        rb.linearVelocity = new Vector2(10f, 10f);
 
         yield return new WaitForSeconds(1f);
 
@@ -30,3 +31,4 @@ public class ProjectileTrajectoryTests
         Physics2D.gravity = originalGravity;
     }
 }
+#endif
