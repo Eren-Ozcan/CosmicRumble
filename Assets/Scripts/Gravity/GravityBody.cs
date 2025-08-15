@@ -8,8 +8,10 @@ public class GravityBody : MonoBehaviour
 
     private Rigidbody2D rb;
     private GravitySource currentSource;
+    public GravitySource CurrentSource => currentSource; // expose active source
     public GravityConfig config;
     private Vector2 netGravity;
+    public Vector2 NetGravity => netGravity;            // expose net gravity vector
 
     [Header("Yürüme Ayarları")]
     public float maxWalkSpeed = 3f;
@@ -41,6 +43,9 @@ public class GravityBody : MonoBehaviour
             cooldownTimer -= Time.deltaTime;
 
         if (!isActive)
+            return;
+
+        if (TurnManager.Instance != null && TurnManager.Instance.InputLocked)
             return;
 
         bool grounded = (currentSource != null);
@@ -78,26 +83,7 @@ public class GravityBody : MonoBehaviour
 
     private void FixedUpdate()
     {
-        netGravity = Vector2.zero;
-
-        GravityConfig.GravityMode mode = config ? config.mode : GravityConfig.GravityMode.InverseSquared;
-        float globalScale = config ? config.globalScale : 1f;
-        float minDist = config ? config.minDistance : 0.1f;
-
-        foreach (var source in GravitySource.AllSources)
-        {
-            Vector2 dir = (Vector2)source.transform.position - rb.position;
-            float dist = dir.magnitude;
-            if (dist > source.scaledRadius)
-                continue;
-
-            float clamped = Mathf.Max(dist, minDist);
-            float force = source.scaledGravityForce;
-            force /= (mode == GravityConfig.GravityMode.Linear) ? clamped : clamped * clamped;
-            netGravity += dir.normalized * force;
-        }
-
-        netGravity *= globalScale;
+        netGravity = GravitySolver.Calculate(rb.position, config);
         rb.AddForce(netGravity, ForceMode2D.Force);
         if (netGravity != Vector2.zero)
             transform.up = -netGravity.normalized;
@@ -106,6 +92,8 @@ public class GravityBody : MonoBehaviour
             return;
 
         float h = -Input.GetAxisRaw("Horizontal");
+        if (TurnManager.Instance != null && TurnManager.Instance.InputLocked)
+            h = 0f;
         bool grounded = (currentSource != null);
         float speedLimit = grounded ? maxWalkSpeed : maxAirSpeed;
 

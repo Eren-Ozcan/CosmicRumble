@@ -6,7 +6,8 @@ public class GravityConfig : ScriptableObject
     public enum GravityMode
     {
         InverseSquared,
-        Linear
+        Linear,
+        Constant
     }
 
     [Header("Force Calculation")]
@@ -15,4 +16,6 @@ public class GravityConfig : ScriptableObject
     public float globalScale = 1f;
     [Tooltip("Minimum distance used when calculating gravity to avoid singularities.")]
     public float minDistance = 0.1f;
+    [Tooltip("Sum forces from all sources instead of using only the strongest source.")]
+    public bool useVectorSum = true;
 }
