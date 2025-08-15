@@ -30,12 +30,12 @@ public class UIManager : MonoBehaviour
         {
             // Önceki karakterden event temizle
             currentAb.SkillChanged -= UpdateSlot;
-            currentAb.SuperJumpChanged -= () => UpdateSlot(4);
-            currentAb.RpgAmmoChanged -= () => UpdateSlot(2);
-            currentAb.PistolAmmoChanged -= () => UpdateSlot(0);
-            currentAb.ShotgunAmmoChanged -= () => UpdateSlot(1);
-            currentAb.GrenadeChanged -= () => UpdateSlot(3);
-            currentAb.ShieldChanged -= () => UpdateSlot(5);
+            currentAb.SuperJumpChanged -= OnSuperJumpChanged;
+            currentAb.RpgAmmoChanged -= OnRpgAmmoChanged;
+            currentAb.PistolAmmoChanged -= OnPistolAmmoChanged;
+            currentAb.ShotgunAmmoChanged -= OnShotgunAmmoChanged;
+            currentAb.GrenadeChanged -= OnGrenadeChanged;
+            currentAb.ShieldChanged -= OnShieldChanged;
         }
 
         currentAb = ab;
@@ -46,12 +46,12 @@ public class UIManager : MonoBehaviour
 
         // Yeni karakter event bağla
         currentAb.SkillChanged += UpdateSlot;
-        currentAb.SuperJumpChanged += () => UpdateSlot(4);
-        currentAb.RpgAmmoChanged += () => UpdateSlot(2);
-        currentAb.PistolAmmoChanged += () => UpdateSlot(0);
-        currentAb.ShotgunAmmoChanged += () => UpdateSlot(1);
-        currentAb.GrenadeChanged += () => UpdateSlot(3);
-        currentAb.ShieldChanged += () => UpdateSlot(5);
+        currentAb.SuperJumpChanged += OnSuperJumpChanged;
+        currentAb.RpgAmmoChanged += OnRpgAmmoChanged;
+        currentAb.PistolAmmoChanged += OnPistolAmmoChanged;
+        currentAb.ShotgunAmmoChanged += OnShotgunAmmoChanged;
+        currentAb.GrenadeChanged += OnGrenadeChanged;
+        currentAb.ShieldChanged += OnShieldChanged;
     }
 
     public void ClearSkillColor(int slotIndex, bool isEmpty)
@@ -73,6 +73,13 @@ public class UIManager : MonoBehaviour
         // Stoğa göre renklendir
         filterImages[slotIndex].color = (left == 0 ? emptyColor : Color.clear);
     }
+
+    private void OnSuperJumpChanged() => UpdateSlot(4);
+    private void OnRpgAmmoChanged() => UpdateSlot(2);
+    private void OnPistolAmmoChanged() => UpdateSlot(0);
+    private void OnShotgunAmmoChanged() => UpdateSlot(1);
+    private void OnGrenadeChanged() => UpdateSlot(3);
+    private void OnShieldChanged() => UpdateSlot(5);
 
     /// <summary>
     /// Tüm skill slot’larını gri yapar (turda skill kullanıldığında)
