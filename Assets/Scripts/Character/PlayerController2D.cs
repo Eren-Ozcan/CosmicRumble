@@ -5,7 +5,7 @@ using UnityEngine;
 /// PlayerController2D:
 /// - Yürüme animasyonu ve sprite yönünü yönetir.
 /// - GravityBody içinde zaten hareket ve zıplama kodu olduğundan, burada yalnızca sprite flip işlemlerini yapıyoruz.
-/// - Animator kısmı şimdilik kapalı (yorum satırlarında bırakıldı).
+/// - Animator parametreleri yalnızca geçerli bir runtime controller olduğunda güncellenir.
 /// </summary>
 [RequireComponent(typeof(GravityBody))]
 [RequireComponent(typeof(SpriteRenderer))]
@@ -14,11 +14,11 @@ public class PlayerController2D : MonoBehaviour
     private GravityBody gravityBody;
     private SpriteRenderer spriteRenderer;
 
-    // Animator kullanımını kapattığımız için ilgili alan ve satırlar yorumlandı
-    // private Animator animator;
-    // [Header("Yürüme Ayarları")]
-    // [Tooltip("Animator içerisinde Speed parametresine gönderilecek değer.")]
-    // public string speedParam = "Speed";
+    private Animator animator;
+
+    [Header("Yürüme Ayarları")]
+    [Tooltip("Animator içerisinde Speed parametresine gönderilecek değer.")]
+    public string speedParam = "Speed";
 
     private void Awake()
     {
@@ -30,10 +30,9 @@ public class PlayerController2D : MonoBehaviour
         if (spriteRenderer == null)
             Debug.LogError($"[PlayerController2D] {name} üzerinde SpriteRenderer bulunamadı!");
 
-        // Animator’i de kaldırdık
-        // animator = GetComponent<Animator>();
-        // if (animator == null)
-        //     Debug.LogError($"[PlayerController2D] {name} üzerinde Animator bulunamadı!");
+        animator = GetComponent<Animator>();
+        if (animator == null)
+            Debug.LogError($"[PlayerController2D] {name} üzerinde Animator bulunamadı!");
     }
 
     private void Update()
@@ -41,7 +40,8 @@ public class PlayerController2D : MonoBehaviour
         // Eğer karakter şu an aktif değilse, animasyonları da güncelleme
         if (!gravityBody.isActive)
         {
-            // Animator'u kapalı tuttuğumuz için burası boş
+            if (animator != null && animator.runtimeAnimatorController != null)
+                animator.SetFloat(speedParam, 0f);
             return;
         }
 
@@ -54,7 +54,7 @@ public class PlayerController2D : MonoBehaviour
         else if (horizInput > 0f)
             spriteRenderer.flipX = false;
 
-        // Animator Speed parametresi yerine şimdilik bir debug log bırakabiliriz
-        // animator.SetFloat(speedParam, Mathf.Abs(horizInput));
+        if (animator != null && animator.runtimeAnimatorController != null)
+            animator.SetFloat(speedParam, Mathf.Abs(horizInput));
     }
 }
