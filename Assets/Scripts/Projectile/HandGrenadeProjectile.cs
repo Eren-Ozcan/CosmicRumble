@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
+[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(OwnerCollisionIgnore))]
 public class HandGrenadeProjectile : MonoBehaviour
 {
     [Header("Zamanlayıcı ve Patlama")]
@@ -16,23 +16,19 @@ public class HandGrenadeProjectile : MonoBehaviour
     public float gravityForceMultiplier = 1f;
 
     private Rigidbody2D rb;
-    private Collider2D col;
     private GameObject owner;
-    private Collider2D[] ownerColliders;
+    private OwnerCollisionIgnore ownerIgnore;
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
         rb = GetComponent<Rigidbody2D>();
-        col = GetComponent<Collider2D>();
         owner = ownerObj;
+        ownerIgnore = GetComponent<OwnerCollisionIgnore>();
 
         rb.linearVelocity = initialVelocity;
 
-        ownerColliders = owner.GetComponentsInChildren<Collider2D>();
-        foreach (var oc in ownerColliders)
-            Physics2D.IgnoreCollision(col, oc, true);
+        ownerIgnore.Ignore(owner, ignoreTime); // FIX: cache & coroutine based ignore
 
-        StartCoroutine(ReenableOwnerCollisionRoutine(ignoreTime));
         StartCoroutine(ExplodeRoutine());
     }
 
@@ -76,27 +72,6 @@ public class HandGrenadeProjectile : MonoBehaviour
 
         Debug.Log("💣 El bombası patladı!");
         Destroy(gameObject);
-    }
-
-
-    private IEnumerator ReenableOwnerCollisionRoutine(float delay)
-    {
-        yield return new WaitForSecondsRealtime(delay);
-        ReenableOwnerCollision();
-    }
-
-    private void ReenableOwnerCollision()
-    {
-        if (ownerColliders == null || col == null) return;
-
-        foreach (var oc in ownerColliders)
-            if (oc != null)
-                Physics2D.IgnoreCollision(col, oc, false);
-    }
-
-    private void OnDestroy()
-    {
-        ReenableOwnerCollision();
     }
 
     void OnDrawGizmosSelected()

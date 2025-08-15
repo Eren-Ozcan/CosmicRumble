@@ -1,7 +1,6 @@
 using UnityEngine;
-using System.Collections;
 
-[RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
+ [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(OwnerCollisionIgnore))]
 public class Projectile : MonoBehaviour
 {
     [Header("Owner Ignoring")]
@@ -22,16 +21,15 @@ public class Projectile : MonoBehaviour
     public float gravityInfluence = 1f;
 
     Rigidbody2D rb;
-    Collider2D col;
     float spawnTime;
-    Collider2D[] ownerColliders;
+    OwnerCollisionIgnore ownerIgnore;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        col = GetComponent<Collider2D>();
         rb.gravityScale = gravityScale;
         spawnTime = Time.time;
+        ownerIgnore = GetComponent<OwnerCollisionIgnore>();
     }
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 1f)
@@ -39,12 +37,9 @@ public class Projectile : MonoBehaviour
         owner = ownerObj;
         ignoreOwnerTime = ignoreTime;
         spawnTime = Time.time;
-        ownerColliders = owner.GetComponentsInChildren<Collider2D>();
-        foreach (var oc in ownerColliders)
-            Physics2D.IgnoreCollision(col, oc, true);
+        ownerIgnore.Ignore(owner, ignoreOwnerTime); // FIX: use cached colliders & realtime coroutine
 
         rb.linearVelocity = initialVelocity;
-        StartCoroutine(ReenableOwnerCollisionRoutine(ignoreOwnerTime));
     }
 
     void Update()
@@ -66,25 +61,6 @@ public class Projectile : MonoBehaviour
     void OnBecameInvisible()
     {
         Destroy(gameObject);
-    }
-
-    private IEnumerator ReenableOwnerCollisionRoutine(float delay)
-    {
-        yield return new WaitForSecondsRealtime(delay);
-        ReenableOwnerCollision();
-    }
-
-    private void ReenableOwnerCollision()
-    {
-        if (ownerColliders == null) return;
-        foreach (var oc in ownerColliders)
-            if (oc != null)
-                Physics2D.IgnoreCollision(col, oc, false);
-    }
-
-    void OnDestroy()
-    {
-        ReenableOwnerCollision();
     }
 
     void OnCollisionEnter2D(Collision2D collision)
