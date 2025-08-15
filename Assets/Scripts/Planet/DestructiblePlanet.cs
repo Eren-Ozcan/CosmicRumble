@@ -24,6 +24,29 @@ public class DestructiblePlanet : MonoBehaviour
     [SerializeField, Min(1)]
     private int colliderPointSkip = 1;
 
+    // Delay time (seconds) to batch multiple explosions before rebuilding
+    [SerializeField, Min(0f)]
+    private float colliderRebuildDelay = 0.05f;
+
+    // Internal timer for the rebuild delay
+    private float rebuildTimer;
+
+    // Cache explosion data so collider can try partial updates instead of
+    // full component rebuilds.
+    private struct PendingExplosion
+    {
+        public Vector2 localPos;
+        public float radius;
+
+        public PendingExplosion(Vector2 p, float r)
+        {
+            localPos = p;
+            radius = r;
+        }
+    }
+
+    private readonly List<PendingExplosion> pendingExplosions = new();
+
     private void Start()
     {
         sr = GetComponent<SpriteRenderer>();
@@ -116,12 +139,69 @@ public class DestructiblePlanet : MonoBehaviour
         runtimeTex.Apply();
 
         // Collider'ı yeniden oluşturma isteği sıraya alınır
+        pendingExplosions.Add(new PendingExplosion(local, radiusWorld));
         colliderDirty = true;
+        rebuildTimer = colliderRebuildDelay; // reset delay so multiple explosions can batch
+    }
+
+    private bool TryPartialColliderUpdate()
+    {
+        if (poly == null) return false;
+
+        bool changed = false;
+        foreach (var exp in pendingExplosions)
+        {
+            float rad = exp.radius;
+            float radSqr = rad * rad;
+
+            for (int i = 0; i < poly.pathCount; i++)
+            {
+                Vector2[] path = poly.GetPath(i);
+                if (path == null || path.Length == 0) continue;
+
+                List<Vector2> modified = new List<Vector2>(path.Length);
+                foreach (var pt in path)
+                {
+                    if ((pt - exp.localPos).sqrMagnitude > radSqr)
+                        modified.Add(pt);
+                }
+
+                if (modified.Count >= 3 && modified.Count != path.Length)
+                {
+                    if (colliderPointSkip > 1 && modified.Count > colliderPointSkip)
+                    {
+                        List<Vector2> reduced = new List<Vector2>();
+                        for (int p = 0; p < modified.Count; p += colliderPointSkip)
+                            reduced.Add(modified[p]);
+                        poly.SetPath(i, reduced.ToArray());
+                    }
+                    else
+                    {
+                        poly.SetPath(i, modified.ToArray());
+                    }
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
     }
 
     private void RebuildCollider()
     {
-        if (poly != null) Destroy(poly);
+        if (poly == null)
+            poly = gameObject.AddComponent<PolygonCollider2D>();
+
+        // Try partial mesh updates first. If the shape was successfully updated,
+        // skip the costly full rebuild.
+        if (pendingExplosions.Count > 0 && TryPartialColliderUpdate())
+        {
+            pendingExplosions.Clear();
+            return;
+        }
+
+        // Fallback: recreate collider so Unity regenerates paths from texture
+        Destroy(poly);
         poly = gameObject.AddComponent<PolygonCollider2D>();
 
         // Büyük gezegenler için collider noktalarını seyrekleştir
@@ -140,11 +220,16 @@ public class DestructiblePlanet : MonoBehaviour
                 poly.SetPath(i, reduced.ToArray());
             }
         }
+
+        pendingExplosions.Clear();
     }
 
     private void LateUpdate()
     {
         if (!colliderDirty) return;
+
+        rebuildTimer -= Time.deltaTime;
+        if (rebuildTimer > 0f) return; // wait for delay to elapse
 
         RebuildCollider();
         colliderDirty = false;
