@@ -50,19 +50,8 @@ public class GravitySource : MonoBehaviour
         gravityCollider.radius = scaledRadius;
     }
 
-    private void OnTriggerStay2D(Collider2D other)
-    {
-        Rigidbody2D rb = other.attachedRigidbody;
-        if (rb == null) return;
-
-        Vector2 direction = ((Vector2)transform.position - rb.position);
-        float distance = direction.magnitude;
-        if (distance <= 0f) return;
-
-        // 1/r^2 formülü: F = GMm / r^2, burada baseGravityForce ~ G*M gibi düşünülebilir.
-        float forceMag = scaledGravityForce / (distance * distance);
-        rb.AddForce(direction.normalized * forceMag, ForceMode2D.Force);
-    }
+    // Force application moved to GravityBody. This trigger now only serves
+    // to detect bodies for gameplay (e.g., grounding) via their own logic.
 
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
