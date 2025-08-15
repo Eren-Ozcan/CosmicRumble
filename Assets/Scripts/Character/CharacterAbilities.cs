@@ -51,18 +51,6 @@ public class CharacterAbilities : MonoBehaviour
         shotgunAmmoRemaining = maxShotgunAmmo;
         grenadesRemaining = maxGrenades;
         shieldsRemaining = maxShields;
-
-        // İlk UI güncellemesi için tüm event’leri tetikle
-        SuperJumpChanged?.Invoke();
-        RpgAmmoChanged?.Invoke();
-        PistolAmmoChanged?.Invoke();
-        ShotgunAmmoChanged?.Invoke();
-        GrenadeChanged?.Invoke();
-        ShieldChanged?.Invoke();
-
-        // Her slot’u güncelle
-        for (int i = 0; i < TotalSlots; i++)
-            SkillChanged?.Invoke(i);
     }
 
     // Kullanım metodları
