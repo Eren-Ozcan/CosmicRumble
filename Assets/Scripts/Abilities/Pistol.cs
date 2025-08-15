@@ -33,7 +33,7 @@ public class Pistol : MonoBehaviour
 
     private LineRenderer lr;
     private GravityBody gravityBody;
-    private GravitySource[] gravitySources;
+    private List<GravitySource> gravitySources;
     private bool isDragging;
     private Vector2 dragStart;
     private bool wasActive = false;
@@ -45,7 +45,7 @@ public class Pistol : MonoBehaviour
     {
         lr = GetComponent<LineRenderer>();
         gravityBody = GetComponent<GravityBody>();
-        gravitySources = FindObjectsOfType<GravitySource>();
+        gravitySources = GravitySource.AllSources;
 
         lr.enabled = false;
         lr.positionCount = 0;
