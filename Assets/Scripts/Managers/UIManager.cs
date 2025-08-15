@@ -18,10 +18,28 @@ public class UIManager : MonoBehaviour
 
     private CharacterAbilities currentAb;
 
+    // Cached delegates to avoid lambda leaks
+    private Action<int> skillChangedHandler;
+    private Action superJumpChangedHandler;
+    private Action rpgAmmoChangedHandler;
+    private Action pistolAmmoChangedHandler;
+    private Action shotgunAmmoChangedHandler;
+    private Action grenadeChangedHandler;
+    private Action shieldChangedHandler;
+
     void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
+
+        // Cache delegate instances once
+        skillChangedHandler = UpdateSlot;
+        superJumpChangedHandler = OnSuperJumpChanged;
+        rpgAmmoChangedHandler = OnRpgAmmoChanged;
+        pistolAmmoChangedHandler = OnPistolAmmoChanged;
+        shotgunAmmoChangedHandler = OnShotgunAmmoChanged;
+        grenadeChangedHandler = OnGrenadeChanged;
+        shieldChangedHandler = OnShieldChanged;
     }
 
     public void SetCharacter(CharacterAbilities ab)
@@ -29,29 +47,44 @@ public class UIManager : MonoBehaviour
         if (currentAb != null)
         {
             // Önceki karakterden event temizle
-            currentAb.SkillChanged -= UpdateSlot;
-            currentAb.SuperJumpChanged -= OnSuperJumpChanged;
-            currentAb.RpgAmmoChanged -= OnRpgAmmoChanged;
-            currentAb.PistolAmmoChanged -= OnPistolAmmoChanged;
-            currentAb.ShotgunAmmoChanged -= OnShotgunAmmoChanged;
-            currentAb.GrenadeChanged -= OnGrenadeChanged;
-            currentAb.ShieldChanged -= OnShieldChanged;
+            currentAb.SkillChanged -= skillChangedHandler;        // FIX: use cached delegates
+            currentAb.SuperJumpChanged -= superJumpChangedHandler;
+            currentAb.RpgAmmoChanged -= rpgAmmoChangedHandler;
+            currentAb.PistolAmmoChanged -= pistolAmmoChangedHandler;
+            currentAb.ShotgunAmmoChanged -= shotgunAmmoChangedHandler;
+            currentAb.GrenadeChanged -= grenadeChangedHandler;
+            currentAb.ShieldChanged -= shieldChangedHandler;
         }
 
         currentAb = ab;
 
-        // İlk durumu uygula
+        // Yeni karakter event bağla
+        currentAb.SkillChanged += skillChangedHandler;        // FIX: use cached delegates
+        currentAb.SuperJumpChanged += superJumpChangedHandler;
+        currentAb.RpgAmmoChanged += rpgAmmoChangedHandler;
+        currentAb.PistolAmmoChanged += pistolAmmoChangedHandler;
+        currentAb.ShotgunAmmoChanged += shotgunAmmoChangedHandler;
+        currentAb.GrenadeChanged += grenadeChangedHandler;
+        currentAb.ShieldChanged += shieldChangedHandler;
+
+        // Abiliti durumunu hemen isteyip UI'ı eşitle
         for (int i = 0; i < filterImages.Length; i++)
             UpdateSlot(i);
+    }
 
-        // Yeni karakter event bağla
-        currentAb.SkillChanged += UpdateSlot;
-        currentAb.SuperJumpChanged += OnSuperJumpChanged;
-        currentAb.RpgAmmoChanged += OnRpgAmmoChanged;
-        currentAb.PistolAmmoChanged += OnPistolAmmoChanged;
-        currentAb.ShotgunAmmoChanged += OnShotgunAmmoChanged;
-        currentAb.GrenadeChanged += OnGrenadeChanged;
-        currentAb.ShieldChanged += OnShieldChanged;
+    private void OnDestroy()
+    {
+        // Ensure events are released if manager is destroyed
+        if (currentAb != null)
+        {
+            currentAb.SkillChanged -= skillChangedHandler;
+            currentAb.SuperJumpChanged -= superJumpChangedHandler;
+            currentAb.RpgAmmoChanged -= rpgAmmoChangedHandler;
+            currentAb.PistolAmmoChanged -= pistolAmmoChangedHandler;
+            currentAb.ShotgunAmmoChanged -= shotgunAmmoChangedHandler;
+            currentAb.GrenadeChanged -= grenadeChangedHandler;
+            currentAb.ShieldChanged -= shieldChangedHandler;
+        }
     }
 
     public void ClearSkillColor(int slotIndex, bool isEmpty)
