@@ -33,7 +33,7 @@ public class RPG : MonoBehaviour
 
     private LineRenderer lr;
     private GravityBody gravityBody;
-    private GravitySource[] gravitySources;
+    private List<GravitySource> gravitySources;
     private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
@@ -43,7 +43,7 @@ public class RPG : MonoBehaviour
     {
         lr = GetComponent<LineRenderer>();
         gravityBody = GetComponent<GravityBody>();
-        gravitySources = FindObjectsOfType<GravitySource>();
+        gravitySources = GravitySource.AllSources;
         charAbilities = GetComponent<CharacterAbilities>();
 
         lr.enabled = false;
