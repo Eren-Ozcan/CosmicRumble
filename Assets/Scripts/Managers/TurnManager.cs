@@ -1,5 +1,9 @@
 ﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 using UnityEngine.TextCore.Text;
 
 public class TurnManager : MonoBehaviour
@@ -68,6 +72,7 @@ public class TurnManager : MonoBehaviour
         {
             oldGb.isActive = false;
             oldGb.ZeroHorizontalVelocity();
+            StartCoroutine(IgnoreMovementInputBriefly());
         }
 
         // 2) Yeni karakteri aktif et
@@ -101,6 +106,28 @@ public class TurnManager : MonoBehaviour
 
         // ⏱ UI başlatma (ilk dolu gösterim)
         TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
+    }
+
+    private IEnumerator IgnoreMovementInputBriefly()
+    {
+#if ENABLE_INPUT_SYSTEM
+        foreach (var pi in UnityEngine.Object.FindObjectsOfType<PlayerInput>())
+        {
+            var map = pi.currentActionMap;
+            if (map != null)
+            {
+                map.Disable();
+                map.Enable();
+            }
+        }
+#endif
+        float timer = 0.1f;
+        while (timer > 0f)
+        {
+            Input.ResetInputAxes();
+            timer -= Time.unscaledDeltaTime;
+            yield return null;
+        }
     }
 
     /// <summary>
