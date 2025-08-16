@@ -184,4 +184,3 @@ public abstract class BaseProjectileAbility : MonoBehaviour
             rb.AddForce(initial, ForceMode2D.Impulse);
     }
 }
-
