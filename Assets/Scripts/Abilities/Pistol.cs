@@ -1,9 +1,8 @@
-﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-[RequireComponent(typeof(LineRenderer), typeof(GravityBody))]
+[RequireComponent(typeof(GravityBody))]
 public class Pistol : MonoBehaviour
 {
     [Header("Onay & Cooldown")]
@@ -32,8 +31,8 @@ public class Pistol : MonoBehaviour
     public float timeStep = 0.05f;
 
     private LineRenderer lr;
+    private TrajectoryDots trajectory;
     private GravityBody gravityBody;
-    private GravitySource[] gravitySources;
     private bool isDragging;
     private Vector2 dragStart;
     private bool wasActive = false;
@@ -44,11 +43,15 @@ public class Pistol : MonoBehaviour
     void Awake()
     {
         lr = GetComponent<LineRenderer>();
+        if (lr != null)
+        {
+            lr.enabled = false;
+            lr.positionCount = 0;
+        }
         gravityBody = GetComponent<GravityBody>();
-        gravitySources = FindObjectsByType<GravitySource>(FindObjectsSortMode.None);
-
-        lr.enabled = false;
-        lr.positionCount = 0;
+        trajectory = GetComponent<TrajectoryDots>();
+        if (trajectory != null)
+            trajectory.Setup(trajectoryPoints, timeStep, firePoint);
 
         // get CharacterAbilities and subscribe to its ammo-change event
         charAbilities = GetComponent<CharacterAbilities>();
@@ -140,15 +143,14 @@ public class Pistol : MonoBehaviour
         {
             isDragging = true;
             dragStart = mouseWorld;
-            lr.enabled = true;
-            lr.positionCount = trajectoryPoints;
         }
         else if (isDragging && Input.GetMouseButton(0))
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
-            DrawTrajectory(initial);
+            float power01 = clamped / maxDragDistance;
+            trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
@@ -172,7 +174,6 @@ public class Pistol : MonoBehaviour
             }
 
 
-            lr.positionCount = 0;
             CancelDrag();
             fireAllowed = false;
 
@@ -181,34 +182,6 @@ public class Pistol : MonoBehaviour
         }
     }
 
-
-    private void DrawTrajectory(Vector2 initialVelocity)
-    {
-        if (!lr.enabled || lr.positionCount != trajectoryPoints)
-        {
-            lr.enabled = true;
-            lr.positionCount = trajectoryPoints;
-        }
-
-        Vector2 pos = firePoint.position;
-        Vector2 vel = initialVelocity;
-
-        for (int i = 0; i < trajectoryPoints; i++)
-        {
-            Vector2 acc = Vector2.zero;
-            foreach (var src in gravitySources)
-            {
-                Vector2 dir = (Vector2)src.transform.position - pos;
-                float r2 = dir.sqrMagnitude;
-                if (r2 < 0.001f) continue;
-                acc += dir.normalized * (src.gravityForce / r2);
-            }
-
-            vel += acc * timeStep;
-            pos += vel * timeStep;
-            lr.SetPosition(i, pos);
-        }
-    }
 
     private void Fire()
     {
@@ -230,8 +203,12 @@ public class Pistol : MonoBehaviour
     private void CancelDrag()
     {
         isDragging = false;
-        lr.enabled = false;
-        lr.positionCount = 0;
+        if (lr != null)
+        {
+            lr.enabled = false;
+            lr.positionCount = 0;
+        }
+        trajectory?.Hide();
     }
 
     private void UpdateAmmoUI()
