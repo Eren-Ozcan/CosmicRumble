@@ -30,6 +30,7 @@ public class HandGrenade : MonoBehaviour
     [Header("Trajectory Preview")]
     public int trajectoryPoints = 60;
     public float timeStep = 0.05f;
+    public TrajectoryDots trajectoryDots;
 
     private LineRenderer lr;
     private GravityBody gravityBody;
@@ -49,6 +50,7 @@ public class HandGrenade : MonoBehaviour
 
         lr.enabled = false;
         lr.positionCount = 0;
+        trajectoryDots?.Hide();
 
         // UI ve ammo
         charAbilities = GetComponent<CharacterAbilities>();
@@ -153,15 +155,22 @@ public class HandGrenade : MonoBehaviour
         {
             isDragging = true;
             dragStart = mouseWorld;
-            lr.enabled = true;
-            lr.positionCount = trajectoryPoints;
+            if (trajectoryDots == null)
+            {
+                lr.enabled = true;
+                lr.positionCount = trajectoryPoints;
+            }
         }
         else if (isDragging && Input.GetMouseButton(0))
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
-            DrawTrajectory(initial);
+            float power01 = clamped / maxDragDistance;
+            if (trajectoryDots != null)
+                trajectoryDots.Show(initial, firePoint.position, gravitySources, power01);
+            else
+                DrawTrajectory(initial);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
@@ -183,7 +192,6 @@ public class HandGrenade : MonoBehaviour
             }
 
 
-            lr.positionCount = 0;
             CancelDrag();
             fireAllowed = false;
 
@@ -245,6 +253,7 @@ public class HandGrenade : MonoBehaviour
         isDragging = false;
         lr.enabled = false;
         lr.positionCount = 0;
+        trajectoryDots?.Hide();
     }
 
     private void UpdateAmmoUI()
