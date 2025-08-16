@@ -3,9 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-[RequireComponent(typeof(LineRenderer), typeof(GravityBody))]
-public class HandGrenade : MonoBehaviour
+[RequireComponent(typeof(GravityBody))]
+public class HandGrenade : BaseProjectileAbility
 {
+    protected override string WeaponKey => "HandGrenade";
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha4;
     public float cooldownTime = 6f;
@@ -27,13 +28,6 @@ public class HandGrenade : MonoBehaviour
     public float powerMultiplier = 5f;
     public float ignoreOwnerDuration = 0.5f;
 
-    [Header("Trajectory Preview")]
-    public int trajectoryPoints = 60;
-    public float timeStep = 0.05f;
-
-    private LineRenderer lr;
-    private GravityBody gravityBody;
-    private GravitySource[] gravitySources;
     private bool isDragging;
     private Vector2 dragStart;
     private bool wasActive = false;
@@ -41,14 +35,9 @@ public class HandGrenade : MonoBehaviour
     // --- NEW for ammo management ---
     private CharacterAbilities charAbilities;
 
-    void Awake()
+    protected override void Awake()
     {
-        lr = GetComponent<LineRenderer>();
-        gravityBody = GetComponent<GravityBody>();
-        gravitySources = FindObjectsByType<GravitySource>(FindObjectsSortMode.None);
-
-        lr.enabled = false;
-        lr.positionCount = 0;
+        base.Awake();
 
         // UI ve ammo
         charAbilities = GetComponent<CharacterAbilities>();
@@ -153,28 +142,27 @@ public class HandGrenade : MonoBehaviour
         {
             isDragging = true;
             dragStart = mouseWorld;
-            lr.enabled = true;
-            lr.positionCount = trajectoryPoints;
         }
         else if (isDragging && Input.GetMouseButton(0))
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
-            DrawTrajectory(initial);
+            ShowTrajectory(firePoint.position, initial, clamped / maxDragDistance);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
             // attempt to use one grenade
             bool canFire = true;
-            if (charAbilities != null)
+            if (!CanFireProjectile())
+                canFire = false;
+            else if (charAbilities != null)
                 canFire = charAbilities.UseGrenade();
 
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();       // ✅ UI’ı kilitle
-
+                charAbilities.HasUsedSkillThisTurn = true;
+                UIManager.Instance.LockAllSkillsUI();
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
@@ -182,8 +170,6 @@ public class HandGrenade : MonoBehaviour
                     filterImage.color = emptyColor;
             }
 
-
-            lr.positionCount = 0;
             CancelDrag();
             fireAllowed = false;
 
@@ -193,43 +179,14 @@ public class HandGrenade : MonoBehaviour
         }
     }
 
-    private void DrawTrajectory(Vector2 initialVelocity)
-    {
-        if (!lr.enabled || lr.positionCount != trajectoryPoints)
-        {
-            lr.enabled = true;
-            lr.positionCount = trajectoryPoints;
-        }
-
-        Vector2 pos = firePoint.position;
-        Vector2 vel = initialVelocity;
-
-        for (int i = 0; i < trajectoryPoints; i++)
-        {
-            Vector2 acc = Vector2.zero;
-            foreach (var src in gravitySources)
-            {
-                Vector2 dir = (Vector2)src.transform.position - pos;
-                float r2 = dir.sqrMagnitude;
-                if (r2 < 0.001f) continue;
-                acc += dir.normalized * (src.gravityForce / r2);
-            }
-
-            vel += acc * timeStep;
-            pos += vel * timeStep;
-
-            if (i < lr.positionCount)
-                lr.SetPosition(i, pos);
-        }
-    }
-
     private void Fire()
     {
         Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
-        var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
+        var bulletGO = SpawnProjectile(projectilePrefab, firePoint.position, firePoint.rotation);
+        if (bulletGO == null) return;
         var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();
         if (grenade != null)
             grenade.Init(initial, gameObject, ignoreOwnerDuration);
@@ -243,8 +200,7 @@ public class HandGrenade : MonoBehaviour
     private void CancelDrag()
     {
         isDragging = false;
-        lr.enabled = false;
-        lr.positionCount = 0;
+        HideTrajectory();
     }
 
     private void UpdateAmmoUI()
