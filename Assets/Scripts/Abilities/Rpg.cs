@@ -26,12 +26,11 @@ public class RPG : MonoBehaviour
     public float powerMultiplier = 6f;
     public float ignoreOwnerDuration = 1.5f;
 
-    [Header("Trajectory Preview")]
-    public int trajectoryPoints = 60;
-    public float timeStep = 0.05f;
-
     private LineRenderer lr;
-    private TrajectoryDots trajectory;
+
+    [SerializeField]
+    private TrajectoryDots trajectory;  // Inspector’dan atanabilir; yoksa otomatik bulunur
+
     private GravityBody gravityBody;
     private CharacterAbilities charAbilities;
     private bool isDragging;
@@ -46,12 +45,32 @@ public class RPG : MonoBehaviour
             lr.enabled = false;
             lr.positionCount = 0;
         }
-        gravityBody = GetComponent<GravityBody>();
-        trajectory = GetComponent<TrajectoryDots>();
-        if (trajectory != null)
-            trajectory.Setup(trajectoryPoints, timeStep, firePoint);
-        charAbilities = GetComponent<CharacterAbilities>();
 
+        gravityBody = GetComponent<GravityBody>();
+
+        // TrajectoryDots referansı: önce Inspector, sonra aynı obje/child, sonra sahnede ara
+        trajectory = trajectory
+                  ?? GetComponent<TrajectoryDots>()
+                  ?? GetComponentInChildren<TrajectoryDots>(true)
+#if UNITY_2022_2_OR_NEWER
+                  ?? FindFirstObjectByType<TrajectoryDots>(FindObjectsInactive.Include);
+#else
+                  ?? FindObjectOfType<TrajectoryDots>(true);
+#endif
+
+        // TrajectoryDots global ayarlarıyla kurulum (sadece firePoint’i günceller; count/step globalden gelir)
+        if (trajectory != null)
+        {
+            trajectory.Setup(
+                TrajectoryDots.GlobalDotCount,
+                TrajectoryDots.GlobalTimeStep,
+                firePoint
+            );
+            trajectory.startScale = TrajectoryDots.GlobalStartScale;
+            trajectory.endScale = TrajectoryDots.GlobalEndScale;
+        }
+
+        charAbilities = GetComponent<CharacterAbilities>();
         if (charAbilities != null)
         {
             charAbilities.RpgAmmoChanged += UpdateAmmoUI;
@@ -70,12 +89,15 @@ public class RPG : MonoBehaviour
 
     void Update()
     {
-        if (charAbilities.HasUsedSkillThisTurn)
-            return; // Bu tur zaten skill kullanıldıysa çık
+        // (Null güvenliği) Skill turn kilidi kontrolü
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
 
+        // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
+        // Turn başlangıcı / bitişi
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
@@ -96,6 +118,7 @@ public class RPG : MonoBehaviour
             return;
         }
 
+        // Skill seçimi (ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
             if (charAbilities != null && charAbilities.GetRpgAmmoRemaining() == 0)
@@ -140,7 +163,9 @@ public class RPG : MonoBehaviour
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
-            float power01 = clamped / maxDragDistance;
+            float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
+
+            // Trajectory dots (GLOBAL ayarlara göre)
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
@@ -151,12 +176,13 @@ public class RPG : MonoBehaviour
 
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn skill hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();       // ✅ tüm UI’ı gri yap
+                charAbilities.HasUsedSkillThisTurn = true; // turn skill hakkı kullanıldı
+                UIManager.Instance.LockAllSkillsUI();      // tüm UI’ı gri yap
 
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
+
                 if (charAbilities.GetRpgAmmoRemaining() == 0 && filterImage != null)
                     filterImage.color = emptyColor;
             }

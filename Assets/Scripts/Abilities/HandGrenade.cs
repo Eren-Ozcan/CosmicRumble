@@ -26,18 +26,17 @@ public class HandGrenade : MonoBehaviour
     public float powerMultiplier = 5f;
     public float ignoreOwnerDuration = 0.5f;
 
-    [Header("Trajectory Preview")]
-    public int trajectoryPoints = 60;
-    public float timeStep = 0.05f;
-
     private LineRenderer lr;
+
+    [SerializeField]                 // İstersen Inspector’dan bağlayabilirsin; boşsa otomatik bulunur
     private TrajectoryDots trajectory;
+
     private GravityBody gravityBody;
     private bool isDragging;
     private Vector2 dragStart;
     private bool wasActive = false;
 
-    // --- NEW for ammo management ---
+    // --- Ammo / UI ---
     private CharacterAbilities charAbilities;
 
     void Awake()
@@ -48,17 +47,35 @@ public class HandGrenade : MonoBehaviour
             lr.enabled = false;
             lr.positionCount = 0;
         }
+
         gravityBody = GetComponent<GravityBody>();
-        trajectory = GetComponent<TrajectoryDots>();
+
+        // TrajectoryDots referansı: Inspector > aynı obje/child > sahnede ilk bul
+        trajectory = trajectory
+                  ?? GetComponent<TrajectoryDots>()
+                  ?? GetComponentInChildren<TrajectoryDots>(true)
+#if UNITY_2022_2_OR_NEWER
+                  ?? FindFirstObjectByType<TrajectoryDots>(FindObjectsInactive.Include);
+#else
+                  ?? FindObjectOfType<TrajectoryDots>();
+#endif
         if (trajectory != null)
-            trajectory.Setup(trajectoryPoints, timeStep, firePoint);
+        {
+            // SADECE ANA SINIFTAN ÇEK (silah içinden ayar yapılmasın)
+            trajectory.Setup(
+                TrajectoryDots.GlobalDotCount,
+                TrajectoryDots.GlobalTimeStep,
+                firePoint
+            );
+            trajectory.startScale = TrajectoryDots.GlobalStartScale;
+            trajectory.endScale = TrajectoryDots.GlobalEndScale;
+        }
 
         // UI ve ammo
         charAbilities = GetComponent<CharacterAbilities>();
         if (charAbilities != null)
         {
-            // Generic SkillChanged event’ine abone ol
-            charAbilities.SkillChanged += OnSkillChanged;
+            charAbilities.SkillChanged += OnSkillChanged; // sadece slot 3 için UI tazeleyelim
             UpdateAmmoUI();
         }
 
@@ -81,7 +98,7 @@ public class HandGrenade : MonoBehaviour
 
     void Update()
     {
-        if (charAbilities.HasUsedSkillThisTurn)
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
             return; // Bu tur zaten skill kullanıldıysa çık
 
         // Cooldown
@@ -112,10 +129,8 @@ public class HandGrenade : MonoBehaviour
         // Skill seçimi (sadece ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
-            // UI highlight
             UIManager.Instance.HighlightSkill(3);
 
-            // check ammo
             if (charAbilities != null && charAbilities.GetGrenadesRemaining() == 0)
                 return;
 
@@ -129,9 +144,7 @@ public class HandGrenade : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                // UI confirm
                 UIManager.Instance.ConfirmSkill(3);
-
                 fireAllowed = true;
                 awaitingConfirmation = false;
                 if (filterImage != null)
@@ -162,7 +175,9 @@ public class HandGrenade : MonoBehaviour
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
-            float power01 = clamped / maxDragDistance;
+            float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
+
+            // SADECE ANA SINIFTAN GELEN AYARLARLA çiz
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
@@ -183,6 +198,7 @@ public class HandGrenade : MonoBehaviour
                 if (charAbilities.GetGrenadesRemaining() == 0 && filterImage != null)
                     filterImage.color = emptyColor;
             }
+
             CancelDrag();
             fireAllowed = false;
 
