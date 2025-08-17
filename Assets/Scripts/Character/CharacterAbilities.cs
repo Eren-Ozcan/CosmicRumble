@@ -2,6 +2,13 @@
 using UnityEngine;
 using System;
 
+public interface IAbilitySelectable
+{
+    int SlotIndex { get; }
+    void SetSelected(bool selected);
+    void Cancel();
+}
+
 public class CharacterAbilities : MonoBehaviour
 {
     private const int TotalSlots = 10;
@@ -43,6 +50,8 @@ public class CharacterAbilities : MonoBehaviour
     // Genel slot-change event
     public event Action<int> SkillChanged;
 
+    private IAbilitySelectable[] abilitySlots = new IAbilitySelectable[TotalSlots];
+
     private void Awake()
     {
         // Başlangıç değerleri
@@ -63,6 +72,13 @@ public class CharacterAbilities : MonoBehaviour
         // Her slot’u güncelle
         for (int i = 0; i < TotalSlots; i++)
             SkillChanged?.Invoke(i);
+
+        var comps = GetComponents<IAbilitySelectable>();
+        foreach (var ab in comps)
+        {
+            if (ab.SlotIndex >= 0 && ab.SlotIndex < TotalSlots)
+                abilitySlots[ab.SlotIndex] = ab;
+        }
     }
 
     // Kullanım metodları
@@ -149,5 +165,34 @@ public class CharacterAbilities : MonoBehaviour
             case 5: return shieldsRemaining;
             default: return 0;
         }
+    }
+
+    public void SelectSkill(int idx)
+    {
+        if (idx < 0 || idx >= abilitySlots.Length) return;
+        for (int i = 0; i < abilitySlots.Length; i++)
+        {
+            var ab = abilitySlots[i];
+            if (ab == null) continue;
+            ab.SetSelected(i == idx);
+            if (i != idx) ab.Cancel();
+        }
+        UIManager.Instance.HighlightSelected(idx);
+    }
+
+    public void DeselectAll()
+    {
+        for (int i = 0; i < abilitySlots.Length; i++)
+        {
+            abilitySlots[i]?.SetSelected(false);
+            abilitySlots[i]?.Cancel();
+        }
+        UIManager.Instance.ClearAllSkillSelections();
+    }
+
+    public void OnAbilityConsumed()
+    {
+        HasUsedSkillThisTurn = true;
+        UIManager.Instance.LockAllSkillsUI();
     }
 }

@@ -1,23 +1,14 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class RPG : MonoBehaviour
+public class RPG : MonoBehaviour, IAbilitySelectable
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha3;
     public float cooldownTime = 7f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
-    private bool fireAllowed = false;
-
-    [Header("UI Filter & Count")]
-    public Image filterImage;
-    public TextMeshProUGUI rpgCountText;
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f);
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);
+    private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool fireAllowed;
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -27,15 +18,15 @@ public class RPG : MonoBehaviour
     public float ignoreOwnerDuration = 1.5f;
 
     private LineRenderer lr;
-
-    [SerializeField]
-    private TrajectoryDots trajectory;  // Inspector’dan atanabilir; yoksa otomatik bulunur
-
+    [SerializeField] private TrajectoryDots trajectory;
     private GravityBody gravityBody;
     private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
-    private bool wasActive = false;
+    private bool wasActive;
+    private bool isSelected;
+
+    public int SlotIndex => 2;
 
     void Awake()
     {
@@ -48,7 +39,6 @@ public class RPG : MonoBehaviour
 
         gravityBody = GetComponent<GravityBody>();
 
-        // TrajectoryDots referansı: önce Inspector, sonra aynı obje/child, sonra sahnede ara
         trajectory = trajectory
                   ?? GetComponent<TrajectoryDots>()
                   ?? GetComponentInChildren<TrajectoryDots>(true)
@@ -58,7 +48,6 @@ public class RPG : MonoBehaviour
                   ?? FindObjectOfType<TrajectoryDots>(true);
 #endif
 
-        // TrajectoryDots global ayarlarıyla kurulum (sadece firePoint’i günceller; count/step globalden gelir)
         if (trajectory != null)
         {
             trajectory.Setup(
@@ -71,40 +60,37 @@ public class RPG : MonoBehaviour
         }
 
         charAbilities = GetComponent<CharacterAbilities>();
-        if (charAbilities != null)
-        {
-            charAbilities.RpgAmmoChanged += UpdateAmmoUI;
-            UpdateAmmoUI();
-        }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
-    void OnDestroy()
+    public void SetSelected(bool selected)
     {
-        if (charAbilities != null)
-            charAbilities.RpgAmmoChanged -= UpdateAmmoUI;
+        isSelected = selected;
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+        if (!selected)
+            CancelDrag();
+    }
+
+    public void Cancel()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
     }
 
     void Update()
     {
-        // (Null güvenliği) Skill turn kilidi kontrolü
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
             return;
 
-        // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Turn başlangıcı / bitişi
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
             cooldownTimer = 0f;
-            fireAllowed = false;
-            awaitingConfirmation = false;
-            CancelDrag();
+            Cancel();
         }
         else if (!gravityBody.isActive)
         {
@@ -118,16 +104,11 @@ public class RPG : MonoBehaviour
             return;
         }
 
-        // Skill seçimi (ammo > 0 ise)
-        if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
+        if (!isSelected)
         {
-            if (charAbilities != null && charAbilities.GetRpgAmmoRemaining() == 0)
-                return;
-
-            UIManager.Instance.HighlightSkill(2); // Slot index 2: RPG
-            awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            if (Input.GetKeyDown(activationKey))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
         }
 
         if (awaitingConfirmation)
@@ -136,20 +117,17 @@ public class RPG : MonoBehaviour
             {
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                UIManager.Instance.ConfirmSkill(2);
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                UIManager.Instance.ConfirmSkill(SlotIndex);
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                charAbilities?.DeselectAll();
             }
             return;
         }
 
-        if (!fireAllowed) return;
+        if (!fireAllowed)
+            return;
 
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
@@ -164,34 +142,20 @@ public class RPG : MonoBehaviour
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
             float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
-
-            // Trajectory dots (GLOBAL ayarlara göre)
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            bool canFire = true;
-            if (charAbilities != null)
-                canFire = charAbilities.UseRpg();
-
+            bool canFire = charAbilities == null || charAbilities.UseRpg();
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // turn skill hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();      // tüm UI’ı gri yap
-
                 Fire();
                 cooldownTimer = cooldownTime;
-                UpdateAmmoUI();
-
-                if (charAbilities.GetRpgAmmoRemaining() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
+                charAbilities?.OnAbilityConsumed();
             }
-
             CancelDrag();
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetRpgAmmoRemaining() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            isSelected = false;
         }
     }
 
@@ -222,10 +186,5 @@ public class RPG : MonoBehaviour
         }
         trajectory?.Hide();
     }
-
-    private void UpdateAmmoUI()
-    {
-        if (rpgCountText != null && charAbilities != null)
-            rpgCountText.text = charAbilities.GetRpgAmmoRemaining().ToString();
-    }
 }
+
