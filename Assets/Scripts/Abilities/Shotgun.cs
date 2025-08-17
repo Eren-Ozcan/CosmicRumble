@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class Shotgun : MonoBehaviour
+public class Shotgun : BaseProjectileAbility
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha2;
@@ -12,12 +11,8 @@ public class Shotgun : MonoBehaviour
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
 
-    [Header("UI Filter & Count")]
-    public Image filterImage;
+    [Header("UI")]
     public TextMeshProUGUI shotgunCountText;
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f);
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);
 
     private GravityBody gravityBody;
     private bool wasActive = false;
@@ -33,9 +28,6 @@ public class Shotgun : MonoBehaviour
             charAbilities.ShotgunAmmoChanged += UpdateAmmoUI;
             UpdateAmmoUI();
         }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
     void OnDestroy()
@@ -65,34 +57,32 @@ public class Shotgun : MonoBehaviour
         if (cooldownTimer > 0f)
             return;
 
+        if ((awaitingConfirmation || fireAllowed) && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
+        {
+            CancelSelectionInternal();
+        }
+
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
-            UIManager.Instance.HighlightSkill(1); // Shotgun = index 1
-
             if (charAbilities != null && charAbilities.GetShotgunAmmo() == 0)
                 return;
 
             awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            fireAllowed = false;
+            OnSelect();
         }
 
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(1);
-
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                OnConfirm();
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                CancelSelectionInternal();
             }
             return;
         }
@@ -114,14 +104,13 @@ public class Shotgun : MonoBehaviour
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
 
-                if (charAbilities.GetShotgunAmmo() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
+                if (charAbilities != null)
+                    charAbilities.HasUsedSkillThisTurn = true;
+                UIManager.Instance.LockAllSkillsUI();
             }
 
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetShotgunAmmo() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            OnCancelSelection();
         }
     }
 
@@ -129,5 +118,12 @@ public class Shotgun : MonoBehaviour
     {
         if (shotgunCountText != null && charAbilities != null)
             shotgunCountText.text = charAbilities.GetShotgunAmmo().ToString();
+    }
+
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        OnCancelSelection();
     }
 }

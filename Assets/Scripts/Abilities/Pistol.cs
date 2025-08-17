@@ -1,9 +1,8 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class Pistol : MonoBehaviour
+public class Pistol : BaseProjectileAbility
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha1;
@@ -12,12 +11,8 @@ public class Pistol : MonoBehaviour
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
 
-    [Header("UI Filter & Count")]
-    public Image filterImage;                   // Inspector’da atayacağın FilterImage
+    [Header("UI")]
     public TextMeshProUGUI pistolCountText;     // Inspector’da atayacağın skill sayısı text’i
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f); // sarı yarı saydam
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);   // yeşil yarı saydam
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);     // kırmızı yarı saydam
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -82,9 +77,6 @@ public class Pistol : MonoBehaviour
             charAbilities.PistolAmmoChanged += UpdateAmmoUI;
             UpdateAmmoUI();
         }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
     void OnDestroy()
@@ -124,34 +116,33 @@ public class Pistol : MonoBehaviour
             return;
         }
 
+        if ((awaitingConfirmation || fireAllowed) && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
+        {
+            CancelSelectionInternal();
+        }
+
         // Skill seçimi (sadece ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
-            UIManager.Instance.HighlightSkill(0);
-
             if (charAbilities != null && charAbilities.GetPistolAmmo() == 0)
                 return;
 
             awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            fireAllowed = false;
+            OnSelect();
         }
 
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(0);
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                OnConfirm();
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                CancelSelectionInternal();
             }
             return;
         }
@@ -191,17 +182,11 @@ public class Pistol : MonoBehaviour
                 // Skill kullanıldığı için bu turn başka skill kullanımı engellenir
                 charAbilities.HasUsedSkillThisTurn = true;
                 UIManager.Instance.LockAllSkillsUI(); // ✅ Tüm UI'ları kilitle
-
-                // Eğer mermi bittiyse kırmızı filtre göster
-                if (charAbilities.GetPistolAmmo() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
             }
 
             CancelDrag();
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetPistolAmmo() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            OnCancelSelection();
         }
     }
 
@@ -220,6 +205,14 @@ public class Pistol : MonoBehaviour
             var rb = bulletGO.GetComponent<Rigidbody2D>();
             rb?.AddForce(initial, ForceMode2D.Impulse);
         }
+    }
+
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+        OnCancelSelection();
     }
 
     private void CancelDrag()

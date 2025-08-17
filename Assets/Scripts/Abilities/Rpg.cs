@@ -1,9 +1,8 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class RPG : MonoBehaviour
+public class RPG : BaseProjectileAbility
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha3;
@@ -12,12 +11,8 @@ public class RPG : MonoBehaviour
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
 
-    [Header("UI Filter & Count")]
-    public Image filterImage;
+    [Header("UI")]
     public TextMeshProUGUI rpgCountText;
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f);
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -76,9 +71,6 @@ public class RPG : MonoBehaviour
             charAbilities.RpgAmmoChanged += UpdateAmmoUI;
             UpdateAmmoUI();
         }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
     void OnDestroy()
@@ -118,16 +110,20 @@ public class RPG : MonoBehaviour
             return;
         }
 
+        if ((awaitingConfirmation || fireAllowed) && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
+        {
+            CancelSelectionInternal();
+        }
+
         // Skill seçimi (ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
             if (charAbilities != null && charAbilities.GetRpgAmmoRemaining() == 0)
                 return;
 
-            UIManager.Instance.HighlightSkill(2); // Slot index 2: RPG
             awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            fireAllowed = false;
+            OnSelect();
         }
 
         if (awaitingConfirmation)
@@ -136,15 +132,11 @@ public class RPG : MonoBehaviour
             {
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                UIManager.Instance.ConfirmSkill(2);
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                OnConfirm();
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                CancelSelectionInternal();
             }
             return;
         }
@@ -182,16 +174,11 @@ public class RPG : MonoBehaviour
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
-
-                if (charAbilities.GetRpgAmmoRemaining() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
             }
 
             CancelDrag();
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetRpgAmmoRemaining() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            OnCancelSelection();
         }
     }
 
@@ -221,6 +208,14 @@ public class RPG : MonoBehaviour
             lr.positionCount = 0;
         }
         trajectory?.Hide();
+    }
+
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+        OnCancelSelection();
     }
 
     private void UpdateAmmoUI()

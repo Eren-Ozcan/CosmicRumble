@@ -1,7 +1,7 @@
-﻿// Assets/Scripts/Abilities/SuperJumpSkill.cs
+// Assets/Scripts/Abilities/SuperJumpSkill.cs
 using UnityEngine;
 
-public class SuperJumpSkill : MonoBehaviour, IAbility
+public class SuperJumpSkill : BaseProjectileAbility
 {
     [Header("Selection & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha5;
@@ -9,9 +9,6 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
 
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;
-
-    public bool IsSelected { get; set; }
-    public KeyCode ActivationKey => activationKey;
 
     [Tooltip("Karakterin GravityBody bileşeni")]
     public GravityBody gravityBody;
@@ -21,7 +18,6 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
     void Start()
     {
         charAbilities = GetComponent<CharacterAbilities>();
-        IsSelected = false;
     }
 
     void Update()
@@ -29,49 +25,53 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
         if (gravityBody == null || !gravityBody.isActive)
             return;
 
-             if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-                     return;
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
 
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        if (!IsSelected || cooldownTimer > 0f)
+        if (cooldownTimer > 0f)
             return;
 
-        if (charAbilities.GetSuperJumpsRemaining() <= 0)
+        if (awaitingConfirmation && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
         {
-            Debug.LogWarning("[SuperJumpSkill] Hakkın kalmadı – seçim yapılmadı");
-            return;
+            CancelSelectionInternal();
         }
 
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation)
         {
-            Debug.Log("[SuperJumpSkill] 5 tuşuna basıldı – seçim yapılıyor");
-            UIManager.Instance.HighlightSkill(4);
+            if (charAbilities != null && charAbilities.GetSuperJumpsRemaining() <= 0)
+            {
+                Debug.LogWarning("[SuperJumpSkill] Hakkın kalmadı – seçim yapılmadı");
+                return;
+            }
+
             awaitingConfirmation = true;
+            OnSelect();
         }
 
-        if (awaitingConfirmation)
+        if (!awaitingConfirmation)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.Return))
         {
-            if (Input.GetKeyDown(KeyCode.Return))
-            {
-                gravityBody.nextJumpIsSuper = true;
-                Debug.Log("[SuperJumpSkill] SuperJump hazırlandı");
+            gravityBody.nextJumpIsSuper = true;
+            Debug.Log("[SuperJumpSkill] SuperJump hazırlandı");
 
-                UIManager.Instance.ConfirmSkill(4);
-
-                // Turn hakkı bitir
+            if (charAbilities != null)
                 charAbilities.HasUsedSkillThisTurn = true;
 
-                cooldownTimer = cooldownTime;
-                IsSelected = false;
-                awaitingConfirmation = false;
-            }
-            else if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                awaitingConfirmation = false;
-                UIManager.Instance.filterImages[4].color = Color.clear;
-            }
+            cooldownTimer = cooldownTime;
+
+            UIManager.Instance.LockAllSkillsUI();
+            OnConfirm();
+            OnCancelSelection();
+            awaitingConfirmation = false;
+        }
+        else if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey))
+        {
+            CancelSelectionInternal();
         }
     }
 
@@ -81,5 +81,9 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
         Debug.Log("[SuperJumpSkill] Cooldown sıfırlandı (karakter değişimi)");
     }
 
-    public void UseAbility() { }
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        OnCancelSelection();
+    }
 }
