@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable
+public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK: ICooldownResettable eklendi
 {
     [Header("Selection & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha5;
@@ -17,6 +17,12 @@ public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable
 
     public int SlotIndex => 4;
 
+    void Awake() // ✨ DEĞİŞİKLİK: gravityBody null ise otomatik bul
+    {
+        if (gravityBody == null)
+            gravityBody = GetComponent<GravityBody>();
+    }
+
     void Start()
     {
         charAbilities = GetComponent<CharacterAbilities>();
@@ -31,6 +37,14 @@ public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable
     public void Cancel()
     {
         awaitingConfirmation = false;
+        // SuperJump özelinde drag/preview yok; sadece state temizliği yeterli
+    }
+
+    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında cooldown/state sıfırlama
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        // isSelected'i burada zorla kapatmıyoruz; seçim CharacterAbilities tarafından yönetiliyor
     }
 
     void Update()
@@ -54,9 +68,9 @@ public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable
         if (cooldownTimer > 0f)
             return;
 
-        if (charAbilities.GetSuperJumpsRemaining() <= 0)
+        if (charAbilities != null && charAbilities.GetSuperJumpsRemaining() <= 0)
         {
-            charAbilities?.DeselectAll();
+            charAbilities.DeselectAll();
             return;
         }
 
@@ -81,10 +95,4 @@ public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable
             }
         }
     }
-
-    public void ResetCooldown()
-    {
-        cooldownTimer = 0f;
-    }
 }
-

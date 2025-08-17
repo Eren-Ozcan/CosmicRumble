@@ -1,7 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class RPG : MonoBehaviour, IAbilitySelectable
+public class RPG : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK: ICooldownResettable eklendi
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha3;
@@ -78,6 +78,14 @@ public class RPG : MonoBehaviour, IAbilitySelectable
         CancelDrag();
     }
 
+    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında cooldown/state sıfırlama
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+    }
+
     void Update()
     {
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
@@ -89,7 +97,7 @@ public class RPG : MonoBehaviour, IAbilitySelectable
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
-            cooldownTimer = 0f;
+            // cooldownTimer = 0f; // ✨ DEĞİŞİKLİK: Tur başında reset artık CharacterAbilities.ResetTurnState() ile geliyor
             Cancel();
         }
         else if (!gravityBody.isActive)
@@ -187,4 +195,3 @@ public class RPG : MonoBehaviour, IAbilitySelectable
         trajectory?.Hide();
     }
 }
-

@@ -84,7 +84,7 @@ public class TurnManager : MonoBehaviour
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
-                abilities.HasUsedSkillThisTurn = false;
+                abilities.ResetTurnState();                     // ✨ DEĞİŞİKLİK: Turn başında tek noktadan reset
                 UIManager.Instance.SetCharacter(abilities);
                 UIManager.Instance.ClearAllSkillFilters();
                 UIManager.Instance.ClearAllSkillSelections();

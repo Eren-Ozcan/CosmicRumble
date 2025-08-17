@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ShieldSkill : MonoBehaviour, IAbilitySelectable
+public class ShieldSkill : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK
 {
     public GravityBody gravityBody;
     public CharacterHealth characterHealth;
@@ -40,6 +40,13 @@ public class ShieldSkill : MonoBehaviour, IAbilitySelectable
         awaitingConfirmation = false;
     }
 
+    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında çağrılacak
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        isSelected = false;
+    }
+
     void Update()
     {
         if (gravityBody == null || !gravityBody.isActive)
@@ -48,6 +55,7 @@ public class ShieldSkill : MonoBehaviour, IAbilitySelectable
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
             return;
 
+        // Eğer kalkan görselde aktif ama karakterHealth tarafında kapalıysa eski haline dön
         if (shieldActiveVisual && !characterHealth.isShielded)
         {
             spriteRenderer.color = Color.white;
@@ -102,4 +110,3 @@ public class ShieldSkill : MonoBehaviour, IAbilitySelectable
         }
     }
 }
-

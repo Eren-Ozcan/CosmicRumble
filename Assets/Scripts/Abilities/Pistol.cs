@@ -1,7 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class Pistol : MonoBehaviour, IAbilitySelectable
+public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK: ICooldownResettable eklendi
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha1;
@@ -78,6 +78,14 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
         CancelDrag();
     }
 
+    public void ResetCooldown()            // ✨ DEĞİŞİKLİK: Tur başında sıfırlama çağrısı için
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+    }
+
     void Update()
     {
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
@@ -86,10 +94,11 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
+        // turn aktif/pasif geçişi
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
-            cooldownTimer = 0f;
+            // cooldownTimer = 0f;          // (İstersen kalsın) Tur başına reset artık TurnManager->CharacterAbilities üzerinden geliyor
             Cancel();
         }
         else if (!gravityBody.isActive)
@@ -104,6 +113,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
             return;
         }
 
+        // seçili değilken aktivasyon tuşu sadece seçimi tetikler
         if (!isSelected)
         {
             if (Input.GetKeyDown(activationKey))
@@ -111,6 +121,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
             return;
         }
 
+        // seçiliyken onay katmanı
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
@@ -126,8 +137,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
             return;
         }
 
-        if (!fireAllowed)
-            return;
+        if (!fireAllowed) return;
 
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
@@ -151,7 +161,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
             {
                 Fire();
                 cooldownTimer = cooldownTime;
-                charAbilities?.OnAbilityConsumed();
+                charAbilities?.OnAbilityConsumed(); // turn kullanımını merkezden kilitle
             }
             CancelDrag();
             fireAllowed = false;
@@ -187,4 +197,3 @@ public class Pistol : MonoBehaviour, IAbilitySelectable
         trajectory?.Hide();
     }
 }
-

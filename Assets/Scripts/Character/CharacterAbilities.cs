@@ -1,5 +1,4 @@
-﻿// Assets/Scripts/CharacterAbilities.cs
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 
 public interface IAbilitySelectable
@@ -9,11 +8,17 @@ public interface IAbilitySelectable
     void Cancel();
 }
 
+// ✨ DEĞİŞİKLİK: Cooldown reset için opsiyonel arayüz
+public interface ICooldownResettable
+{
+    void ResetCooldown();
+}
+
 public class CharacterAbilities : MonoBehaviour
 {
     private const int TotalSlots = 10;
 
-    // Her turn sadece bir skill kullanabilme kontrolü
+    // turn başına 1 skill kuralı
     public bool HasUsedSkillThisTurn { get; set; }
 
     [Header("Super Jump Ayarları")]
@@ -61,7 +66,7 @@ public class CharacterAbilities : MonoBehaviour
         grenadesRemaining = maxGrenades;
         shieldsRemaining = maxShields;
 
-        // İlk UI güncellemesi için tüm event’leri tetikle
+        // İlk UI tetikleri
         SuperJumpChanged?.Invoke();
         RpgAmmoChanged?.Invoke();
         PistolAmmoChanged?.Invoke();
@@ -69,10 +74,10 @@ public class CharacterAbilities : MonoBehaviour
         GrenadeChanged?.Invoke();
         ShieldChanged?.Invoke();
 
-        // Her slot’u güncelle
         for (int i = 0; i < TotalSlots; i++)
             SkillChanged?.Invoke(i);
 
+        // slota göre ability’leri yerleştir
         var comps = GetComponents<IAbilitySelectable>();
         foreach (var ab in comps)
         {
@@ -81,7 +86,7 @@ public class CharacterAbilities : MonoBehaviour
         }
     }
 
-    // Kullanım metodları
+    // --- Kullanım metodları (ammo düşürme + UI events) ---
     public bool UseSuperJump()
     {
         if (superJumpsRemaining > 0)
@@ -100,7 +105,7 @@ public class CharacterAbilities : MonoBehaviour
         {
             rpgAmmoRemaining--;
             RpgAmmoChanged?.Invoke();
-            SkillChanged?.Invoke(2); // slot index
+            SkillChanged?.Invoke(2);
             return true;
         }
         return false;
@@ -145,7 +150,7 @@ public class CharacterAbilities : MonoBehaviour
         return true;
     }
 
-    // Getter’lar
+    // --- Getter’lar ---
     public int GetSuperJumpsRemaining() => superJumpsRemaining;
     public int GetRpgAmmoRemaining() => rpgAmmoRemaining;
     public int GetPistolAmmo() => pistolAmmo;
@@ -167,17 +172,30 @@ public class CharacterAbilities : MonoBehaviour
         }
     }
 
+    // --- Tek-seçim çekirdeği ---
     public void SelectSkill(int idx)
     {
         if (idx < 0 || idx >= abilitySlots.Length) return;
+
+        // tümünü kapat + iptal
         for (int i = 0; i < abilitySlots.Length; i++)
         {
             var ab = abilitySlots[i];
             if (ab == null) continue;
-            ab.SetSelected(i == idx);
-            if (i != idx) ab.Cancel();
+            if (i != idx)
+            {
+                ab.SetSelected(false);
+                ab.Cancel();
+            }
         }
-        UIManager.Instance.HighlightSelected(idx);
+
+        // yalnız seçileni aç
+        var target = abilitySlots[idx];
+        if (target != null)
+        {
+            target.SetSelected(true);
+            UIManager.Instance?.HighlightSelected(idx);
+        }
     }
 
     public void DeselectAll()
@@ -187,12 +205,43 @@ public class CharacterAbilities : MonoBehaviour
             abilitySlots[i]?.SetSelected(false);
             abilitySlots[i]?.Cancel();
         }
-        UIManager.Instance.ClearAllSkillSelections();
+        UIManager.Instance?.ClearAllSkillSelections();
     }
 
+    /// <summary>
+    /// ✨ DEĞİŞİKLİK: Tüm skiller için cooldown sıfırlama (opsiyonel destekleyenler)
+    /// </summary>
+    public void ResetAllCooldowns()
+    {
+        for (int i = 0; i < abilitySlots.Length; i++)
+        {
+            var ab = abilitySlots[i] as ICooldownResettable;
+            ab?.ResetCooldown();
+        }
+    }
+
+    /// <summary>
+    /// ✨ DEĞİŞİKLİK: Turn başında tek noktadan reset (flag + seçim + cooldown)
+    /// </summary>
+    public void ResetTurnState()
+    {
+        HasUsedSkillThisTurn = false;
+        // seçimleri temizle
+        for (int i = 0; i < abilitySlots.Length; i++)
+        {
+            abilitySlots[i]?.SetSelected(false);
+            abilitySlots[i]?.Cancel();
+        }
+        // cooldown’ları sıfırla
+        ResetAllCooldowns();
+    }
+
+    /// <summary>
+    /// Başarılı aktivasyondan sonra ability'ler tarafından çağrılır: turn kullanımını işaretler ve UI'ı kilitler.
+    /// </summary>
     public void OnAbilityConsumed()
     {
         HasUsedSkillThisTurn = true;
-        UIManager.Instance.LockAllSkillsUI();
+        UIManager.Instance?.LockAllSkillsUI();
     }
 }

@@ -1,7 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class HandGrenade : MonoBehaviour, IAbilitySelectable
+public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha4;
@@ -77,6 +77,15 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable
         CancelDrag();
     }
 
+    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında cooldown/state sıfırlama
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        isSelected = false;
+        CancelDrag();
+    }
+
     void Update()
     {
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
@@ -88,7 +97,7 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
-            cooldownTimer = 0f;
+            // cooldownTimer = 0f; // ✨ DEĞİŞİKLİK: Merkezi reset CharacterAbilities.ResetTurnState() ile geliyor
             Cancel();
         }
         else if (!gravityBody.isActive)
@@ -186,4 +195,3 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable
         trajectory?.Hide();
     }
 }
-
