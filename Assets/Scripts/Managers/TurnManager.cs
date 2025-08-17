@@ -87,11 +87,12 @@ public class TurnManager : MonoBehaviour
                 UIManager.Instance.ClearAllSkillFilters();               // ✅ UI’daki gri kilitleri kaldır
             }
 
-            // ✅ SuperJump UI sistemi için aktif et
+            // ✅ SuperJump UI sistemi için gerekli hazırlık
             var superJump = newGb.GetComponent<SuperJumpSkill>();
             if (superJump != null)
             {
-                superJump.IsSelected = true;
+                // Eski sistemde "IsSelected" bayrağı kullanılıyordu, ancak
+                // seçim artık UIManager tarafından tutuluyor.
                 superJump.ResetCooldown(); // cooldown sıfırlansın
             }
         }

@@ -18,6 +18,8 @@ public class UIManager : MonoBehaviour
 
     private CharacterAbilities currentAb;
 
+    public int? SelectedIndex { get; private set; }
+
     void Awake()
     {
         if (Instance == null) Instance = this;
@@ -56,8 +58,7 @@ public class UIManager : MonoBehaviour
 
     public void ClearSkillColor(int slotIndex, bool isEmpty)
     {
-        if (slotIndex < 0 || slotIndex >= filterImages.Length) return;
-        filterImages[slotIndex].color = isEmpty ? emptyColor : Color.clear;
+        PaintSlot(slotIndex, isEmpty ? emptyColor : Color.clear);
     }
 
     private void UpdateSlot(int slotIndex)
@@ -71,7 +72,7 @@ public class UIManager : MonoBehaviour
         countTexts[slotIndex].text = left.ToString();
 
         // Stoğa göre renklendir
-        filterImages[slotIndex].color = (left == 0 ? emptyColor : Color.clear);
+        PaintSlot(slotIndex, left == 0 ? emptyColor : Color.clear);
     }
 
     /// <summary>
@@ -79,11 +80,13 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void LockAllSkillsUI()
     {
+        ClearSelection();
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (filterImages[i] != null)
                 filterImages[i].color = new Color(0.5f, 0.5f, 0.5f, 0.6f); // gri
         }
+        SelectedIndex = null;
     }
 
     /// <summary>
@@ -91,25 +94,83 @@ public class UIManager : MonoBehaviour
     /// </summary>
     public void ClearAllSkillFilters()
     {
+        ClearSelection();
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (filterImages[i] != null)
             {
                 int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
-                filterImages[i].color = (remaining == 0) ? emptyColor : Color.clear;
+                PaintSlot(i, (remaining == 0) ? emptyColor : Color.clear);
             }
         }
     }
 
-    public void HighlightSkill(int slot)
+    private Color GetBaseColor(int slot)
     {
-        if (slot >= 0 && slot < filterImages.Length)
-            filterImages[slot].color = selectionColor;
+        int remaining = currentAb?.GetSkillRemaining(slot) ?? 0;
+        return (remaining == 0) ? emptyColor : Color.clear;
     }
 
-    public void ConfirmSkill(int slot)
+    private void PaintSlot(int slot, Color color)
     {
-        if (slot >= 0 && slot < filterImages.Length)
-            filterImages[slot].color = confirmColor;
+        if (slot < 0 || slot >= filterImages.Length)
+            return;
+        if (filterImages[slot] != null)
+            filterImages[slot].color = color;
     }
+
+    public void SelectSkill(int index)
+    {
+        if (index < 0 || index >= filterImages.Length)
+            return;
+
+        if (SelectedIndex == index)
+        {
+            ClearSelection();
+            return;
+        }
+
+        ClearSelection();
+        SelectedIndex = index;
+        PaintSlot(index, selectionColor);
+    }
+
+    public void ClearSelection()
+    {
+        if (filterImages == null)
+            return;
+
+        for (int i = 0; i < filterImages.Length; i++)
+        {
+            if (filterImages[i] == null)
+                continue;
+
+            if (filterImages[i].color == selectionColor)
+                PaintSlot(i, GetBaseColor(i));
+        }
+
+        SelectedIndex = null;
+    }
+
+    public void SetConfirmed(int index, bool on)
+    {
+        if (index < 0 || index >= filterImages.Length)
+            return;
+
+        if (on)
+        {
+            ClearSelection();
+            SelectedIndex = index;
+            PaintSlot(index, confirmColor);
+        }
+        else
+        {
+            if (SelectedIndex == index)
+                SelectedIndex = null;
+            PaintSlot(index, GetBaseColor(index));
+        }
+    }
+
+    [Obsolete("Use SelectSkill instead")] public void HighlightSkill(int slot) => SelectSkill(slot);
+    [Obsolete("Use SetConfirmed instead")] public void ConfirmSkill(int slot) => SetConfirmed(slot, true);
 }

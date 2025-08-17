@@ -1,9 +1,8 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class HandGrenade : MonoBehaviour
+public class HandGrenade : BaseProjectileAbility
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha4;
@@ -12,12 +11,8 @@ public class HandGrenade : MonoBehaviour
     private bool awaitingConfirmation = false;
     private bool fireAllowed = false;
 
-    [Header("UI Filter & Count")]
-    public Image filterImage;                   // Inspector’da atayacağın FilterImage
-    public TextMeshProUGUI grenadeCountText;    // Inspector’da atayacağın skill sayısı text’i
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f); // sarı yarı saydam
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f); // yeşil yarı saydam
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f); // kırmızı yarı saydam
+    [Header("UI")]
+    public TextMeshProUGUI grenadeCountText;
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -78,9 +73,6 @@ public class HandGrenade : MonoBehaviour
             charAbilities.SkillChanged += OnSkillChanged; // sadece slot 3 için UI tazeleyelim
             UpdateAmmoUI();
         }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
     void OnDestroy()
@@ -126,17 +118,20 @@ public class HandGrenade : MonoBehaviour
             return;
         }
 
+        if ((awaitingConfirmation || fireAllowed) && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
+        {
+            CancelSelectionInternal();
+        }
+
         // Skill seçimi (sadece ammo > 0 ise)
         if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
         {
-            UIManager.Instance.HighlightSkill(3);
-
             if (charAbilities != null && charAbilities.GetGrenadesRemaining() == 0)
                 return;
 
             awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;  // sarı filtre
+            fireAllowed = false;
+            OnSelect();
         }
 
         // Onay / iptal
@@ -144,17 +139,13 @@ public class HandGrenade : MonoBehaviour
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(3);
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;  // yeşil filtre
+                OnConfirm();
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;    // temizle
+                CancelSelectionInternal();
             }
             return;
         }
@@ -195,16 +186,11 @@ public class HandGrenade : MonoBehaviour
                 Fire();
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
-                if (charAbilities.GetGrenadesRemaining() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
             }
 
             CancelDrag();
             fireAllowed = false;
-
-            // clear any selection highlight if still ammo remains
-            if (canFire && charAbilities.GetGrenadesRemaining() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            OnCancelSelection();
         }
     }
 
@@ -234,6 +220,14 @@ public class HandGrenade : MonoBehaviour
             lr.positionCount = 0;
         }
         trajectory?.Hide();
+    }
+
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+        OnCancelSelection();
     }
 
     private void UpdateAmmoUI()

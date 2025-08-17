@@ -1,18 +1,18 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-public class ShieldSkill : MonoBehaviour
+public class ShieldSkill : BaseProjectileAbility
 {
     public GravityBody gravityBody;
     public CharacterHealth characterHealth;
     public SpriteRenderer spriteRenderer;
 
+    public KeyCode activationKey = KeyCode.Alpha6;
     public float cooldownTime = 5f;
     private float cooldownTimer = 0f;
     private bool awaitingConfirmation = false;
     private bool shieldActiveVisual = false;
 
     private CharacterAbilities charAbilities;
-    private const int slotIndex = 5;
 
     void Start()
     {
@@ -40,9 +40,7 @@ public class ShieldSkill : MonoBehaviour
             spriteRenderer.color = Color.white;
             shieldActiveVisual = false;
 
-            // UI rengi de sıfırla
-            bool isEmpty = charAbilities != null && charAbilities.GetShieldsRemaining() == 0;
-            UIManager.Instance.ClearSkillColor(slotIndex, isEmpty);
+            UIManager.Instance.SetConfirmed(UISlotIndex, false);
         }
 
         if (cooldownTimer > 0f)
@@ -51,10 +49,15 @@ public class ShieldSkill : MonoBehaviour
             return;
         }
 
-        if (!awaitingConfirmation && Input.GetKeyDown(KeyCode.Alpha6))
+        if (!awaitingConfirmation && Input.GetKeyDown(activationKey))
         {
             awaitingConfirmation = true;
-            UIManager.Instance.HighlightSkill(slotIndex); // Sarıya boya
+            OnSelect();
+        }
+
+        if (awaitingConfirmation && UIManager.Instance != null && UIManager.Instance.SelectedIndex != UISlotIndex)
+        {
+            CancelSelectionInternal();
         }
 
         if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Return))
@@ -66,18 +69,19 @@ public class ShieldSkill : MonoBehaviour
             awaitingConfirmation = false;
             cooldownTimer = cooldownTime;
 
-            // UI senkronizasyonu
-            UIManager.Instance.ConfirmSkill(slotIndex);
+            OnConfirm();
 
             if (charAbilities != null)
+            {
                 charAbilities.UseShield();
+                charAbilities.HasUsedSkillThisTurn = true;
+            }
+            UIManager.Instance.LockAllSkillsUI();
         }
 
-        if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Escape))
+        if (awaitingConfirmation && (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(activationKey)))
         {
-            awaitingConfirmation = false;
-            bool isEmpty = charAbilities != null && charAbilities.GetShieldsRemaining() == 0;
-            UIManager.Instance.ClearSkillColor(slotIndex, isEmpty);
+            CancelSelectionInternal();
         }
     }
 
@@ -90,5 +94,11 @@ public class ShieldSkill : MonoBehaviour
                 "Shield için emin misin? [Enter]"
             );
         }
+    }
+
+    private void CancelSelectionInternal()
+    {
+        awaitingConfirmation = false;
+        OnCancelSelection();
     }
 }
