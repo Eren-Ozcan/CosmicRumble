@@ -1,23 +1,14 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class Pistol : MonoBehaviour
+public class Pistol : MonoBehaviour, IAbilitySelectable
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha1;
     public float cooldownTime = 5f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
-    private bool fireAllowed = false;
-
-    [Header("UI Filter & Count")]
-    public Image filterImage;                   // Inspector’da atayacağın FilterImage
-    public TextMeshProUGUI pistolCountText;     // Inspector’da atayacağın skill sayısı text’i
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f); // sarı yarı saydam
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);   // yeşil yarı saydam
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);     // kırmızı yarı saydam
+    private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool fireAllowed;
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -26,19 +17,16 @@ public class Pistol : MonoBehaviour
     public float powerMultiplier = 5f;
     public float ignoreOwnerDuration = 1f;
 
-
     private LineRenderer lr;
-
-    [SerializeField]
-    private TrajectoryDots trajectory;         // Inspector’dan bağlanabilir; yoksa otomatik bulunur
-
+    [SerializeField] private TrajectoryDots trajectory;
     private GravityBody gravityBody;
     private bool isDragging;
     private Vector2 dragStart;
-    private bool wasActive = false;
-
-    // --- NEW for ammo management ---
+    private bool wasActive;
     private CharacterAbilities charAbilities;
+    private bool isSelected;
+
+    public int SlotIndex => 0;
 
     void Awake()
     {
@@ -51,7 +39,6 @@ public class Pistol : MonoBehaviour
 
         gravityBody = GetComponent<GravityBody>();
 
-        // TrajectoryDots referansı: önce Inspector, sonra aynı obje/child, sonra sahnede ara
         trajectory = trajectory
                   ?? GetComponent<TrajectoryDots>()
                   ?? GetComponentInChildren<TrajectoryDots>(true)
@@ -61,7 +48,6 @@ public class Pistol : MonoBehaviour
                   ?? FindObjectOfType<TrajectoryDots>(true);
 #endif
 
-        // TrajectoryDots global ayarlarıyla kurulum: sadece firePoint’i set ediyor (ignoreExternalSetup true ise)
         if (trajectory != null)
         {
             trajectory.Setup(
@@ -69,29 +55,27 @@ public class Pistol : MonoBehaviour
                 TrajectoryDots.GlobalTimeStep,
                 firePoint
             );
-
-            // Görsel ölçekleri de globalden çek (TrajectoryDots içindeki değerlerle eşleşsin)
             trajectory.startScale = TrajectoryDots.GlobalStartScale;
             trajectory.endScale = TrajectoryDots.GlobalEndScale;
         }
 
-        // get CharacterAbilities and subscribe to its ammo-change event
         charAbilities = GetComponent<CharacterAbilities>();
-        if (charAbilities != null)
-        {
-            charAbilities.PistolAmmoChanged += UpdateAmmoUI;
-            UpdateAmmoUI();
-        }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
-    void OnDestroy()
+    public void SetSelected(bool selected)
     {
-        // clean up subscription
-        if (charAbilities != null)
-            charAbilities.PistolAmmoChanged -= UpdateAmmoUI;
+        isSelected = selected;
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+        if (!selected)
+            CancelDrag();
+    }
+
+    public void Cancel()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
     }
 
     void Update()
@@ -99,18 +83,14 @@ public class Pistol : MonoBehaviour
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
             return;
 
-        // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Turn start / end reset
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
             cooldownTimer = 0f;
-            fireAllowed = false;
-            awaitingConfirmation = false;
-            CancelDrag();
+            Cancel();
         }
         else if (!gravityBody.isActive)
         {
@@ -124,34 +104,24 @@ public class Pistol : MonoBehaviour
             return;
         }
 
-        // Skill seçimi (sadece ammo > 0 ise)
-        if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
+        if (!isSelected)
         {
-            UIManager.Instance.HighlightSkill(0);
-
-            if (charAbilities != null && charAbilities.GetPistolAmmo() == 0)
-                return;
-
-            awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            if (Input.GetKeyDown(activationKey))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
         }
 
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(0);
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                UIManager.Instance.ConfirmSkill(SlotIndex);
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                charAbilities?.DeselectAll();
             }
             return;
         }
@@ -172,36 +142,20 @@ public class Pistol : MonoBehaviour
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
             float power01 = clamped / maxDragDistance;
-
-            // Trajectory dots (GLOBAL ayarlara göre)
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            bool canFire = true;
-            if (charAbilities != null)
-                canFire = charAbilities.UsePistol();
-
+            bool canFire = charAbilities == null || charAbilities.UsePistol();
             if (canFire)
             {
-                Fire(); // mermi fırlat
+                Fire();
                 cooldownTimer = cooldownTime;
-                UpdateAmmoUI();
-
-                // Skill kullanıldığı için bu turn başka skill kullanımı engellenir
-                charAbilities.HasUsedSkillThisTurn = true;
-                UIManager.Instance.LockAllSkillsUI(); // ✅ Tüm UI'ları kilitle
-
-                // Eğer mermi bittiyse kırmızı filtre göster
-                if (charAbilities.GetPistolAmmo() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
+                charAbilities?.OnAbilityConsumed();
             }
-
             CancelDrag();
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetPistolAmmo() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            isSelected = false;
         }
     }
 
@@ -232,10 +186,5 @@ public class Pistol : MonoBehaviour
         }
         trajectory?.Hide();
     }
-
-    private void UpdateAmmoUI()
-    {
-        if (pistolCountText != null && charAbilities != null)
-            pistolCountText.text = charAbilities.GetPistolAmmo().ToString();
-    }
 }
+

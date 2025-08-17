@@ -1,51 +1,46 @@
-﻿using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class Shotgun : MonoBehaviour
+public class Shotgun : MonoBehaviour, IAbilitySelectable
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha2;
     public float cooldownTime = 5f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
-    private bool fireAllowed = false;
-
-    [Header("UI Filter & Count")]
-    public Image filterImage;
-    public TextMeshProUGUI shotgunCountText;
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f);
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f);
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f);
+    private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool fireAllowed;
 
     private GravityBody gravityBody;
-    private bool wasActive = false;
+    private bool wasActive;
     private CharacterAbilities charAbilities;
+    private bool isSelected;
+
+    public int SlotIndex => 1;
 
     void Awake()
     {
         gravityBody = GetComponent<GravityBody>();
-
         charAbilities = GetComponent<CharacterAbilities>();
-        if (charAbilities != null)
-        {
-            charAbilities.ShotgunAmmoChanged += UpdateAmmoUI;
-            UpdateAmmoUI();
-        }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
-    void OnDestroy()
+    public void SetSelected(bool selected)
     {
-        if (charAbilities != null)
-            charAbilities.ShotgunAmmoChanged -= UpdateAmmoUI;
+        isSelected = selected;
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+    }
+
+    public void Cancel()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
     }
 
     void Update()
     {
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
@@ -53,8 +48,7 @@ public class Shotgun : MonoBehaviour
         {
             wasActive = true;
             cooldownTimer = 0f;
-            fireAllowed = false;
-            awaitingConfirmation = false;
+            Cancel();
         }
         else if (!gravityBody.isActive)
         {
@@ -65,34 +59,24 @@ public class Shotgun : MonoBehaviour
         if (cooldownTimer > 0f)
             return;
 
-        if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
+        if (!isSelected)
         {
-            UIManager.Instance.HighlightSkill(1); // Shotgun = index 1
-
-            if (charAbilities != null && charAbilities.GetShotgunAmmo() == 0)
-                return;
-
-            awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;
+            if (Input.GetKeyDown(activationKey))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
         }
 
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(1);
-
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;
+                UIManager.Instance.ConfirmSkill(SlotIndex);
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;
+                charAbilities?.DeselectAll();
             }
             return;
         }
@@ -100,34 +84,18 @@ public class Shotgun : MonoBehaviour
         if (!fireAllowed)
             return;
 
-        // Ateşle
         if (Input.GetMouseButtonDown(0))
         {
-            bool canFire = true;
-            if (charAbilities != null)
-                canFire = charAbilities.UseShotgun();
-
+            bool canFire = charAbilities == null || charAbilities.UseShotgun();
             if (canFire)
             {
                 Debug.Log("🔫 SHOTGUN ATEŞLENDİ!");
-
                 cooldownTimer = cooldownTime;
-                UpdateAmmoUI();
-
-                if (charAbilities.GetShotgunAmmo() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
+                charAbilities?.OnAbilityConsumed();
             }
-
             fireAllowed = false;
-
-            if (canFire && charAbilities.GetShotgunAmmo() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            isSelected = false;
         }
     }
-
-    private void UpdateAmmoUI()
-    {
-        if (shotgunCountText != null && charAbilities != null)
-            shotgunCountText.text = charAbilities.GetShotgunAmmo().ToString();
-    }
 }
+

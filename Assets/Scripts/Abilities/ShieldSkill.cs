@@ -1,18 +1,21 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-public class ShieldSkill : MonoBehaviour
+public class ShieldSkill : MonoBehaviour, IAbilitySelectable
 {
     public GravityBody gravityBody;
     public CharacterHealth characterHealth;
     public SpriteRenderer spriteRenderer;
 
+    public KeyCode activationKey = KeyCode.Alpha6;
     public float cooldownTime = 5f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
-    private bool shieldActiveVisual = false;
+    private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool shieldActiveVisual;
 
     private CharacterAbilities charAbilities;
-    private const int slotIndex = 5;
+    private bool isSelected;
+
+    public int SlotIndex => 5;
 
     void Start()
     {
@@ -24,10 +27,17 @@ public class ShieldSkill : MonoBehaviour
             spriteRenderer = GetComponent<SpriteRenderer>();
 
         charAbilities = GetComponent<CharacterAbilities>();
+    }
 
-        if (gravityBody == null) Debug.LogError("[ShieldSkill] GravityBody yok!");
-        if (characterHealth == null) Debug.LogError("[ShieldSkill] CharacterHealth yok!");
-        if (spriteRenderer == null) Debug.LogError("[ShieldSkill] SpriteRenderer yok!");
+    public void SetSelected(bool selected)
+    {
+        isSelected = selected;
+        awaitingConfirmation = selected;
+    }
+
+    public void Cancel()
+    {
+        awaitingConfirmation = false;
     }
 
     void Update()
@@ -35,14 +45,13 @@ public class ShieldSkill : MonoBehaviour
         if (gravityBody == null || !gravityBody.isActive)
             return;
 
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
+
         if (shieldActiveVisual && !characterHealth.isShielded)
         {
             spriteRenderer.color = Color.white;
             shieldActiveVisual = false;
-
-            // UI rengi de sıfırla
-            bool isEmpty = charAbilities != null && charAbilities.GetShieldsRemaining() == 0;
-            UIManager.Instance.ClearSkillColor(slotIndex, isEmpty);
         }
 
         if (cooldownTimer > 0f)
@@ -51,33 +60,34 @@ public class ShieldSkill : MonoBehaviour
             return;
         }
 
-        if (!awaitingConfirmation && Input.GetKeyDown(KeyCode.Alpha6))
+        if (!isSelected)
         {
-            awaitingConfirmation = true;
-            UIManager.Instance.HighlightSkill(slotIndex); // Sarıya boya
+            if (Input.GetKeyDown(activationKey))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
         }
 
-        if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Return))
+        if (awaitingConfirmation)
         {
-            characterHealth.isShielded = true;
-            spriteRenderer.color = new Color(0.5f, 0.5f, 1f);
-            shieldActiveVisual = true;
-
-            awaitingConfirmation = false;
-            cooldownTimer = cooldownTime;
-
-            // UI senkronizasyonu
-            UIManager.Instance.ConfirmSkill(slotIndex);
-
-            if (charAbilities != null)
-                charAbilities.UseShield();
-        }
-
-        if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Escape))
-        {
-            awaitingConfirmation = false;
-            bool isEmpty = charAbilities != null && charAbilities.GetShieldsRemaining() == 0;
-            UIManager.Instance.ClearSkillColor(slotIndex, isEmpty);
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                bool canUse = charAbilities == null || charAbilities.UseShield();
+                if (canUse)
+                {
+                    characterHealth.isShielded = true;
+                    spriteRenderer.color = new Color(0.5f, 0.5f, 1f);
+                    shieldActiveVisual = true;
+                    UIManager.Instance.ConfirmSkill(SlotIndex);
+                    cooldownTimer = cooldownTime;
+                    charAbilities?.OnAbilityConsumed();
+                }
+                isSelected = false;
+                awaitingConfirmation = false;
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                charAbilities?.DeselectAll();
+            }
         }
     }
 
@@ -92,3 +102,4 @@ public class ShieldSkill : MonoBehaviour
         }
     }
 }
+

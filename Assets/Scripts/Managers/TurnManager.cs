@@ -66,6 +66,8 @@ public class TurnManager : MonoBehaviour
         GravityBody oldGb = characters[currentIndex];
         if (oldGb != null)
         {
+            var oldAb = oldGb.GetComponent<CharacterAbilities>();
+            oldAb?.DeselectAll();
             oldGb.isActive = false;
             oldGb.ZeroHorizontalVelocity();
         }
@@ -82,17 +84,10 @@ public class TurnManager : MonoBehaviour
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
-                abilities.HasUsedSkillThisTurn = false;                   // ✅ skill hakkını yenile
-                UIManager.Instance.SetCharacter(abilities);              // ✅ UI’ı bu karaktere bağla
-                UIManager.Instance.ClearAllSkillFilters();               // ✅ UI’daki gri kilitleri kaldır
-            }
-
-            // ✅ SuperJump UI sistemi için aktif et
-            var superJump = newGb.GetComponent<SuperJumpSkill>();
-            if (superJump != null)
-            {
-                superJump.IsSelected = true;
-                superJump.ResetCooldown(); // cooldown sıfırlansın
+                abilities.HasUsedSkillThisTurn = false;
+                UIManager.Instance.SetCharacter(abilities);
+                UIManager.Instance.ClearAllSkillFilters();
+                UIManager.Instance.ClearAllSkillSelections();
             }
         }
 

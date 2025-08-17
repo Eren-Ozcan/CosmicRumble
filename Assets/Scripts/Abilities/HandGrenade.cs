@@ -1,23 +1,14 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
 
 [RequireComponent(typeof(GravityBody))]
-public class HandGrenade : MonoBehaviour
+public class HandGrenade : MonoBehaviour, IAbilitySelectable
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha4;
     public float cooldownTime = 6f;
-    private float cooldownTimer = 0f;
-    private bool awaitingConfirmation = false;
-    private bool fireAllowed = false;
-
-    [Header("UI Filter & Count")]
-    public Image filterImage;                   // Inspector’da atayacağın FilterImage
-    public TextMeshProUGUI grenadeCountText;    // Inspector’da atayacağın skill sayısı text’i
-    public Color selectionColor = new Color(1f, 1f, 0f, 0.5f); // sarı yarı saydam
-    public Color confirmColor = new Color(0f, 1f, 0f, 0.5f); // yeşil yarı saydam
-    public Color emptyColor = new Color(1f, 0f, 0f, 0.5f); // kırmızı yarı saydam
+    private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool fireAllowed;
 
     [Header("Fire Settings")]
     public Transform firePoint;
@@ -27,17 +18,15 @@ public class HandGrenade : MonoBehaviour
     public float ignoreOwnerDuration = 0.5f;
 
     private LineRenderer lr;
-
-    [SerializeField]                 // İstersen Inspector’dan bağlayabilirsin; boşsa otomatik bulunur
-    private TrajectoryDots trajectory;
-
+    [SerializeField] private TrajectoryDots trajectory;
     private GravityBody gravityBody;
+    private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
-    private bool wasActive = false;
+    private bool wasActive;
+    private bool isSelected;
 
-    // --- Ammo / UI ---
-    private CharacterAbilities charAbilities;
+    public int SlotIndex => 3;
 
     void Awake()
     {
@@ -50,7 +39,6 @@ public class HandGrenade : MonoBehaviour
 
         gravityBody = GetComponent<GravityBody>();
 
-        // TrajectoryDots referansı: Inspector > aynı obje/child > sahnede ilk bul
         trajectory = trajectory
                   ?? GetComponent<TrajectoryDots>()
                   ?? GetComponentInChildren<TrajectoryDots>(true)
@@ -61,7 +49,6 @@ public class HandGrenade : MonoBehaviour
 #endif
         if (trajectory != null)
         {
-            // SADECE ANA SINIFTAN ÇEK (silah içinden ayar yapılmasın)
             trajectory.Setup(
                 TrajectoryDots.GlobalDotCount,
                 TrajectoryDots.GlobalTimeStep,
@@ -71,48 +58,38 @@ public class HandGrenade : MonoBehaviour
             trajectory.endScale = TrajectoryDots.GlobalEndScale;
         }
 
-        // UI ve ammo
         charAbilities = GetComponent<CharacterAbilities>();
-        if (charAbilities != null)
-        {
-            charAbilities.SkillChanged += OnSkillChanged; // sadece slot 3 için UI tazeleyelim
-            UpdateAmmoUI();
-        }
-
-        if (filterImage != null)
-            filterImage.color = Color.clear;
     }
 
-    void OnDestroy()
+    public void SetSelected(bool selected)
     {
-        if (charAbilities != null)
-            charAbilities.SkillChanged -= OnSkillChanged;
+        isSelected = selected;
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+        if (!selected)
+            CancelDrag();
     }
 
-    // Sadece grenade slot’u değişince UI güncelle
-    private void OnSkillChanged(int slotIndex)
+    public void Cancel()
     {
-        if (slotIndex == 3) // slotIndex 3 = grenade
-            UpdateAmmoUI();
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
     }
 
     void Update()
     {
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-            return; // Bu tur zaten skill kullanıldıysa çık
+            return;
 
-        // Cooldown
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // Turn start / end reset
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
             cooldownTimer = 0f;
-            fireAllowed = false;
-            awaitingConfirmation = false;
-            CancelDrag();
+            Cancel();
         }
         else if (!gravityBody.isActive)
         {
@@ -126,35 +103,24 @@ public class HandGrenade : MonoBehaviour
             return;
         }
 
-        // Skill seçimi (sadece ammo > 0 ise)
-        if (Input.GetKeyDown(activationKey) && !awaitingConfirmation && !fireAllowed)
+        if (!isSelected)
         {
-            UIManager.Instance.HighlightSkill(3);
-
-            if (charAbilities != null && charAbilities.GetGrenadesRemaining() == 0)
-                return;
-
-            awaitingConfirmation = true;
-            if (filterImage != null)
-                filterImage.color = selectionColor;  // sarı filtre
+            if (Input.GetKeyDown(activationKey))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
         }
 
-        // Onay / iptal
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                UIManager.Instance.ConfirmSkill(3);
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = confirmColor;  // yeşil filtre
+                UIManager.Instance.ConfirmSkill(SlotIndex);
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
-                awaitingConfirmation = false;
-                if (filterImage != null)
-                    filterImage.color = Color.clear;    // temizle
+                charAbilities?.DeselectAll();
             }
             return;
         }
@@ -162,7 +128,6 @@ public class HandGrenade : MonoBehaviour
         if (!fireAllowed)
             return;
 
-        // Drag & fire
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (Input.GetMouseButtonDown(0))
@@ -176,35 +141,20 @@ public class HandGrenade : MonoBehaviour
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
             Vector2 initial = pull.normalized * clamped * powerMultiplier;
             float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
-
-            // SADECE ANA SINIFTAN GELEN AYARLARLA çiz
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            // attempt to use one grenade
-            bool canFire = true;
-            if (charAbilities != null)
-                canFire = charAbilities.UseGrenade();
-
+            bool canFire = charAbilities == null || charAbilities.UseGrenade();
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();       // ✅ UI’ı kilitle
-
                 Fire();
                 cooldownTimer = cooldownTime;
-                UpdateAmmoUI();
-                if (charAbilities.GetGrenadesRemaining() == 0 && filterImage != null)
-                    filterImage.color = emptyColor;
+                charAbilities?.OnAbilityConsumed();
             }
-
             CancelDrag();
             fireAllowed = false;
-
-            // clear any selection highlight if still ammo remains
-            if (canFire && charAbilities.GetGrenadesRemaining() > 0 && filterImage != null)
-                filterImage.color = Color.clear;
+            isSelected = false;
         }
     }
 
@@ -235,10 +185,5 @@ public class HandGrenade : MonoBehaviour
         }
         trajectory?.Hide();
     }
-
-    private void UpdateAmmoUI()
-    {
-        if (grenadeCountText != null && charAbilities != null)
-            grenadeCountText.text = charAbilities.GetGrenadesRemaining().ToString();
-    }
 }
+

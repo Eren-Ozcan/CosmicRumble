@@ -101,15 +101,26 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void HighlightSkill(int slot)
+    public void HighlightSelected(int slot)
     {
         if (slot >= 0 && slot < filterImages.Length)
             filterImages[slot].color = selectionColor;
     }
 
+    public void HighlightSkill(int slot) => HighlightSelected(slot);
+
     public void ConfirmSkill(int slot)
     {
         if (slot >= 0 && slot < filterImages.Length)
             filterImages[slot].color = confirmColor;
+    }
+
+    public void ClearAllSkillSelections()
+    {
+        for (int i = 0; i < filterImages.Length; i++)
+        {
+            int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
+            filterImages[i].color = (remaining == 0) ? emptyColor : Color.clear;
+        }
     }
 }
