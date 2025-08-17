@@ -189,8 +189,7 @@ public class HandGrenade : MonoBehaviour
 
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // ✅ turn hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();       // ✅ UI’ı kilitle
+                charAbilities.OnAbilityConsumed();          // ✅ turn hakkı kullanıldı ve UI kilitlendi
 
                 Fire();
                 cooldownTimer = cooldownTime;

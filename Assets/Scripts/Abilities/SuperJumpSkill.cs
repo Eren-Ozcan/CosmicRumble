@@ -61,7 +61,7 @@ public class SuperJumpSkill : MonoBehaviour, IAbility
                 UIManager.Instance.ConfirmSkill(4);
 
                 // Turn hakkı bitir
-                charAbilities.HasUsedSkillThisTurn = true;
+                charAbilities.OnAbilityConsumed();
 
                 cooldownTimer = cooldownTime;
                 IsSelected = false;

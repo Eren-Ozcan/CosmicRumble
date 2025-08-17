@@ -129,6 +129,18 @@ public class CharacterAbilities : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Marks that this character has used a skill for the current turn and
+    /// locks all skill UI via the <see cref="UIManager"/>.  Abilities should
+    /// call this after successfully consuming ammo / activating so that no
+    /// other ability can be used in the same turn.
+    /// </summary>
+    public void OnAbilityConsumed()
+    {
+        HasUsedSkillThisTurn = true;
+        UIManager.Instance?.LockAllSkillsUI();
+    }
+
     // Getter’lar
     public int GetSuperJumpsRemaining() => superJumpsRemaining;
     public int GetRpgAmmoRemaining() => rpgAmmoRemaining;

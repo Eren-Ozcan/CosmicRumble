@@ -176,8 +176,7 @@ public class RPG : MonoBehaviour
 
             if (canFire)
             {
-                charAbilities.HasUsedSkillThisTurn = true; // turn skill hakkı kullanıldı
-                UIManager.Instance.LockAllSkillsUI();      // tüm UI’ı gri yap
+                charAbilities.OnAbilityConsumed();         // turn skill hakkı kullanıldı ve UI kilitlendi
 
                 Fire();
                 cooldownTimer = cooldownTime;

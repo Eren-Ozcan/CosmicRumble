@@ -46,6 +46,10 @@ public class Shotgun : MonoBehaviour
 
     void Update()
     {
+        // Başka bir skill kullanıldıysa bu turda çalışmayalım
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
+
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
@@ -113,6 +117,8 @@ public class Shotgun : MonoBehaviour
 
                 cooldownTimer = cooldownTime;
                 UpdateAmmoUI();
+
+                charAbilities?.OnAbilityConsumed();
 
                 if (charAbilities.GetShotgunAmmo() == 0 && filterImage != null)
                     filterImage.color = emptyColor;
