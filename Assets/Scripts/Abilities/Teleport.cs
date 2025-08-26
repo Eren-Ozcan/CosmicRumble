@@ -18,9 +18,6 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
     [Header("Visuals (opsiyonel)")]
     public LineRenderer lr;
 
-    [Header("Dependencies")]
-    [SerializeField] private UIManager ui;
-
     // internals
     private GravityBody gravityBody;
     private CharacterAbilities charAbilities;
@@ -41,50 +38,57 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
 
         if (lr == null) lr = GetComponent<LineRenderer>();
         if (lr != null) { lr.enabled = false; lr.positionCount = 0; }
-
-        // UI bul (Inspector boşsa)
-        if (ui == null)
-        {
-#if UNITY_2022_2_OR_NEWER
-            ui = Object.FindFirstObjectByType<UIManager>();
-            if (ui == null) ui = Object.FindAnyObjectByType<UIManager>();
-#else
-#pragma warning disable CS0618
-            ui = FindObjectOfType<UIManager>();
-#pragma warning restore CS0618
-#endif
-        }
     }
 
     void Update()
     {
-        if (cooldownTimer > 0f) cooldownTimer -= Time.deltaTime;
+        if (gravityBody == null || !gravityBody.isActive)
+            return;
 
-        // Seçim toggle
-        if (Input.GetKeyDown(activationKey) || Input.GetKeyDown(KeyCode.Keypad7))
-            SetSelected(!isSelected);
+        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
+            return;
 
-        if (!isSelected) return;
+        if (cooldownTimer > 0f)
+            cooldownTimer -= Time.deltaTime;
+
+        if (!isSelected)
+        {
+            if (Input.GetKeyDown(activationKey) || Input.GetKeyDown(KeyCode.Keypad7))
+                charAbilities?.SelectSkill(SlotIndex);
+            return;
+        }
+
+        if (awaitingConfirmation)
+        {
+            if (Input.GetKeyDown(KeyCode.Return))
+            {
+                fireAllowed = true;
+                awaitingConfirmation = false;
+                UIManager.Instance?.ConfirmSkill(SlotIndex);
+            }
+            else if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                charAbilities?.DeselectAll();
+            }
+            return;
+        }
+
+        if (!fireAllowed || cooldownTimer > 0f)
+            return;
 
         // Drag start
         if (Input.GetMouseButtonDown(0))
         {
-            if (!CanUseNow()) return;
             isDragging = true;
-            awaitingConfirmation = true;
-            fireAllowed = true;
-
             dragStartWorld = GetMouseWorld();
             EnableLine(true);
         }
-
-        // Drag loop (nişan hattı)
-        if (isDragging)
+        // Drag loop
+        else if (isDragging && Input.GetMouseButton(0))
         {
             Vector2 current = GetMouseWorld();
-            Vector2 delta = Vector2.ClampMagnitude(dragStartWorld - current, maxDragDistance); // ters sürükleme: geriye çek
+            Vector2 delta = Vector2.ClampMagnitude(dragStartWorld - current, maxDragDistance);
             Vector2 end = (Vector2)firePoint.position + delta;
-
             if (lr != null)
             {
                 lr.positionCount = 2;
@@ -92,21 +96,13 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
                 lr.SetPosition(1, end);
             }
         }
-
         // Drag bırakıldı
-        if (Input.GetMouseButtonUp(0))
-            isDragging = false;
-
-        // Onay (Enter)
-        if (awaitingConfirmation && fireAllowed && Input.GetKeyDown(KeyCode.Return))
+        else if (isDragging && Input.GetMouseButtonUp(0))
         {
             FireOrb();
-        }
-
-        // İptal (Esc)
-        if (awaitingConfirmation && Input.GetKeyDown(KeyCode.Escape))
-        {
-            Cancel();
+            isDragging = false;
+            fireAllowed = false;
+            isSelected = false;
         }
     }
 
@@ -144,13 +140,12 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
 
         // cooldown / turn state / UI
         cooldownTimer = cooldownTime;
-        if (charAbilities != null) charAbilities.HasUsedSkillThisTurn = true;
-        if (ui != null) ui.LockAllSkillsUI();
+        charAbilities?.OnAbilityConsumed();
 
         // temizle
         awaitingConfirmation = false;
         fireAllowed = false;
-        SetSelected(false);
+        EnableLine(false);
     }
 
     private void EnableLine(bool on)
@@ -166,13 +161,10 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
     public void SetSelected(bool selected)
     {
         isSelected = selected;
-        if (!isSelected)
-        {
-            awaitingConfirmation = false;
-            fireAllowed = false;
-            isDragging = false;
-            EnableLine(false);
-        }
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+        isDragging = false;
+        EnableLine(false);
     }
 
     public void Cancel()
@@ -181,9 +173,16 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
         fireAllowed = false;
         isDragging = false;
         EnableLine(false);
-        isSelected = false;
     }
 
     // ICooldownResettable
-    public void ResetCooldown() => cooldownTimer = 0f;
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        isSelected = false;
+        isDragging = false;
+        EnableLine(false);
+    }
 }
