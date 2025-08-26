@@ -168,6 +168,7 @@ public class CharacterAbilities : MonoBehaviour
             case 3: return grenadesRemaining;
             case 4: return superJumpsRemaining;
             case 5: return shieldsRemaining;
+            case 6: return 1; // Teleport (sınırsız)
             default: return 0;
         }
     }
