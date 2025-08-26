@@ -1,163 +1,197 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// El bombası gibi atılır. Gecikme bitince düştüğü noktaya SAHİBİ ışınlar.
+/// Eğer bölgede geçerli bir yerçekimi kaynağı (GravitySource) YOKSA ışınlama İPTAL olur.
+/// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class TeleportOrbProjectile : MonoBehaviour
 {
-    [Header("Fuse & Impact")]
-    public bool teleportOnImpact = true;   // true: ilk çarpmada ışınla
-    public float fuseTime = 3f;            // false ise süre sonunda ışınla
-    public LayerMask surfaceMask;          // gezegen/engel katmanları
-    public float safeRadius = 0.35f;       // owner kapsül yarıçapına göre
+    [Header("Zamanlayıcı")]
+    [Tooltip("Işınlama öncesi bekleme süresi")]
+    public float delayBeforeTeleport = 2.5f;
 
-    [Header("Placement")]
-    public float surfacePlaceOffset = 0.35f; // normale doğru dışarı ofset
-    public int outwardSteps = 6;             // tıkama çözümü için atılacak adım
+    [Header("Görsel/Etki")]
+    public GameObject spawnFxPrefab;
+    public GameObject teleportFxPrefab;
+    public float fxScale = 1f;
 
-    [Header("FX (opsiyonel)")]
-    public GameObject spawnFx;
-    public GameObject impactFx;
-    public GameObject teleportFx;
+    [Header("Güvenli Yerleştirme")]
+    [Tooltip("Karakter kapsül/daire yarıçapına yakın bir değer")]
+    public float safeRadius = 0.35f;
+    [Tooltip("Yüzeye doğru normal boyunca dışarı itme mesafesi")]
+    public float surfaceSnap = 0.2f;
+    [Tooltip("Duvar/zemin katmanı (teleport anında gömülmeyi engellemek için)")]
+    public LayerMask groundMask = ~0; // isterseniz spesifik katman verin
 
-    // state
+    [Header("Sahibi Bir Süre Yoksay")]
+    public float ignoreOwnerTime = 0.6f;
+
+    [Header("Gravity Ayarları")]
+    [Tooltip("Gravity yoksa ışınlamayı iptal et")]
+    public bool cancelIfNoGravity = true;
+    [Tooltip("GravitySource ararken bakılacak yarıçap (dünya boyutunuza göre)")]
+    public float gravitySearchRadius = 100f;
+
     private Rigidbody2D rb;
     private Collider2D col;
     private GameObject owner;
-    private float spawnTime;
-    private bool armed;      // owner ignore süresi bitince true
-    private bool done;       // tek seferlik trigger
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
+        if (spawnFxPrefab) SpawnFx(spawnFxPrefab, transform.position);
     }
 
-    public void Init(GameObject owner, Vector2 initialVelocity, float ignoreOwnerTime = 0.6f)
+    /// <summary>
+    /// El bombasında olduğu gibi çağırın.
+    /// </summary>
+    public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
-        this.owner = owner;
-        spawnTime = Time.time;
+        owner = ownerObj;
         rb.linearVelocity = initialVelocity;
 
-        if (spawnFx) Instantiate(spawnFx, transform.position, Quaternion.identity);
+        // Sahibi çarpmadan muaf tut
+        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+            Physics2D.IgnoreCollision(col, oc, true);
 
-        // Owner ile çarpışmayı yok say
-        if (owner != null)
+        // Süre sonunda geri aç
+        Invoke(nameof(ReenableOwnerCollision), Mathf.Max(ignoreTime, ignoreOwnerTime));
+
+        // Teleport zamanlayıcı
+        Invoke(nameof(TryTeleportOwner), delayBeforeTeleport);
+    }
+
+    private void TryTeleportOwner()
+    {
+        Vector2 orbPos = transform.position;
+
+        // 1) Gravity var mı?
+        GravitySource nearest;
+        Vector2 gravityDir; // merkeze doğru (planet center - pos).normalized
+        bool hasGravity = TryFindNearestGravity(orbPos, out nearest, out gravityDir);
+
+        if (cancelIfNoGravity && !hasGravity)
         {
-            var ownerCol = owner.GetComponent<Collider2D>();
-            if (ownerCol != null) Physics2D.IgnoreCollision(col, ownerCol, true);
-            // Silme koruması
-            Invoke(nameof(ArmAndReenableOwnerCollision), Mathf.Max(0.01f, ignoreOwnerTime));
+            Debug.Log("[TeleportOrb] Gravity bulunamadı. Işınlama İPTAL.");
+            Cleanup();
+            return;
         }
 
-        // Fuse modunda, çarpmayı beklemeden süre dolunca da ışınla
-        if (!teleportOnImpact && fuseTime > 0f)
+        // 2) Güvenli nokta bul: zemine gömülmemek için yüzey normali (-gravityDir) yönünde hafif ötele
+        //    Gravity yoksa sadece overlap çözümü yap
+        Vector2 outward = hasGravity ? (-gravityDir) : Vector2.up;
+        Vector2 target = orbPos + outward * surfaceSnap;
+
+        // Eğer hedefte çakışma varsa, küçük adımlarla dışarı it
+        target = ResolveOverlap(target, outward);
+
+        // 3) Sahibi ışınla
+        if (owner != null && owner.TryGetComponent<Rigidbody2D>(out var ownerRb))
         {
-            Invoke(nameof(TeleportOwnerAtCurrent), fuseTime);
-        }
-    }
+            ownerRb.position = target;
+            ownerRb.linearVelocity = Vector2.zero;
 
-    private void ArmAndReenableOwnerCollision()
-    {
-        if (owner == null) { armed = true; return; }
-        var ownerCol = owner.GetComponent<Collider2D>();
-        if (ownerCol != null) Physics2D.IgnoreCollision(col, ownerCol, false);
-        armed = true;
-    }
-
-    void OnCollisionEnter2D(Collision2D other)
-    {
-        if (done) return;
-        if (!teleportOnImpact) return;       // fuse modunda, çarpışma bekleme
-
-        if ((surfaceMask.value & (1 << other.collider.gameObject.layer)) == 0)
-            return; // Yalnızca belirtilen yüzeyler
-
-        Vector2 hitPoint = other.GetContact(0).point;
-        Vector2 normal = other.GetContact(0).normal;
-
-        TeleportOwnerTo(hitPoint + normal * surfacePlaceOffset, normal);
-    }
-
-    private void TeleportOwnerAtCurrent()
-    {
-        if (done) return;
-        // Bulunduğun noktaya yakın güvenli yer
-        Vector2 pos = rb.position;
-
-        // Normali raycast ile tahmin et: yakın yüzeye doğru
-        RaycastHit2D hit = Physics2D.Raycast(pos + Vector2.up * 0.01f, Vector2.down, 1.5f, surfaceMask);
-        Vector2? n = hit.collider ? (Vector2?)hit.normal : null;
-
-        TeleportOwnerTo(pos, n);
-    }
-
-    private void TeleportOwnerTo(Vector2 target, Vector2? surfaceNormal)
-    {
-        if (done) return;
-        done = true;
-
-        if (impactFx) Instantiate(impactFx, transform.position, Quaternion.identity);
-
-        if (owner != null)
-        {
-            var ownerRb = owner.GetComponent<Rigidbody2D>();
-            if (ownerRb != null)
+            // Karakteri yüzeye dik hizala (varsa)
+            if (hasGravity)
             {
-                // Güvenli yer bul
-                Vector2 safe;
-                if (!FindSafePlacement(target, surfaceNormal, out safe))
-                {
-                    // Çok sıkışıksa, en azından yüzey normal yönüne biraz daha iter
-                    if (surfaceNormal.HasValue)
-                        safe = target + surfaceNormal.Value.normalized * (surfacePlaceOffset + 0.2f);
-                    else
-                        safe = target;
-                }
-
-                ownerRb.position = safe;
-                ownerRb.linearVelocity = Vector2.zero;
-
-                if (teleportFx) Instantiate(teleportFx, safe, Quaternion.identity);
+                // Transform.up'ı yüzey normaline (outward) eşitle
+                owner.transform.up = outward;
             }
         }
 
-        Destroy(gameObject);
+        if (teleportFxPrefab) SpawnFx(teleportFxPrefab, target);
+        Debug.Log("[TeleportOrb] Işınlama gerçekleşti.");
+        Cleanup();
     }
 
-    private bool FindSafePlacement(Vector2 target, Vector2? surfaceNormal, out Vector2 safePoint)
+    /// <summary>
+    /// GravitySource bulur; en yakını döner ve gravity yönünü (merkeze doğru) verir.
+    /// Projede GravitySource collider ile gezegen merkezinde duruyorsa basitçe merkez vektörünü kullanıyoruz.
+    /// </summary>
+    private bool TryFindNearestGravity(Vector2 pos, out GravitySource nearest, out Vector2 gravityDir)
     {
-        safePoint = target;
+        nearest = null;
+        gravityDir = Vector2.down;
 
-        if (!Physics2D.OverlapCircle(target, safeRadius, surfaceMask))
+        // Geniş bir dairede GravitySource ara
+        var hits = Physics2D.OverlapCircleAll(pos, gravitySearchRadius);
+        float best = float.PositiveInfinity;
+
+        foreach (var h in hits)
+        {
+            if (h == null) continue;
+            var gs = h.GetComponentInParent<GravitySource>();
+            if (gs == null) continue;
+
+            float d = Vector2.Distance(pos, (Vector2)gs.transform.position);
+            if (d < best)
+            {
+                best = d;
+                nearest = gs;
+            }
+        }
+
+        if (nearest != null)
+        {
+            gravityDir = ((Vector2)nearest.transform.position - pos).normalized; // merkeze doğru
             return true;
-
-        if (surfaceNormal.HasValue)
-        {
-            Vector2 n = surfaceNormal.Value.normalized;
-            for (int i = 0; i < outwardSteps; i++)
-            {
-                Vector2 test = target + n * (surfacePlaceOffset + (i + 1) * 0.1f);
-                if (!Physics2D.OverlapCircle(test, safeRadius, surfaceMask))
-                {
-                    safePoint = test;
-                    return true;
-                }
-            }
-        }
-
-        // Küçük çember taraması
-        const int samples = 16;
-        for (int i = 0; i < samples; i++)
-        {
-            float ang = (Mathf.PI * 2f) * (i / (float)samples);
-            Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-            Vector2 test = target + dir * 0.5f;
-            if (!Physics2D.OverlapCircle(test, safeRadius, surfaceMask))
-            {
-                safePoint = test;
-                return true;
-            }
         }
         return false;
     }
+
+    /// <summary>
+    /// Çakışma varsa outward yönünde küçük adımlarla güvenli bir nokta bulur.
+    /// </summary>
+    private Vector2 ResolveOverlap(Vector2 start, Vector2 outward)
+    {
+        const int maxIters = 10;
+        Vector2 p = start;
+
+        for (int i = 0; i < maxIters; i++)
+        {
+            var overlap = Physics2D.OverlapCircle(p, safeRadius, groundMask);
+            if (overlap == null) break; // güvenli
+
+            // azıcık daha dışarı
+            p += outward * 0.1f;
+        }
+
+        // Ek güvenlik: hedef yolunda duvar varsa en yakın serbest noktaya yerleş
+        var hit = Physics2D.CircleCast(start - outward * 0.01f, safeRadius, outward, 0.25f, groundMask);
+        if (hit.collider != null)
+        {
+            p = hit.centroid - outward * (safeRadius + 0.02f);
+        }
+        return p;
+    }
+
+    private void ReenableOwnerCollision()
+    {
+        if (owner == null || col == null) return;
+        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
+            Physics2D.IgnoreCollision(col, oc, false);
+    }
+
+    private void SpawnFx(GameObject prefab, Vector2 pos)
+    {
+        var fx = Instantiate(prefab, pos, Quaternion.identity);
+        fx.transform.localScale = Vector3.one * fxScale;
+    }
+
+    private void Cleanup()
+    {
+        Destroy(gameObject);
+    }
+
+#if UNITY_EDITOR
+    void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(0.3f, 0.8f, 1f, 0.4f);
+        Gizmos.DrawWireSphere(transform.position, safeRadius);
+        Gizmos.color = new Color(1f, 0.6f, 0.2f, 0.25f);
+        Gizmos.DrawWireSphere(transform.position, gravitySearchRadius * 0.1f); // referans
+    }
+#endif
 }

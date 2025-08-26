@@ -1,59 +1,128 @@
 using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResettable
+public class Teleport : MonoBehaviour, IAbilitySelectable, ICooldownResettable
 {
-    [Header("Hotkey & Cooldown")]
+    [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha7;
     public float cooldownTime = 6f;
     private float cooldownTimer;
+    private bool awaitingConfirmation;
+    private bool fireAllowed;
+
+    [Header("Teleport Timing")]
+    [Tooltip("Orb firlatildiktan sonra kac saniye bekleyip teleport edecek")]
+    public float teleportDelay = 2.5f;   // <-- Inspector’dan a
 
     [Header("Fire Settings")]
     public Transform firePoint;
-    public TeleportOrbProjectile projectilePrefab;
+    [Tooltip("TeleportOrbProjectile içeren PREFAB (Project penceresinden sürükle)")]
+    public GameObject projectilePrefab;   // <- Inspector'da atanmalı!
     public float maxDragDistance = 3f;
     public float powerMultiplier = 5f;
     public float ignoreOwnerDuration = 0.6f;
 
-    [Header("Visuals (opsiyonel)")]
-    public LineRenderer lr;
-
-    // internals
+    private LineRenderer lr;
+    [SerializeField] private TrajectoryDots trajectory;
     private GravityBody gravityBody;
     private CharacterAbilities charAbilities;
-
-    private bool isSelected;
-    private bool awaitingConfirmation;
-    private bool fireAllowed;
     private bool isDragging;
-    private Vector2 dragStartWorld;
+    private Vector2 dragStart;
+    private bool wasActive;
+    private bool isSelected;
 
-    // Hotbar index (0-based). 7. slot için 6:
+    // UI slot indexini kendi düzenine göre ayarla
     public int SlotIndex => 6;
 
     void Awake()
     {
+        lr = GetComponent<LineRenderer>();
+        if (lr != null)
+        {
+            lr.enabled = false;
+            lr.positionCount = 0;
+        }
+
         gravityBody = GetComponent<GravityBody>();
+
+        trajectory = trajectory
+                  ?? GetComponent<TrajectoryDots>()
+                  ?? GetComponentInChildren<TrajectoryDots>(true)
+#if UNITY_2022_2_OR_NEWER
+                  ?? FindFirstObjectByType<TrajectoryDots>(FindObjectsInactive.Include);
+#else
+                  ?? FindObjectOfType<TrajectoryDots>();
+#endif
+        if (trajectory != null)
+        {
+            trajectory.Setup(
+                TrajectoryDots.GlobalDotCount,
+                TrajectoryDots.GlobalTimeStep,
+                firePoint
+            );
+            trajectory.startScale = TrajectoryDots.GlobalStartScale;
+            trajectory.endScale = TrajectoryDots.GlobalEndScale;
+        }
+
         charAbilities = GetComponent<CharacterAbilities>();
 
-        if (lr == null) lr = GetComponent<LineRenderer>();
-        if (lr != null) { lr.enabled = false; lr.positionCount = 0; }
+        // --- Teşhis logu ---
+        Debug.Log($"[Teleport/Awake] Owner={name}, Prefab={(projectilePrefab ? projectilePrefab.name : "NULL")}, FirePoint={(firePoint ? firePoint.name : "NULL")}");
+    }
+
+    public void SetSelected(bool selected)
+    {
+        isSelected = selected;
+        awaitingConfirmation = selected;
+        fireAllowed = false;
+        if (!selected) CancelDrag();
+    }
+
+    public void Cancel()
+    {
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        CancelDrag();
+    }
+
+    public void ResetCooldown()
+    {
+        cooldownTimer = 0f;
+        awaitingConfirmation = false;
+        fireAllowed = false;
+        isSelected = false;
+        CancelDrag();
     }
 
     void Update()
     {
-        if (gravityBody == null || !gravityBody.isActive)
-            return;
-
         if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
             return;
 
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
+        // Aktif oyuncuya geçince state temizle
+        if (gravityBody.isActive && !wasActive)
+        {
+            wasActive = true;
+            Cancel();
+        }
+        else if (!gravityBody.isActive)
+        {
+            wasActive = false;
+            return;
+        }
+
+        if (cooldownTimer > 0f)
+        {
+            CancelDrag();
+            return;
+        }
+
         if (!isSelected)
         {
-            if (Input.GetKeyDown(activationKey) || Input.GetKeyDown(KeyCode.Keypad7))
+            if (Input.GetKeyDown(activationKey))
                 charAbilities?.SelectSkill(SlotIndex);
             return;
         }
@@ -64,7 +133,7 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
             {
                 fireAllowed = true;
                 awaitingConfirmation = false;
-                UIManager.Instance?.ConfirmSkill(SlotIndex);
+                UIManager.Instance.ConfirmSkill(SlotIndex);
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {
@@ -73,116 +142,89 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
             return;
         }
 
-        if (!fireAllowed || cooldownTimer > 0f)
+        if (!fireAllowed)
             return;
 
-        // Drag start
+        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
         if (Input.GetMouseButtonDown(0))
         {
             isDragging = true;
-            dragStartWorld = GetMouseWorld();
-            EnableLine(true);
+            dragStart = mouseWorld;
         }
-        // Drag loop
         else if (isDragging && Input.GetMouseButton(0))
         {
-            Vector2 current = GetMouseWorld();
-            Vector2 delta = Vector2.ClampMagnitude(dragStartWorld - current, maxDragDistance);
-            Vector2 end = (Vector2)firePoint.position + delta;
-            if (lr != null)
-            {
-                lr.positionCount = 2;
-                lr.SetPosition(0, firePoint.position);
-                lr.SetPosition(1, end);
-            }
+            Vector2 pull = dragStart - mouseWorld;
+            float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
+            Vector2 initial = pull.normalized * clamped * powerMultiplier;
+
+            float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
+            trajectory?.Show(initial, power01);
         }
-        // Drag bırakıldı
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            FireOrb();
-            isDragging = false;
+            bool canFire = true;
+            if (charAbilities != null)
+                canFire = charAbilities.UseGrenade(); // geçici ortak sayaç; istersen UseTeleport() ekle
+
+            if (canFire)
+            {
+                Fire();
+                cooldownTimer = cooldownTime;
+                charAbilities?.OnAbilityConsumed();
+            }
+
+            CancelDrag();
             fireAllowed = false;
             isSelected = false;
         }
     }
 
-    private Vector2 GetMouseWorld()
+    private void Fire()
     {
-        var cam = Camera.main;
-        if (!cam) return Vector2.zero;
-        Vector3 w = cam.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -cam.transform.position.z));
-        return new Vector2(w.x, w.y);
-    }
-
-    private bool CanUseNow()
-    {
-        if (cooldownTimer > 0f) return false;
-        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn) return false;
-        return true;
-    }
-
-    private void FireOrb()
-    {
-        if (!CanUseNow() || projectilePrefab == null || firePoint == null)
+        // --- Güvenlik kontrolleri ---
+        if (projectilePrefab == null)
         {
-            Cancel();
+            Debug.LogError($"[Teleport/Fire] {name}: projectilePrefab NULL! Player prefab'ında Teleport bileşenine 'TeleportOrbProjectile' prefab'ını ATA.");
+            return;
+        }
+        if (firePoint == null)
+        {
+            Debug.LogError($"[Teleport/Fire] {name}: firePoint NULL! Teleport'un Fire Point alanını ata.");
             return;
         }
 
-        // Hız vektörü: geriye çekme kadar
-        Vector2 current = GetMouseWorld();
-        Vector2 pull = Vector2.ClampMagnitude(dragStartWorld - current, maxDragDistance);
-        Vector2 velocity = pull * powerMultiplier;
+        Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
+        Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
-        // Spawn
-        TeleportOrbProjectile orb = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
-        orb.Init(owner: gameObject, initialVelocity: velocity, ignoreOwnerTime: ignoreOwnerDuration);
+        var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 
-        // cooldown / turn state / UI
-        cooldownTimer = cooldownTime;
-        charAbilities?.OnAbilityConsumed();
-
-        // temizle
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        EnableLine(false);
-    }
-
-    private void EnableLine(bool on)
-    {
-        if (lr != null)
+        // Tercihen TeleportOrbProjectile kullan
+        var orb = go.GetComponent<TeleportOrbProjectile>();
+        if (orb != null)
         {
-            lr.enabled = on;
-            if (!on) lr.positionCount = 0;
+            // Inspector’dan ayarlayacağın teleportDelay değerini projectile’a aktar
+            orb.delayBeforeTeleport = teleportDelay;
+            orb.Init(initial, gameObject, ignoreOwnerDuration);
+        }
+        else
+        {
+            // Fallback
+            var rb = go.GetComponent<Rigidbody2D>();
+            if (rb != null) rb.AddForce(initial, ForceMode2D.Impulse);
         }
     }
 
-    // IAbilitySelectable
-    public void SetSelected(bool selected)
-    {
-        isSelected = selected;
-        awaitingConfirmation = selected;
-        fireAllowed = false;
-        isDragging = false;
-        EnableLine(false);
-    }
 
-    public void Cancel()
+    private void CancelDrag()
     {
-        awaitingConfirmation = false;
-        fireAllowed = false;
         isDragging = false;
-        EnableLine(false);
-    }
-
-    // ICooldownResettable
-    public void ResetCooldown()
-    {
-        cooldownTimer = 0f;
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        isSelected = false;
-        isDragging = false;
-        EnableLine(false);
+        if (lr != null)
+        {
+            lr.enabled = false;
+            lr.positionCount = 0;
+        }
+        trajectory?.Hide();
     }
 }

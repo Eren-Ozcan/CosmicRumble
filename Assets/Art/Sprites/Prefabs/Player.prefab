@@ -867,12 +867,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 55
   cooldownTime: 6
+  teleportDelay: 4
   firePoint: {fileID: 4154729560540491929}
-  projectilePrefab: {fileID: 9141199703807802169, guid: 9ebde3ad96b63d7498564b82bb18a6a6, type: 3}
+  projectilePrefab: {fileID: 1389737760817637188, guid: 2ecfa08c0639e8e4b84302549c2f1ca2, type: 3}
   maxDragDistance: 3
-  powerMultiplier: 5
+  powerMultiplier: 6
   ignoreOwnerDuration: 0.6
-  lr: {fileID: 0}
+  trajectory: {fileID: 0}
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0
