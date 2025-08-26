@@ -49,6 +49,9 @@ public class BatHammerSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
             if (Input.GetKeyDown(KeyCode.Return))
             {
                 PerformKnockback();
+                UIManager.Instance?.ConfirmSkill(SlotIndex);
+                charAbilities?.OnAbilityConsumed();
+                cooldownTimer = cooldownTime;
                 isSelected = false;
                 awaitingConfirmation = false;
             }
@@ -76,9 +79,6 @@ public class BatHammerSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
             }
         }
 
-        cooldownTimer = cooldownTime;
-        charAbilities?.OnAbilityConsumed();
-        UIManager.Instance?.ConfirmSkill(SlotIndex);
     }
 
     public void SetSelected(bool selected)
