@@ -874,7 +874,7 @@ MonoBehaviour:
   maxDragDistance: 3
   powerMultiplier: 6
   ignoreOwnerDuration: 0.6
-  lr: {fileID: 0}
+  trajectory: {fileID: 0}
 --- !u!114 &419914381422218045
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -885,13 +885,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fbb0f9512ed6442fa46833150fa65a99, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
   activationKey: 56
   cooldownTime: 5
   hitRadius: 1.5
+  coneAngleDeg: 100
+  coneSegments: 48
   knockbackForce: 10
-
+  targetLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  onlyAffectTaggedPlayers: 1
+  maxDragDistance: 3
+  minPowerColor: {r: 0, g: 1, b: 0, a: 1}
+  maxPowerColor: {r: 1, g: 0, b: 0, a: 1}
+  previewBaseAlpha: 0.894
+  previewMaterial: {fileID: 0}
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0

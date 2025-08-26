@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Projectile : MonoBehaviour
@@ -11,6 +11,7 @@ public class Projectile : MonoBehaviour
     [Header("Movement & TTL")]
     public float timeToLive = 15f;
     public float gravityScale = 0f;
+    public bool destroyOnInvisible = true;
 
     [Header("Explosion & Damage")]
     public GameObject splashEffectPrefab;
@@ -18,12 +19,25 @@ public class Projectile : MonoBehaviour
     public float explosionForce = 5f;
     public float maxDamage = 10f;
 
-    [Tooltip("Patlamada etkilenecek çekim gücü (gezegenin gravityStrength gibi değerini temsil eder)")]
+    [Tooltip("Scales the impulse applied to rigidbodies within the blast.")]
     public float gravityInfluence = 1f;
 
+    [Header("Preview Color")]
+    public Color minPowerColor = Color.green; // düşük güç
+    public Color maxPowerColor = Color.red;   // yüksek güç
+
+    [Header("Filtering")]
+    [Tooltip("Only colliders on these layers will be affected by the explosion. (~0 = everything)")]
+    public LayerMask affectLayers = ~0;
+
+    // --- Internals ---
     Rigidbody2D rb;
     Collider2D col;
     float spawnTime;
+    bool ownerReenabled;
+
+    // We will re-enable these on timeout/destroy
+    readonly List<Collider2D> ignoredOwnerColliders = new List<Collider2D>(8);
 
     void Awake()
     {
@@ -39,16 +53,28 @@ public class Projectile : MonoBehaviour
         ignoreOwnerTime = ignoreTime;
         spawnTime = Time.time;
 
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
-            Physics2D.IgnoreCollision(col, oc, true);
+        // Ignore collisions with all owner's colliders
+        ignoredOwnerColliders.Clear();
+        if (owner != null)
+        {
+            var ownerCols = owner.GetComponentsInChildren<Collider2D>(true);
+            foreach (var oc in ownerCols)
+            {
+                if (oc == null) continue;
+                Physics2D.IgnoreCollision(col, oc, true);
+                ignoredOwnerColliders.Add(oc);
+            }
+        }
 
         rb.linearVelocity = initialVelocity;
-        Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
+        if (ignoreOwnerTime > 0f)
+            Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
     }
 
     void Update()
     {
-        if (Time.time - spawnTime >= timeToLive)
+        // TTL
+        if (timeToLive > 0f && Time.time - spawnTime >= timeToLive)
         {
             Destroy(gameObject);
             return;
@@ -57,60 +83,85 @@ public class Projectile : MonoBehaviour
 
     void FixedUpdate()
     {
+        // Align to velocity
         Vector2 vel = rb.linearVelocity;
-        if (vel.sqrMagnitude > 0.01f)
+        if (vel.sqrMagnitude > 0.0001f)
             transform.right = vel.normalized;
     }
 
     void OnBecameInvisible()
     {
-        Destroy(gameObject);
+        if (destroyOnInvisible)
+            Destroy(gameObject);
+    }
+
+    void OnDestroy()
+    {
+        // In case we get destroyed before Invoke fires, re-enable owner collisions
+        if (!ownerReenabled) ReenableOwnerCollision();
+        CancelInvoke();
     }
 
     private void ReenableOwnerCollision()
     {
-        if (owner == null) return;
-        foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
-            Physics2D.IgnoreCollision(col, oc, false);
+        if (ownerReenabled) return;
+        if (ignoredOwnerColliders.Count > 0 && col != null)
+        {
+            foreach (var oc in ignoredOwnerColliders)
+            {
+                if (oc == null) continue;
+                Physics2D.IgnoreCollision(col, oc, false);
+            }
+        }
+        ownerReenabled = true;
     }
 
     void OnCollisionEnter2D(Collision2D collision)
     {
+        // Still within initial ignore window?
         if (collision.gameObject == owner && Time.time - spawnTime < ignoreOwnerTime)
             return;
 
-        Vector2 hitPos = transform.position;
+        // Impact position (more accurate than transform.position)
+        Vector2 hitPos = collision.GetContact(0).point;
 
         if (splashEffectPrefab != null)
             Instantiate(splashEffectPrefab, hitPos, Quaternion.identity);
 
+        // Planet/destructible first
         if (collision.collider.TryGetComponent<DestructiblePlanet>(out var dp))
             dp.ExplodeWithForce(hitPos, explosionRadius, explosionForce);
 
-        var hits = Physics2D.OverlapCircleAll(hitPos, explosionRadius);
+        // Radial query (filtered)
+        var hits = Physics2D.OverlapCircleAll(hitPos, explosionRadius, affectLayers);
         foreach (var hit in hits)
         {
-            if (hit.gameObject == owner) continue;
+            var go = hit.gameObject;
 
+            if (go == owner) continue; // never affect owner
+
+            // Damage falloff by distance
             float distance = Vector2.Distance(hit.transform.position, hitPos);
-            float falloff = 1f - Mathf.Clamp01(distance / explosionRadius);
+            float falloff = 1f - Mathf.Clamp01(distance / Mathf.Max(0.0001f, explosionRadius));
 
-            // Hasar sadece yakınlığa göre
+            // Deal damage (if any)
             if (hit.TryGetComponent<IDamageable>(out var dmg))
                 dmg.TakeDamage(maxDamage * falloff);
 
-            // Kuvvet: hem yakınlığa hem gravity çarpanına göre
-            if (hit.attachedRigidbody != null)
+            // Apply impulse (physics)
+            var targetRb = hit.attachedRigidbody;
+            if (targetRb != null)
             {
-                Vector2 dir = (hit.attachedRigidbody.position - hitPos).normalized;
+                Vector2 dir = ((Vector2)targetRb.position - hitPos).normalized;
                 float finalForce = explosionForce * falloff * gravityInfluence;
-                hit.attachedRigidbody.AddForce(dir * finalForce, ForceMode2D.Impulse);
+                targetRb.AddForce(dir * finalForce, ForceMode2D.Impulse);
             }
         }
 
         Destroy(gameObject);
     }
 
+#if UNITY_EDITOR
     void OnDrawGizmosSelected()
     {
         if (explosionRadius > 0f)
@@ -119,4 +170,5 @@ public class Projectile : MonoBehaviour
             Gizmos.DrawWireSphere(transform.position, explosionRadius);
         }
     }
+#endif
 }
