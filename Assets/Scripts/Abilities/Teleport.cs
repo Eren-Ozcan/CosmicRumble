@@ -1,46 +1,4 @@
-﻿using UnityEngine;
-
-[RequireComponent(typeof(GravityBody))]
-public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResettable
-{
-    [Header("Hotkey & Cooldown")]
-    public KeyCode activationKey = KeyCode.Alpha7;
-    public float cooldownTime = 6f;
-    private float cooldownTimer;
-
-    [Header("Fire Settings")]
-    public Transform firePoint;
-    public TeleportOrbProjectile projectilePrefab;
-    public float maxDragDistance = 3f;
-    public float powerMultiplier = 5f;
-    public float ignoreOwnerDuration = 0.6f;
-
-    [Header("Visuals (opsiyonel)")]
-    public LineRenderer lr;
-
-    // internals
-    private GravityBody gravityBody;
-    private CharacterAbilities charAbilities;
-
-    private bool isSelected;
-    private bool awaitingConfirmation;
-    private bool fireAllowed;
-    private bool isDragging;
-    private Vector2 dragStartWorld;
-
-    // Hotbar index (0-based). 7. slot için 6:
-    public int SlotIndex => 6;
-
-    void Awake()
-    {
-        gravityBody = GetComponent<GravityBody>();
-        charAbilities = GetComponent<CharacterAbilities>();
-
-        if (lr == null) lr = GetComponent<LineRenderer>();
-        if (lr != null) { lr.enabled = false; lr.positionCount = 0; }
-    }
-
-    void Update()
+ void Update()
     {
         if (gravityBody == null || !gravityBody.isActive)
             return;
@@ -186,3 +144,4 @@ public class TeleportDevice : MonoBehaviour, IAbilitySelectable, ICooldownResett
         EnableLine(false);
     }
 }
+Assets/Scripts/Character/CharacterAbilities.cs
