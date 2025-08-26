@@ -431,6 +431,7 @@ GameObject:
   - component: {fileID: -7348377678887645225}
   - component: {fileID: 6270493113255710177}
   - component: {fileID: 1937244089978629826}
+  - component: {fileID: 419914381422218045}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -873,7 +874,24 @@ MonoBehaviour:
   maxDragDistance: 3
   powerMultiplier: 6
   ignoreOwnerDuration: 0.6
-  trajectory: {fileID: 0}
+  lr: {fileID: 0}
+--- !u!114 &419914381422218045
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fbb0f9512ed6442fa46833150fa65a99, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  activationKey: 56
+  cooldownTime: 5
+  hitRadius: 1.5
+  knockbackForce: 10
+
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0

@@ -169,6 +169,7 @@ public class CharacterAbilities : MonoBehaviour
             case 4: return superJumpsRemaining;
             case 5: return shieldsRemaining;
             case 6: return 1; // Teleport (sınırsız)
+            case 7: return 1; // Bat/Hammer (sınırsız)
             default: return 0;
         }
     }
