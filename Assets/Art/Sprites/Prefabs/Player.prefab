@@ -868,12 +868,11 @@ MonoBehaviour:
   activationKey: 55
   cooldownTime: 6
   firePoint: {fileID: 4154729560540491929}
-  projectilePrefab: {fileID: 0}
+  projectilePrefab: {fileID: 9141199703807802169, guid: 9ebde3ad96b63d7498564b82bb18a6a6, type: 3}
   maxDragDistance: 3
   powerMultiplier: 5
   ignoreOwnerDuration: 0.6
   lr: {fileID: 0}
-  ui: {fileID: 0}
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0
