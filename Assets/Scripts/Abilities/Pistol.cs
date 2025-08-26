@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK: ICooldownResettable eklendi
+public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha1;
@@ -16,6 +16,31 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
     public float maxDragDistance = 3f;
     public float powerMultiplier = 5f;
     public float ignoreOwnerDuration = 1f;
+
+    // ---- KineticProjectile ayarları (TEK DELİK için) ----
+    [Header("Kinetic (Patlamasız / Tek Delik)")]
+    public float kMaxRange = 12f;
+    [Range(0f, 1f)] public float kFullDamagePortion = 0.30f; // menzilin ilk %30'unda sabit hasar
+    public float kMaxDamage = 8f;
+    public float kMinDamage = 0f;
+
+    [Header("Gezegen Etkileşimi (Tek Delik)")]
+    public bool kDestroyOnPlanetHit = true;     // gezegene değince mermi yok olsun
+    public bool kApplyPlanetDamage = true;     // delik aç
+    public float kPlanetDamageRadius = 0.5f;    // TEK DAİRE delik yarıçapı
+    public float kPlanetDamageForce = 2f;      // delik kuvveti
+
+    [Header("Capsule/Oval Delik (KAPALI tut)")]
+    public bool kUseElongatedPlanetDamage = false; // ✅ tek delik için kapalı
+    public float kOvalLength = 6f;                 // kullanılmaz
+    public float kOvalWidth = 3f;                 // kullanılmaz
+    public int kOvalStamps = 1;                  // güvence: 1 damga
+
+    [Header("Chunk / Katmanlar")]
+    public LayerMask kPlanetChunkLayer; // gezegen parçaları
+    public LayerMask kPlanetLayer;      // gezegen collider’ı (raycast için)
+    public bool kUseTrigger = true;     // chunk içinden geçiş için önerilir
+    public bool kStopOnDamageable = true; // karaktere çarpınca dur
 
     private LineRenderer lr;
     [SerializeField] private TrajectoryDots trajectory;
@@ -78,7 +103,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
         CancelDrag();
     }
 
-    public void ResetCooldown()            // ✨ DEĞİŞİKLİK: Tur başında sıfırlama çağrısı için
+    public void ResetCooldown()
     {
         cooldownTimer = 0f;
         awaitingConfirmation = false;
@@ -94,11 +119,9 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        // turn aktif/pasif geçişi
         if (gravityBody.isActive && !wasActive)
         {
             wasActive = true;
-            // cooldownTimer = 0f;          // (İstersen kalsın) Tur başına reset artık TurnManager->CharacterAbilities üzerinden geliyor
             Cancel();
         }
         else if (!gravityBody.isActive)
@@ -113,7 +136,6 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
             return;
         }
 
-        // seçili değilken aktivasyon tuşu sadece seçimi tetikler
         if (!isSelected)
         {
             if (Input.GetKeyDown(activationKey))
@@ -121,7 +143,6 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
             return;
         }
 
-        // seçiliyken onay katmanı
         if (awaitingConfirmation)
         {
             if (Input.GetKeyDown(KeyCode.Return))
@@ -161,7 +182,7 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
             {
                 Fire();
                 cooldownTimer = cooldownTime;
-                charAbilities?.OnAbilityConsumed(); // turn kullanımını merkezden kilitle
+                charAbilities?.OnAbilityConsumed();
             }
             CancelDrag();
             fireAllowed = false;
@@ -176,14 +197,41 @@ public class Pistol : MonoBehaviour, IAbilitySelectable, ICooldownResettable // 
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-        var proj = bulletGO.GetComponent<Projectile>();
-        if (proj != null)
-            proj.Init(initial, gameObject, ignoreOwnerDuration);
-        else
-        {
-            var rb = bulletGO.GetComponent<Rigidbody2D>();
-            rb?.AddForce(initial, ForceMode2D.Impulse);
-        }
+
+        // Eski patlamalı Projectile varsa sök, KineticProjectile kullan
+        var oldProj = bulletGO.GetComponent<Projectile>();
+        if (oldProj) Destroy(oldProj);
+
+        var kin = bulletGO.GetComponent<KineticProjectile>();
+        if (!kin) kin = bulletGO.AddComponent<KineticProjectile>();
+
+        // Kinetic ayarları (tek delik)
+        kin.maxRange = kMaxRange;
+        kin.fullDamagePortion = kFullDamagePortion;
+        kin.maxDamage = kMaxDamage;
+        kin.minDamage = kMinDamage;
+
+        kin.destroyOnPlanetHit = kDestroyOnPlanetHit;
+        kin.applyPlanetDamage = kApplyPlanetDamage;
+        kin.planetDamageRadius = kPlanetDamageRadius;
+        kin.planetDamageForce = kPlanetDamageForce;
+
+        // Tek delik için capsule kapalı
+        kin.useElongatedPlanetDamage = kUseElongatedPlanetDamage; // false
+        kin.ovalLength = kOvalLength;
+        kin.ovalWidth = kOvalWidth;
+        kin.ovalStamps = Mathf.Max(1, kOvalStamps); // güvence: 1
+
+        kin.alignToVelocity = true;           // önemli değil (capsule kapalıyken)
+        kin.anchorAtSurface = true;
+
+        // Chunk & katmanlar
+        kin.planetChunkLayer = kPlanetChunkLayer;
+        kin.planetLayer = kPlanetLayer;
+        kin.useTrigger = kUseTrigger;
+        kin.stopOnDamageable = kStopOnDamageable;
+
+        kin.Init(initial, gameObject, ignoreOwnerDuration);
     }
 
     private void CancelDrag()

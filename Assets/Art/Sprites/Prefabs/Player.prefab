@@ -430,6 +430,7 @@ GameObject:
   - component: {fileID: -7917154408194715751}
   - component: {fileID: -7348377678887645225}
   - component: {fileID: 6270493113255710177}
+  - component: {fileID: 1937244089978629826}
   m_Layer: 7
   m_Name: Player
   m_TagString: Player
@@ -685,6 +686,7 @@ MonoBehaviour:
   gravityBody: {fileID: 0}
   characterHealth: {fileID: 0}
   spriteRenderer: {fileID: 0}
+  activationKey: 54
   cooldownTime: 5
 --- !u!114 &4883235900165893782
 MonoBehaviour:
@@ -700,18 +702,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 49
   cooldownTime: 5
-  filterImage: {fileID: 0}
-  pistolCountText: {fileID: 0}
-  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
-  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
-  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 3892696180545929677, guid: 0d1f824112bd37d48bf3d3a9f4a4a6f4, type: 3}
   maxDragDistance: 3
   powerMultiplier: 2
   ignoreOwnerDuration: 1
-  trajectoryPoints: 8
-  timeStep: 0.05
+  kMaxRange: 12
+  kFullDamagePortion: 0.3
+  kMaxDamage: 8
+  kMinDamage: 0
+  kDestroyOnPlanetHit: 1
+  kApplyPlanetDamage: 1
+  kPlanetDamageRadius: 0.5
+  kPlanetDamageForce: 2
+  kUseElongatedPlanetDamage: 0
+  kOvalLength: 6
+  kOvalWidth: 3
+  kOvalStamps: 1
+  kPlanetChunkLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  kPlanetLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  kUseTrigger: 1
+  kStopOnDamageable: 1
+  trajectory: {fileID: 0}
 --- !u!114 &8419486536768381218
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -726,18 +742,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 51
   cooldownTime: 7
-  filterImage: {fileID: 0}
-  rpgCountText: {fileID: 0}
-  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
-  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
-  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 8311390682789985667, guid: 5a7086ec0c209d4419494256471d6ab8, type: 3}
   maxDragDistance: 3
   powerMultiplier: 6
   ignoreOwnerDuration: 1.5
-  trajectoryPoints: 60
-  timeStep: 0.05
+  trajectory: {fileID: 0}
 --- !u!114 &-4980835287136157885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -752,18 +762,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 52
   cooldownTime: 6
-  filterImage: {fileID: 0}
-  grenadeCountText: {fileID: 0}
-  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
-  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
-  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   firePoint: {fileID: 4154729560540491929}
   projectilePrefab: {fileID: 7521313236242814105, guid: 76b7522226204154b8945a62f7786d0b, type: 3}
   maxDragDistance: 3
   powerMultiplier: 5
   ignoreOwnerDuration: 0.5
-  trajectoryPoints: 60
-  timeStep: 0.05
+  trajectory: {fileID: 0}
 --- !u!114 &-7917154408194715751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -778,11 +782,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   activationKey: 50
   cooldownTime: 5
-  filterImage: {fileID: 0}
-  shotgunCountText: {fileID: 0}
-  selectionColor: {r: 1, g: 1, b: 0, a: 0.5}
-  confirmColor: {r: 0, g: 1, b: 0, a: 0.5}
-  emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
+  firePoint: {fileID: 4154729560540491929}
+  pelletPrefab: {fileID: 3892696180545929677, guid: 0d1f824112bd37d48bf3d3a9f4a4a6f4, type: 3}
+  maxDragDistance: 3
+  powerMultiplier: 5
+  ignoreOwnerDuration: 0.5
+  pelletCount: 5
+  totalSpreadAngle: 12
+  pelletMaxRange: 12
+  fullDamagePortion: 0.3
+  pelletMaxDamage: 8
+  pelletMinDamage: 0
+  destroyOnPlanetHit: 1
+  applyPlanetDamage: 1
+  planetDamageRadius: 0.2
+  planetDamageForce: 0.5
+  useElongatedPlanetDamage: 1
+  ovalLength: 3
+  ovalWidth: 1
+  ovalStamps: 1
+  alignToVelocity: 1
+  anchorAtSurface: 1
+  planetChunkLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  planetLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  useTrigger: 1
+  stopOnDamageable: 1
+  overrideTrajectory: 1
+  previewDotCount: 24
+  previewTimeStep: 0.035
+  trajectory: {fileID: 0}
 --- !u!114 &-7348377678887645225
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -819,6 +851,29 @@ MonoBehaviour:
   sortingLayer: Default
   sortingOrder: 200
   respectGravityRadius: 1
+  useAsGlobalSettings: 1
+  ignoreExternalSetup: 1
+--- !u!114 &1937244089978629826
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6939517175187225860}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 892acd5815a2de944bc97374c3018d7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  activationKey: 55
+  cooldownTime: 6
+  firePoint: {fileID: 4154729560540491929}
+  projectilePrefab: {fileID: 0}
+  maxDragDistance: 3
+  powerMultiplier: 5
+  ignoreOwnerDuration: 0.6
+  lr: {fileID: 0}
+  ui: {fileID: 0}
 --- !u!1 &8004466955580004848
 GameObject:
   m_ObjectHideFlags: 0

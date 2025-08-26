@@ -75,7 +75,14 @@ public class TrajectoryDots : MonoBehaviour
 
         // Fallback sprite
         if (dotSprite == null)
-            dotSprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+        {
+            // fallback: beyaz texture’dan sprite üret
+            var tex = Texture2D.whiteTexture;
+            dotSprite = Sprite.Create(tex,
+                new Rect(0, 0, tex.width, tex.height),
+                new Vector2(0.5f, 0.5f));
+        }
+
 
         CreatePool();
         Hide();
