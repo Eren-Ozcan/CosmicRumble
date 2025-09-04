@@ -7,7 +7,7 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [Header("Slot’lar (0=Pistol,1=Shotgun,2=RPG,3=Grenade,4=SuperJump,5=Shield,6=Teleport,7=Bat/Hammer)")]
+    [Header("Slot’lar (0=Pistol,1=Shotgun,2=RPG,3=Grenade,4=SuperJump,5=Shield,6=Teleport,7=Bat/Hammer,8=Black Hole)")]
     public Image[] filterImages;         // 10 elemanlı
     public TextMeshProUGUI[] countTexts; // 10 elemanlı
 
