@@ -170,6 +170,7 @@ public class CharacterAbilities : MonoBehaviour
             case 5: return shieldsRemaining;
             case 6: return 1; // Teleport (sınırsız)
             case 7: return 1; // Bat/Hammer (sınırsız)
+            case 8: return 1; // Black Hole (sınırsız)
             default: return 0;
         }
     }
