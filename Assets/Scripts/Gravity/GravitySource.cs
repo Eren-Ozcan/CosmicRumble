@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-[RequireComponent(typeof(CircleCollider2D))]
 public class GravitySource : MonoBehaviour
 {
     [Tooltip("Distance (Unity units) where gravity will act")]
@@ -20,10 +19,27 @@ public class GravitySource : MonoBehaviour
 
     private void Awake()
     {
-        gravityCollider = GetComponent<CircleCollider2D>();
+        // Önce GravityTrigger adlı child'ı ara — solid surface collider'ı yanlışlıkla
+        // trigger'a çevirmemek için kendimizi (transform) atla.
+        var triggerChild = transform.Find("GravityTrigger");
+        if (triggerChild != null)
+            gravityCollider = triggerChild.GetComponent<CircleCollider2D>();
+
+        // GravityTrigger yoksa eski davranış: herhangi bir child ColliderCollider2D
         if (gravityCollider == null)
         {
-            Debug.LogError($"[GravitySource] {name} üzerinde CircleCollider2D bulunamadı!");
+            foreach (Transform child in transform)
+            {
+                gravityCollider = child.GetComponent<CircleCollider2D>();
+                if (gravityCollider != null) break;
+            }
+        }
+
+        if (gravityCollider == null)
+        {
+#if UNITY_EDITOR
+            Debug.LogError($"[GravitySource] {name} altında CircleCollider2D bulunamadı (GravityTrigger child bekleniyor)!");
+#endif
             enabled = false;
             return;
         }
@@ -32,30 +48,39 @@ public class GravitySource : MonoBehaviour
 
     private void Start()
     {
-        // Ensure collider radius matches gravityRadius in world units
-        float scaleFactor = transform.localScale.x;
-        gravityCollider.radius = gravityRadius / scaleFactor;
+        if (gravityCollider == null) return;
+
+        // gravityRadius is a world-space value set in the Inspector.
+        // CircleCollider2D.radius is local-space, so divide by lossyScale
+        // to keep the trigger zone consistent regardless of parent scale
+        // (e.g. Planet_Interior under Planet_External with scale 10,10,1).
+        float worldScale = Mathf.Max(Mathf.Abs(transform.lossyScale.x), Mathf.Abs(transform.lossyScale.y));
+        gravityCollider.radius = worldScale > 0f ? gravityRadius / worldScale : gravityRadius;
     }
 
     private void OnTriggerStay2D(Collider2D other)
     {
+        if (other.attachedRigidbody == null) return;
+
         Rigidbody2D rb = other.attachedRigidbody;
-        if (rb == null) return;
 
         Vector2 direction = (Vector2)transform.position - rb.position;
         float distance = direction.magnitude;
         if (distance <= 0f) return;
+        if (distance < 0.3f) return;
 
-        float forceMag = gravityForce / (distance * distance);
+        // Gravity formulas — choose one:
+        // 1/r² (realistic): force increases as character approaches center
+        //   → causes extreme pull near core, unpredictable gameplay feel
+        // float forceMag = gravityForce / (distance * distance);
+
+        // Constant (arcade): same pull everywhere regardless of distance
+        //   → consistent movement speed, recommended for turn-based gameplay
+        float forceMag = gravityForce;
+
         rb.AddForce(direction.normalized * forceMag, ForceMode2D.Force);
     }
 
-#if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
-        Gizmos.DrawWireSphere(transform.position, gravityRadius);
-    }
-#endif
+// Gizmo çizimi PlanetDebugVisualizer tarafından yapılır (ColliderDebugVisualizer.cs).
+// Buradaki OnDrawGizmosSelected kaldırıldı — çift çizim önlendi.
 }
-

@@ -1,35 +1,44 @@
-﻿using UnityEngine;
-using System.Collections.Generic;
+using UnityEngine;
+using CosmicRumble.Gravity;
 
-// Awake()’ın tüm diğer Awake'lerden önce çalışması için
+// Awake()'ın tüm diğer Awake'lerden önce çalışması için
 [DefaultExecutionOrder(-100)]
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
-    public List<GravitySource> sources = new List<GravitySource>();
+
+    /// <summary>
+    /// Aktif yerçekimi stratejisi. GravityBody ve TrajectoryDots bu property'yi kullanır.
+    /// RefreshStrategy() ile sahne gezegenlerine göre yeniden seçilir.
+    /// </summary>
+    public IGravityStrategy Strategy { get; private set; }
 
     void Awake()
     {
         if (Instance == null)
-        {
             Instance = this;
-            // Eğer sahneler arası kalmasını istersen:
-            // DontDestroyOnLoad(gameObject);
-        }
         else
         {
             Destroy(gameObject);
+            return;
         }
     }
 
-    public void RegisterSource(GravitySource src)
+    void Start()
     {
-        if (!sources.Contains(src))
-            sources.Add(src);
+        RefreshStrategy();
     }
 
-    public void UnregisterSource(GravitySource src)
+    /// <summary>
+    /// GravitySource.AllSources sayısına göre stratejiyi (yeniden) seçer.
+    /// Gezegen sayısı değiştiğinde (spawn/destroy) çağrılabilir.
+    /// </summary>
+    public void RefreshStrategy()
     {
-        sources.Remove(src);
+        var sources = GravitySource.AllSources;
+        if (sources.Count == 1)
+            Strategy = new SinglePlanetGravity(sources[0]);
+        else
+            Strategy = new MultiPlanetGravity();
     }
 }

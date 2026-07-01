@@ -1,13 +1,29 @@
-﻿// Assets/Scripts/Gravity/GravityBody.cs
+// Assets/Scripts/Gravity/GravityBody.cs
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class GravityBody : MonoBehaviour
 {
     [HideInInspector] public bool isActive = false;
+    /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
+    [HideInInspector] public bool movementLocked = false;
+
+    /// <summary>
+    /// Super jump gerçekleştiğinde tetiklenir. UI temizliği için SuperJumpSkill subscribe olur.
+    /// </summary>
+    public event Action onSuperJumpConsumed;
 
     private Rigidbody2D rb;
-    private GravitySource currentSource;
+
+    // Tüm aktif çekim kaynakları — vektörel toplama için
+    private readonly List<GravitySource> activeSources = new List<GravitySource>();
+
+    private readonly Vector2[] _rayOrigins = new Vector2[3];
+
+    // En güçlü kaynak — zıplama yönü ve hareket tanjantı için
+    public GravitySource DominantSource { get; private set; }
 
     [Header("Yürüme Ayarları")]
     public float maxWalkSpeed = 3f;
@@ -26,11 +42,43 @@ public class GravityBody : MonoBehaviour
     private int jumpCount = 0;
     private bool canDoubleJump = true;
 
+    // Input Update'te okunur, FixedUpdate'te uygulanır (Kural #7)
+    private float cachedHorizontalInput = 0f;
+
+    // Net yerçekimi yönü — iki gezegen arası tangent kararlılığı için cache'lenir
+    private Vector2 _gravDir = Vector2.down;
+
+    [Header("Surface Angles")]
+    public float walkAngleLimit  = 60f;
+    public float stableAngleLimit = 75f;
+    public float slideForce      = 5f;
+    public float rotationSmoothSpeed = 15f;
+    public float edgeTolerance = 0.1f;
+
+    // ── Grounded detection ─────────────────────────────────────────────────────
+    // GetContacts  → hasContact   (fizik motorundan, uçurum kenarında anında false)
+    // edgeTimer    → _isGrounded  (coyote window — uçurum kenarında kısa tolerans)
+    // 3× Raycast   → surfaceNormal (sol/orta/sağ — küçük deliklerde titreme engeli)
+    // ──────────────────────────────────────────────────────────────────────────
+    private bool  _isGrounded = false;
+    private float _edgeTimer  = 0f;
+    private int   _planetMask;
+
+    private Collider2D            _col;
+    private readonly ContactPoint2D[] _contacts = new ContactPoint2D[8];
+    private readonly RaycastHit2D[]   _rayHits  = new RaycastHit2D[4];
+
+    // Yüzey normal raycasti için sabitler
+    private const float SurfaceRayOriginOffset = 0.3f;  // merkezden ayağa doğru offset
+    private const float SurfaceRayDistance     = 0.9f;
+
     private void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
+        rb   = GetComponent<Rigidbody2D>();
+        _col = GetComponent<Collider2D>();
         rb.freezeRotation = true;
         isActive = false;
+        _planetMask = LayerMask.GetMask("Planet");
     }
 
     private void Update()
@@ -41,31 +89,33 @@ public class GravityBody : MonoBehaviour
         if (!isActive)
             return;
 
-        bool grounded = (currentSource != null);
+        if (movementLocked)
+        {
+            cachedHorizontalInput = 0f;
+            return;
+        }
+
+        // Input bu frame'de Update'te cache'lenir
+        cachedHorizontalInput = -Input.GetAxisRaw("Horizontal");
+
+        bool grounded = _isGrounded;
 
         if (cooldownTimer <= 0f && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.Space)))
         {
-            Debug.Log($"[GravityBody] Zıplama denemesi – grounded: {grounded}, jumpCount: {jumpCount}, canDoubleJump: {canDoubleJump}, super: {nextJumpIsSuper}");
-
             if (grounded)
             {
                 PerformJump(nextJumpIsSuper);
-                Debug.Log("[GravityBody] Yerden zıplama gerçekleşti.");
-
-                jumpCount = 1;
+                jumpCount    = 1;
                 canDoubleJump = true;
             }
-            else if (!grounded && jumpCount == 1 && canDoubleJump)
+            else if (jumpCount == 1 && canDoubleJump)
             {
                 PerformJump(nextJumpIsSuper);
-                Debug.Log("[GravityBody] Havadan double jump gerçekleşti.");
-
-                jumpCount = 2;
+                jumpCount    = 2;
                 canDoubleJump = false;
             }
             else
             {
-                Debug.LogWarning("[GravityBody] Zıplama reddedildi – koşullar uygun değil.");
                 return;
             }
 
@@ -76,106 +126,223 @@ public class GravityBody : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (currentSource != null)
+        // ── 1. Yerçekimi yönü ve baskın kaynak ────────────────────────────────
+        // Null kaynakları temizle
+        for (int i = activeSources.Count - 1; i >= 0; i--)
+            if (activeSources[i] == null) activeSources.RemoveAt(i);
+
+        Vector2 netGravity = (GravityManager.Instance != null && GravityManager.Instance.Strategy != null)
+            ? GravityManager.Instance.Strategy.CalculateAcceleration(transform.position)
+            : Vector2.zero;
+
+        var allSrc = GravitySource.AllSources;
+        DominantSource = allSrc.Count > 0 ? allSrc[0] : null;
+
+        if (netGravity.sqrMagnitude > 0.001f)
+            _gravDir = netGravity.normalized;
+
+        // ── 2. Grounded tespiti — GetContacts + edge tolerance (coyote time) ──
+        // hasContact: fizik motorundan gerçek temas (uçurum kenarında anında false)
+        // _edgeTimer: kenardan ayrılınca kısa tolerans penceresi
+        int contactCount = _col.GetContacts(_contacts);
+        bool hasContact = false;
+        for (int i = 0; i < contactCount; i++)
         {
-            Vector2 dir = (Vector2)(currentSource.transform.position - transform.position);
-            float dist = dir.magnitude;
-            if (dist <= currentSource.gravityRadius)
+            if ((_planetMask & (1 << _contacts[i].collider.gameObject.layer)) != 0)
             {
-                float forceMag = currentSource.gravityForce / (dist * dist);
-                rb.AddForce(dir.normalized * forceMag, ForceMode2D.Force);
+                hasContact = true;
+                break;
             }
-            transform.up = -dir.normalized;
+        }
+        if (hasContact)
+        {
+            _isGrounded = true;
+            _edgeTimer  = edgeTolerance;
+        }
+        else
+        {
+            _edgeTimer -= Time.fixedDeltaTime;
+            if (_edgeTimer <= 0f)
+                _isGrounded = false;
         }
 
+        // ── 3. Yüzey normali — 3× Raycast (sol/orta/sağ, titreme engeli) ────────
+        // Planet_Interior'ın solid CircleCollider2D'si her zaman radyal normal döndürür.
+        // Planet_External'ın trigger PolygonCollider2D'si gerçek yüzey normaline sahip.
+        // Üç ray'ın ortalaması: küçük delikler veya köşe geçişlerinde rotasyon titremesini engeller.
+        Vector2 moveDir = new Vector2(_gravDir.y, -_gravDir.x);
+
+        var filter = new ContactFilter2D();
+        filter.SetLayerMask(_planetMask);
+        filter.useTriggers = true;
+
+        _rayOrigins[0] = (Vector2)transform.position + moveDir * 0.3f  + _gravDir * SurfaceRayOriginOffset;
+        _rayOrigins[1] = (Vector2)transform.position                   + _gravDir * SurfaceRayOriginOffset;
+        _rayOrigins[2] = (Vector2)transform.position - moveDir * 0.3f  + _gravDir * SurfaceRayOriginOffset;
+
+        Vector2 normalSum  = Vector2.zero;
+        int     normalCount = 0;
+        for (int r = 0; r < 3; r++)
+        {
+            int hitCount = Physics2D.Raycast(_rayOrigins[r], _gravDir, filter, _rayHits, SurfaceRayDistance);
+
+            // PolygonCollider2D'yi önce ara; bulunamazsa solid CircleCollider2D'ye düş
+            RaycastHit2D best = default;
+            RaycastHit2D fallback = default;
+            for (int i = 0; i < hitCount; i++)
+            {
+                if (_rayHits[i].collider is PolygonCollider2D)
+                { best = _rayHits[i]; break; }
+                else if (fallback.collider == null)
+                    fallback = _rayHits[i];
+            }
+            if (best.collider == null) best = fallback;
+
+            if (best.collider != null)
+            {
+                normalSum += best.normal;
+                normalCount++;
+            }
+        }
+
+        Vector2 surfaceNormal = normalCount > 0 ? (normalSum / normalCount).normalized : (Vector2)(-_gravDir);
+        float   surfaceAngle  = normalCount > 0
+            ? Vector2.Angle(surfaceNormal, -_gravDir)
+            : 0f;
+
+        // ── 4. Rotasyon ───────────────────────────────────────────────────────
+        // Zone 1-2 (≤75°): yüzey normaline doğru smooth lerp → ayaklar yüzeye dik
+        // Zone 3 (>75°) / havada: yerçekimi yönüne göre radyal
+        // Force is applied by GravitySource.OnTriggerStay2D — only update orientation here
+        Vector2 targetUp = (_isGrounded && surfaceAngle <= stableAngleLimit)
+            ? surfaceNormal
+            : (Vector2)(-_gravDir);
+        transform.up = Vector2.Lerp((Vector2)transform.up, targetUp,
+                                    rotationSmoothSpeed * Time.fixedDeltaTime);
+
+        // ── 5. Hareket yönü ───────────────────────────────────────────────────
+        // moveDir step 3'te tanımlandı — burada tekrar tanımlanmaz
+
+        // ── 6. Sıra dışı: Zone 1-2'de tangential hızı sıfırla (kayma engeli) ──
         if (!isActive)
+        {
+            if (_isGrounded && surfaceAngle <= stableAngleLimit)
+            {
+                Vector2 v = rb.linearVelocity;
+                rb.linearVelocity = v - moveDir * Vector2.Dot(v, moveDir);
+            }
             return;
+        }
 
-        float h = -Input.GetAxisRaw("Horizontal");
-        bool grounded = (currentSource != null);
-        float speedLimit = grounded ? maxWalkSpeed : maxAirSpeed;
+        // ── 7. Aktif hareket zone'ları ─────────────────────────────────────────
+        Vector2 vel         = rb.linearVelocity;
+        float   currMoveVel = Vector2.Dot(vel, moveDir);
+        Vector2 normalComp  = vel - moveDir * currMoveVel;
 
-        Vector2 center = grounded
-            ? (Vector2)(currentSource.transform.position - transform.position)
-            : Vector2.up;
-        Vector2 tangent = new Vector2(center.y, -center.x).normalized;
+        if (!_isGrounded)
+        {
+            // Havada: input varsa yönlendir, yoksa fizik tamamen serbest.
+            // Tangential momentum SIFIRLANMAZ — uçurumdan doğal düşüş sağlar.
+            if (!Mathf.Approximately(cachedHorizontalInput, 0f))
+            {
+                float newMoveVel = Mathf.Lerp(currMoveVel, cachedHorizontalInput * maxAirSpeed, 1f - smoothing);
+                rb.linearVelocity = normalComp + moveDir * newMoveVel;
+            }
+        }
+        else if (surfaceAngle < walkAngleLimit)
+        {
+            // Zone 1 — Yürünebilir: hareket yüzey tanjantı boyunca uygulanır.
+            // moveDir (yerçekimine dik, yatay) değil surfaceTangent (yüzey normaline dik)
+            // kullanılır — eğime karşı yürüyünce karakterin yüzeyden kalkması engellenir.
+            Vector2 surfaceTangent = new Vector2(surfaceNormal.y, -surfaceNormal.x);
+            if (Vector2.Dot(surfaceTangent, moveDir) < 0f)
+                surfaceTangent = -surfaceTangent;
 
-        Vector2 vel = rb.linearVelocity;
-        float currTangentVel = Vector2.Dot(vel, tangent);
-        float targetTangentVel = h * speedLimit;
+            float   tangVel       = Vector2.Dot(vel, surfaceTangent);
+            Vector2 surfNormalComp = vel - surfaceTangent * tangVel;   // yüzeye dik bileşen korunur
 
-        float newTangentVel = Mathf.Lerp(currTangentVel, targetTangentVel, 1f - smoothing);
-        Vector2 normalComp = vel - tangent * currTangentVel;
-        rb.linearVelocity = normalComp + tangent * newTangentVel;
-
-        if (Mathf.Approximately(h, 0f))
+            if (Mathf.Approximately(cachedHorizontalInput, 0f))
+                rb.linearVelocity = surfNormalComp;
+            else
+                rb.linearVelocity = surfNormalComp + surfaceTangent * (cachedHorizontalInput * maxWalkSpeed);
+        }
+        else if (surfaceAngle <= stableAngleLimit)
+        {
+            // Zone 2 — Stabil: hareket yok, kayma yok
             rb.linearVelocity = normalComp;
+        }
+        else
+        {
+            // Zone 3 — Kaygan: yüzey boyunca aşağı kuvvet, input yok
+            Vector2 downhill = _gravDir - Vector2.Dot(_gravDir, surfaceNormal) * surfaceNormal;
+            if (downhill.sqrMagnitude > 0.001f)
+                rb.AddForce(downhill.normalized * slideForce, ForceMode2D.Force);
+        }
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.TryGetComponent<GravitySource>(out var gs))
+        var gs = other.GetComponentInParent<GravitySource>();
+        if (gs != null)
         {
-            currentSource = gs;
-            jumpCount = 0;
-            canDoubleJump = true;
+            bool wasAirborne = activeSources.Count == 0;
+            if (!activeSources.Contains(gs))
+                activeSources.Add(gs);
+
+            // Zıplama sayacını yalnızca gerçekten iniş yapıldığında sıfırla
+            // (önceden başka bir gravity zone'da grounded idiyse sıfırlama — exploit kapatılır)
+            if (wasAirborne)
+            {
+                jumpCount    = 0;
+                canDoubleJump = true;
+            }
         }
     }
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (other.TryGetComponent<GravitySource>(out var gs) && gs == currentSource)
+        var gs = other.GetComponentInParent<GravitySource>();
+        if (gs != null)
         {
-            currentSource = null;
+            activeSources.Remove(gs);
+
+            // Tüm gravity zone'lardan çıkıldıysa (havaya kalkış): yere basmadan çıkıldıysa
+            // jumpCount=0 anlamına gelir — yerden zıplamak gibi sayılır ki
+            // havada double-jump hakkı doğru şekilde kalsın.
+            if (activeSources.Count == 0 && jumpCount == 0)
+                jumpCount = 1;
         }
     }
 
     private void PerformJump(bool isSuper)
     {
-        Vector2 outDir = (transform.position - currentSource.transform.position).normalized;
-        float force = isSuper ? jumpForce * superMultiplier : jumpForce;
+        Vector2 outDir;
+        if (DominantSource != null)
+            outDir = (transform.position - DominantSource.transform.position).normalized;
+        else
+            outDir = transform.up; // Uzayda — mevcut "yukarı" yönünde zıpla
 
-        Debug.Log($"[GravityBody] PerformJump() çağrıldı — isSuper: {isSuper}, force: {force}, direction: {outDir}");
+        float force = isSuper ? jumpForce * superMultiplier : jumpForce;
         rb.AddForce(outDir * force, ForceMode2D.Impulse);
 
-        // ✅ SuperJump hakkı buradan düşürülür
         if (isSuper)
-        {
-            var abilities = GetComponent<CharacterAbilities>();
-            if (abilities != null)
-            {
-                abilities.UseSuperJump(); // sayaç azalt
-                UIManager.Instance.filterImages[4].color = Color.clear; // yeşil filtre temizle
-                Debug.Log("[GravityBody] SuperJump kullanıldı – sayaç düşürüldü, filtre temizlendi");
-            }
-        }
+            onSuperJumpConsumed?.Invoke();
     }
-
-
 
     public void ZeroHorizontalVelocity()
     {
-        Vector2 vel = rb.linearVelocity;
-        if (currentSource != null)
-        {
-            Vector2 center = (Vector2)(currentSource.transform.position - transform.position);
-            Vector2 tangent = new Vector2(center.y, -center.x).normalized;
-            float along = Vector2.Dot(vel, tangent);
-            rb.linearVelocity = vel - tangent * along;
-        }
-        else
-        {
-            vel.x = 0f;
-            rb.linearVelocity = vel;
-        }
+        Vector2 vel     = rb.linearVelocity;
+        Vector2 moveDir = new Vector2(_gravDir.y, -_gravDir.x);
+        float   along   = Vector2.Dot(vel, moveDir);
+        rb.linearVelocity = vel - moveDir * along;
     }
 
     public void OnTurnStart()
     {
-        cooldownTimer = 0f;
+        cooldownTimer   = 0f;
         nextJumpIsSuper = false;
         ZeroHorizontalVelocity();
-        jumpCount = 0;
+        jumpCount    = 0;
         canDoubleJump = true;
 
         var ch = GetComponent<CharacterHealth>();
