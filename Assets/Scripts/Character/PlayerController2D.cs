@@ -13,48 +13,34 @@ public class PlayerController2D : MonoBehaviour
 {
     private GravityBody gravityBody;
     private SpriteRenderer spriteRenderer;
-
-    // Animator kullanımını kapattığımız için ilgili alan ve satırlar yorumlandı
-    // private Animator animator;
-    // [Header("Yürüme Ayarları")]
-    // [Tooltip("Animator içerisinde Speed parametresine gönderilecek değer.")]
-    // public string speedParam = "Speed";
+    private Rigidbody2D rb;
 
     private void Awake()
     {
         gravityBody = GetComponent<GravityBody>();
         spriteRenderer = GetComponent<SpriteRenderer>();
+        rb = GetComponent<Rigidbody2D>();
 
+#if UNITY_EDITOR
         if (gravityBody == null)
             Debug.LogError($"[PlayerController2D] {name} üzerinde GravityBody bulunamadı!");
         if (spriteRenderer == null)
             Debug.LogError($"[PlayerController2D] {name} üzerinde SpriteRenderer bulunamadı!");
-
-        // Animator’i de kaldırdık
-        // animator = GetComponent<Animator>();
-        // if (animator == null)
-        //     Debug.LogError($"[PlayerController2D] {name} üzerinde Animator bulunamadı!");
+#endif
     }
 
     private void Update()
     {
-        // Eğer karakter şu an aktif değilse, animasyonları da güncelleme
-        if (!gravityBody.isActive)
-        {
-            // Animator'u kapalı tuttuğumuz için burası boş
-            return;
-        }
+        if (!gravityBody.isActive) return;
 
-        // Yürüme: GravityBody zaten yatay hızı ayarlıyor, burada yalnızca sprite flip yapıyoruz
-        float horizInput = Input.GetAxisRaw("Horizontal"); // -1, 0 veya 1
-
-        // Sprite yönünü güncelle
-        if (horizInput < 0f)
+        // Yüz yönü: karakterin yerel transform.right ekseni (gezegen rotasyonuna göre döner)
+        // üzerindeki hız bileşenine bakarak flip yapılır.
+        // Input.GetAxisRaw("Horizontal") dünya ekseni tabanlıdır; karakterin gezegen
+        // yüzeyine göre döndüğü durumda yanlış yönü verir. Hız vektörü her zaman doğru.
+        float lateralVel = Vector2.Dot(rb.linearVelocity, transform.right);
+        if (lateralVel < -0.1f)
             spriteRenderer.flipX = true;
-        else if (horizInput > 0f)
+        else if (lateralVel > 0.1f)
             spriteRenderer.flipX = false;
-
-        // Animator Speed parametresi yerine şimdilik bir debug log bırakabiliriz
-        // animator.SetFloat(speedParam, Mathf.Abs(horizInput));
     }
 }

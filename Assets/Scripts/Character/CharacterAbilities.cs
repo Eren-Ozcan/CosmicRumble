@@ -150,6 +150,18 @@ public class CharacterAbilities : MonoBehaviour
         return true;
     }
 
+    public bool UseTeleport()
+    {
+        SkillChanged?.Invoke(6);
+        return true;
+    }
+
+    public bool UseBlackHole()
+    {
+        SkillChanged?.Invoke(8);
+        return true;
+    }
+
     // --- Getter’lar ---
     public int GetSuperJumpsRemaining() => superJumpsRemaining;
     public int GetRpgAmmoRemaining() => rpgAmmoRemaining;
@@ -209,6 +221,7 @@ public class CharacterAbilities : MonoBehaviour
             abilitySlots[i]?.Cancel();
         }
         UIManager.Instance?.ClearAllSkillSelections();
+        TurnManager.NotifyWeaponCancelled();
     }
 
     /// <summary>

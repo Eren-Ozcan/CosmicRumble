@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 using System;
 
@@ -10,6 +11,34 @@ public class UIManager : MonoBehaviour
     [Header("Slot’lar (0=Pistol,1=Shotgun,2=RPG,3=Grenade,4=SuperJump,5=Shield,6=Teleport,7=Bat/Hammer,8=Black Hole)")]
     public Image[] filterImages;         // 10 elemanlı
     public TextMeshProUGUI[] countTexts; // 10 elemanlı
+
+    [Header("End Game — Winner Announcement")]
+    [Tooltip("Panel shown when the game ends (starts inactive)")]
+    public GameObject gameOverPanel;
+    [Tooltip("Displays 'Player X Wins!' or 'Draw!'")]
+    public TextMeshProUGUI winnerText;
+    [Tooltip("Displays earned XP — assign a TMP Text in the gameOverPanel")]
+    public TextMeshProUGUI xpEarnedText;
+    [Tooltip("Displays earned Gold — assign a TMP Text in the gameOverPanel")]
+    public TextMeshProUGUI goldEarnedText;
+    [Tooltip("Button that dismisses the winner panel and opens the end-game menu")]
+    public Button okButton;
+
+    [Header("End Game — End Game Menu")]
+    [Tooltip("Panel with Return to Main Menu / Free Camera buttons (starts inactive)")]
+    public GameObject endGameMenuPanel;
+    public Button returnToMenuButton;
+    public Button freeCameraButton;
+
+    [Header("Confirm Prompt")]
+    [Tooltip("Opsiyonel: kalkan/onay beklenirken gösterilecek metin (atanmazsa sessiz kalır)")]
+    public TextMeshProUGUI confirmPromptText;
+
+    [Header("Free Camera")]
+    [Tooltip("The FreeCameraController component to enable/disable")]
+    public FreeCameraController freeCamera;
+    [Tooltip("All gameplay UI roots to hide during free camera mode")]
+    public GameObject[] gameplayUIRoots;
 
     [Header("Renk Ayarları")]
     public Color selectionColor = new Color(1, 1, 0, 0.5f);   // sarı
@@ -34,14 +63,16 @@ public class UIManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
 
-        // tek seferlik handler kur
-        _onSkillChangedHandler = OnSkillChanged;
+        // Skill event handlers
+        _onSkillChangedHandler    = OnSkillChanged;
         _onSuperJumpChangedHandler = () => UpdateSlot(4);
-        _onRpgAmmoChangedHandler = () => UpdateSlot(2);
+        _onRpgAmmoChangedHandler   = () => UpdateSlot(2);
         _onPistolAmmoChangedHandler = () => UpdateSlot(0);
         _onShotgunAmmoChangedHandler = () => UpdateSlot(1);
-        _onGrenadeChangedHandler = () => UpdateSlot(3);
-        _onShieldChangedHandler = () => UpdateSlot(5);
+        _onGrenadeChangedHandler   = () => UpdateSlot(3);
+        _onShieldChangedHandler    = () => UpdateSlot(5);
+
+        // End-game buttons are wired via Inspector OnClick — no AddListener needed here.
     }
 
     public void SetCharacter(CharacterAbilities ab)
@@ -185,6 +216,78 @@ public class UIManager : MonoBehaviour
             int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
             filterImages[i].color = (remaining == 0) ? emptyColor : noneColor;
         }
+    }
+
+    /// <summary>
+    /// Shows the winner announcement panel. Pass null winnerName for a draw.
+    /// </summary>
+    public void ShowGameOver(string winnerName, long xpEarned = 0, long goldEarned = 0)
+    {
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(true);
+
+        if (winnerText != null)
+            winnerText.text = winnerName != null ? $"{winnerName} Wins!" : "Draw!";
+
+        if (xpEarnedText != null)
+            xpEarnedText.text = $"+{xpEarned} XP";
+
+        if (goldEarnedText != null)
+            goldEarnedText.text = $"+{goldEarned} Gold";
+    }
+
+    // ── End-game button callbacks — public so they appear in the Inspector OnClick dropdown ──
+
+    /// <summary>OK button: dismiss winner announcement, open end-game menu.</summary>
+    public void OnOKButtonClicked()
+    {
+        if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (endGameMenuPanel != null) endGameMenuPanel.SetActive(true);
+    }
+
+    /// <summary>Return to Main Menu button.</summary>
+    public void OnReturnToMenuClicked()
+    {
+        if (SceneFader.Instance != null)
+            SceneFader.Instance.FadeToScene(SceneNames.Menu);
+        else
+            SceneManager.LoadScene(SceneNames.Menu);
+    }
+
+    /// <summary>Free Camera button: hide all gameplay UI and hand control to FreeCameraController.</summary>
+    public void OnFreeCameraClicked()
+    {
+        if (endGameMenuPanel != null) endGameMenuPanel.SetActive(false);
+        foreach (var go in gameplayUIRoots)
+            if (go != null) go.SetActive(false);
+        if (freeCamera != null) freeCamera.enabled = true;
+    }
+
+    /// <summary>
+    /// Called by FreeCameraController when the player presses Escape.
+    /// Re-shows the end-game menu and all gameplay UI roots.
+    /// </summary>
+    public void ExitFreeCamera()
+    {
+        if (freeCamera != null) freeCamera.enabled = false;
+        foreach (var go in gameplayUIRoots)
+            if (go != null) go.SetActive(true);
+        if (endGameMenuPanel != null) endGameMenuPanel.SetActive(true);
+    }
+
+    /// <summary>Onay beklerken ekranda kısa bir mesaj gösterir (opsiyonel TMP alanı atanmışsa).</summary>
+    public void ShowConfirmPrompt(string message)
+    {
+        if (confirmPromptText == null) return;
+        confirmPromptText.text = message;
+        confirmPromptText.gameObject.SetActive(true);
+    }
+
+    /// <summary>Onay prompt'unu gizler.</summary>
+    public void HideConfirmPrompt()
+    {
+        if (confirmPromptText == null) return;
+        confirmPromptText.gameObject.SetActive(false);
     }
 
     private bool IsValidSlot(int idx)

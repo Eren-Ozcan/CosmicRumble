@@ -10,7 +10,7 @@ public class CharacterHealth : MonoBehaviour, IDamageable
 {
     [Header("Can Ayarları")]
     [Tooltip("Karakterin maksimum can değeri")]
-    public float maxHealth = 10f;
+    public float maxHealth = 100f;
     private float currentHealth;
 
     [Header("Ölüm Efekti")]
@@ -19,8 +19,12 @@ public class CharacterHealth : MonoBehaviour, IDamageable
     [Tooltip("Ölüm efektinin oynatılmasından sonra GameObject'in yok edilme süresi")]
     public float destroyDelay = 0.5f;
 
+    [Header("Zırh Ayarları")]
+    [Range(0f, 1f), Tooltip("Shield aktifken hasarın ne kadarı engellenir (0 = engelsiz, 1 = tam koruma)")]
+    public float shieldDamageReduction = 0.5f;
+
     [HideInInspector]
-    public bool isShielded = false; // Shield aktifse true, alınan hasarı %50 indirir
+    public bool isShielded = false; // Shield aktifse true, alınan hasarı shieldDamageReduction kadar indirir
 
     private bool isDead = false;
 
@@ -45,7 +49,7 @@ public class CharacterHealth : MonoBehaviour, IDamageable
             return;
 
         // Eğer shield aktifse, hasarı %50 indir
-        float finalDamage = isShielded ? amount * 0.5f : amount;
+        float finalDamage = isShielded ? amount * (1f - shieldDamageReduction) : amount;
 
         // Mevcut canı azalt, 0-maximum aralığında tut
         currentHealth -= finalDamage;
