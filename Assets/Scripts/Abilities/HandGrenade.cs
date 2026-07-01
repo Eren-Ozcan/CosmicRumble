@@ -1,35 +1,38 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK
+public class HandGrenade : AbilityBase
 {
     [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha4;
     public float cooldownTime = 6f;
-    private float cooldownTimer;
-    private bool awaitingConfirmation;
-    private bool fireAllowed;
+
+    public override int SlotIndex => 3;
+    public override KeyCode ActivationKey => activationKey;
+    public override float CooldownTime => cooldownTime;
 
     [Header("Fire Settings")]
     public Transform firePoint;
     public GameObject projectilePrefab;
     public float maxDragDistance = 3f;
-    public float powerMultiplier = 5f;
+    public float powerMultiplier = 8f;
     public float ignoreOwnerDuration = 0.5f;
 
+    [Header("Patlama Ayarları")]
+    public float explosionRadius = 1f;
+    public float explosionForce = 5f;
+    public float maxDamage = 20f;
+    public float delayBeforeExplosion = 6f;
+    public float gravityForceMultiplier = 1f;
+
     private LineRenderer lr;
-    [SerializeField] private TrajectoryDots trajectory;
-    private GravityBody gravityBody;
-    private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
-    private bool wasActive;
-    private bool isSelected;
 
-    public int SlotIndex => 3;
-
-    void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+
         lr = GetComponent<LineRenderer>();
         if (lr != null)
         {
@@ -37,16 +40,6 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
             lr.positionCount = 0;
         }
 
-        gravityBody = GetComponent<GravityBody>();
-
-        trajectory = trajectory
-                  ?? GetComponent<TrajectoryDots>()
-                  ?? GetComponentInChildren<TrajectoryDots>(true)
-#if UNITY_2022_2_OR_NEWER
-                  ?? FindFirstObjectByType<TrajectoryDots>(FindObjectsInactive.Include);
-#else
-                  ?? FindObjectOfType<TrajectoryDots>();
-#endif
         if (trajectory != null)
         {
             trajectory.Setup(
@@ -57,86 +50,10 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
             trajectory.startScale = TrajectoryDots.GlobalStartScale;
             trajectory.endScale = TrajectoryDots.GlobalEndScale;
         }
-
-        charAbilities = GetComponent<CharacterAbilities>();
     }
 
-    public void SetSelected(bool selected)
+    protected override void OnFireUpdate()
     {
-        isSelected = selected;
-        awaitingConfirmation = selected;
-        fireAllowed = false;
-        if (!selected)
-            CancelDrag();
-    }
-
-    public void Cancel()
-    {
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        CancelDrag();
-    }
-
-    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında cooldown/state sıfırlama
-    {
-        cooldownTimer = 0f;
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        isSelected = false;
-        CancelDrag();
-    }
-
-    void Update()
-    {
-        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-            return;
-
-        if (cooldownTimer > 0f)
-            cooldownTimer -= Time.deltaTime;
-
-        if (gravityBody.isActive && !wasActive)
-        {
-            wasActive = true;
-            // cooldownTimer = 0f; // ✨ DEĞİŞİKLİK: Merkezi reset CharacterAbilities.ResetTurnState() ile geliyor
-            Cancel();
-        }
-        else if (!gravityBody.isActive)
-        {
-            wasActive = false;
-            return;
-        }
-
-        if (cooldownTimer > 0f)
-        {
-            CancelDrag();
-            return;
-        }
-
-        if (!isSelected)
-        {
-            if (Input.GetKeyDown(activationKey))
-                charAbilities?.SelectSkill(SlotIndex);
-            return;
-        }
-
-        if (awaitingConfirmation)
-        {
-            if (Input.GetKeyDown(KeyCode.Return))
-            {
-                fireAllowed = true;
-                awaitingConfirmation = false;
-                UIManager.Instance.ConfirmSkill(SlotIndex);
-            }
-            else if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                charAbilities?.DeselectAll();
-            }
-            return;
-        }
-
-        if (!fireAllowed)
-            return;
-
         Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (Input.GetMouseButtonDown(0))
@@ -161,7 +78,7 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
                 cooldownTimer = cooldownTime;
                 charAbilities?.OnAbilityConsumed();
             }
-            CancelDrag();
+            CancelAim();
             fireAllowed = false;
             isSelected = false;
         }
@@ -176,7 +93,14 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();
         if (grenade != null)
+        {
+            grenade.explosionRadius = explosionRadius;
+            grenade.explosionForce = explosionForce;
+            grenade.maxDamage = maxDamage;
+            grenade.delayBeforeExplosion = delayBeforeExplosion;
+            grenade.gravityForceMultiplier = gravityForceMultiplier;
             grenade.Init(initial, gameObject, ignoreOwnerDuration);
+        }
         else
         {
             var rb = bulletGO.GetComponent<Rigidbody2D>();
@@ -184,7 +108,7 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
         }
     }
 
-    private void CancelDrag()
+    protected override void CancelAim()
     {
         isDragging = false;
         if (lr != null)
@@ -192,6 +116,6 @@ public class HandGrenade : MonoBehaviour, IAbilitySelectable, ICooldownResettabl
             lr.enabled = false;
             lr.positionCount = 0;
         }
-        trajectory?.Hide();
+        base.CancelAim(); // trajectory?.Hide()
     }
 }

@@ -1,4 +1,4 @@
-﻿// Assets/Scripts/Abilities/AbilityController.cs
+// Assets/Scripts/Abilities/AbilityController.cs
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -15,7 +15,11 @@ public class AbilityController : MonoBehaviour
             if (ia != null)
                 abilities.Add(ia);
             else
+            {
+#if UNITY_EDITOR
                 Debug.LogWarning($"{mb.name} IAbility implement etmiyor!");
+#endif
+            }
         }
     }
 
@@ -30,7 +34,7 @@ public class AbilityController : MonoBehaviour
             }
         }
 
-        // 2) Seçili skill/weapon’ü bul
+        // 2) Seçili skill/weapon'ü bul
         IAbility selected = abilities.Find(a => a.IsSelected);
         if (selected == null)
             return;
@@ -59,7 +63,9 @@ public class AbilityController : MonoBehaviour
             a.IsSelected = false;
 
         abilityToSelect.IsSelected = true;
+#if UNITY_EDITOR
         Debug.Log($"[AbilityController] Seçilen skill: {abilityToSelect.GetType().Name}");
+#endif
 
         WeaponUIManager.UpdateUI(abilities);
         SkillUIManager.UpdateUI(abilities);

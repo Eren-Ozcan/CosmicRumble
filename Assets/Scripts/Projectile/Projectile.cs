@@ -35,6 +35,7 @@ public class Projectile : MonoBehaviour
     Collider2D col;
     float spawnTime;
     bool ownerReenabled;
+    bool _settled;
 
     // We will re-enable these on timeout/destroy
     readonly List<Collider2D> ignoredOwnerColliders = new List<Collider2D>(8);
@@ -67,6 +68,8 @@ public class Projectile : MonoBehaviour
         }
 
         rb.linearVelocity = initialVelocity;
+        CameraController.OnProjectileSpawned(transform);
+        TurnManager.NotifyProjectileLaunched();
         if (ignoreOwnerTime > 0f)
             Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
     }
@@ -76,6 +79,8 @@ public class Projectile : MonoBehaviour
         // TTL
         if (timeToLive > 0f && Time.time - spawnTime >= timeToLive)
         {
+            CameraController.OnProjectileDestroyed();
+            SettleOnce();
             Destroy(gameObject);
             return;
         }
@@ -92,12 +97,23 @@ public class Projectile : MonoBehaviour
     void OnBecameInvisible()
     {
         if (destroyOnInvisible)
+        {
+            CameraController.OnProjectileDestroyed();
+            SettleOnce();
             Destroy(gameObject);
+        }
+    }
+
+    void SettleOnce()
+    {
+        if (_settled) return;
+        _settled = true;
+        TurnManager.NotifyProjectileSettled();
     }
 
     void OnDestroy()
     {
-        // In case we get destroyed before Invoke fires, re-enable owner collisions
+        SettleOnce(); // ensure settle even if destroyed externally
         if (!ownerReenabled) ReenableOwnerCollision();
         CancelInvoke();
     }
@@ -158,6 +174,8 @@ public class Projectile : MonoBehaviour
             }
         }
 
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
         Destroy(gameObject);
     }
 

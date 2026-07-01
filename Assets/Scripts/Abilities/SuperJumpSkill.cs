@@ -1,98 +1,52 @@
 using UnityEngine;
 
-public class SuperJumpSkill : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK: ICooldownResettable eklendi
+[RequireComponent(typeof(GravityBody))]
+public class SuperJumpSkill : AbilityBase
 {
-    [Header("Selection & Cooldown")]
+    [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha5;
     public float cooldownTime = 5f;
 
-    private float cooldownTimer;
-    private bool awaitingConfirmation;
-    private bool isSelected;
+    public override int SlotIndex => 4;
+    public override KeyCode ActivationKey => activationKey;
+    public override float CooldownTime => cooldownTime;
 
-    [Tooltip("Karakterin GravityBody bileşeni")]
-    public GravityBody gravityBody;
-
-    private CharacterAbilities charAbilities;
-
-    public int SlotIndex => 4;
-
-    void Awake() // ✨ DEĞİŞİKLİK: gravityBody null ise otomatik bul
+    protected override void Awake()
     {
-        if (gravityBody == null)
-            gravityBody = GetComponent<GravityBody>();
+        base.Awake();
+        gravityBody.onSuperJumpConsumed += ClearSuperJumpFilter;
     }
 
-    void Start()
+    private void OnDestroy()
     {
-        charAbilities = GetComponent<CharacterAbilities>();
+        if (gravityBody != null)
+            gravityBody.onSuperJumpConsumed -= ClearSuperJumpFilter;
     }
 
-    public void SetSelected(bool selected)
+    private void ClearSuperJumpFilter()
     {
-        isSelected = selected;
-        awaitingConfirmation = selected;
+        if (UIManager.Instance != null)
+            UIManager.Instance.filterImages[SlotIndex].color = Color.clear;
     }
 
-    public void Cancel()
+    protected override void OnFireUpdate()
     {
-        awaitingConfirmation = false;
-        // SuperJump özelinde drag/preview yok; sadece state temizliği yeterli
-    }
-
-    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında cooldown/state sıfırlama
-    {
-        cooldownTimer = 0f;
-        awaitingConfirmation = false;
-        // isSelected'i burada zorla kapatmıyoruz; seçim CharacterAbilities tarafından yönetiliyor
-    }
-
-    void Update()
-    {
-        if (gravityBody == null || !gravityBody.isActive)
-            return;
-
-        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-            return;
-
-        if (cooldownTimer > 0f)
-            cooldownTimer -= Time.deltaTime;
-
-        if (!isSelected)
-        {
-            if (Input.GetKeyDown(activationKey))
-                charAbilities?.SelectSkill(SlotIndex);
-            return;
-        }
-
-        if (cooldownTimer > 0f)
-            return;
-
         if (charAbilities != null && charAbilities.GetSuperJumpsRemaining() <= 0)
         {
             charAbilities.DeselectAll();
+            isSelected = false;
+            fireAllowed = false;
             return;
         }
 
-        if (awaitingConfirmation)
+        bool canUse = charAbilities == null || charAbilities.UseSuperJump();
+        if (canUse)
         {
-            if (Input.GetKeyDown(KeyCode.Return))
-            {
-                bool canUse = charAbilities == null || charAbilities.UseSuperJump();
-                if (canUse)
-                {
-                    gravityBody.nextJumpIsSuper = true;
-                    UIManager.Instance.ConfirmSkill(SlotIndex);
-                    charAbilities?.OnAbilityConsumed();
-                    cooldownTimer = cooldownTime;
-                }
-                isSelected = false;
-                awaitingConfirmation = false;
-            }
-            else if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                charAbilities?.DeselectAll();
-            }
+            gravityBody.nextJumpIsSuper = true;
+            charAbilities?.OnAbilityConsumed();
+            cooldownTimer = cooldownTime;
         }
+        isSelected = false;
+        fireAllowed = false;
     }
 }

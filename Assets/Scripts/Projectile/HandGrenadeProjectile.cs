@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class HandGrenadeProjectile : MonoBehaviour
@@ -17,6 +19,7 @@ public class HandGrenadeProjectile : MonoBehaviour
     private Rigidbody2D rb;
     private Collider2D col;
     private GameObject owner;
+    private bool _settled;
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
@@ -24,9 +27,14 @@ public class HandGrenadeProjectile : MonoBehaviour
         col = GetComponent<Collider2D>();
         owner = ownerObj;
 
-        rb.linearVelocity = initialVelocity;
+        // Temporarily ignore all characters for 0.3 s to prevent spawn-push
+        StartCoroutine(TemporaryIgnoreCharacters());
 
-        // Owner ile çarpışma engelle
+        rb.linearVelocity = initialVelocity;
+        CameraController.OnProjectileSpawned(transform);
+        TurnManager.NotifyProjectileLaunched();
+
+        // Owner-specific ignore for the full ignoreTime duration
         foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
             Physics2D.IgnoreCollision(col, oc, true);
 
@@ -66,10 +74,45 @@ public class HandGrenadeProjectile : MonoBehaviour
                 dp.ExplodeWithForce(pos, explosionRadius, explosionForce);
         }
 
+        #if UNITY_EDITOR
         Debug.Log("💣 El bombası patladı!");
+        #endif
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
         Destroy(gameObject);
     }
 
+    private void SettleOnce()
+    {
+        if (_settled) return;
+        _settled = true;
+        TurnManager.NotifyProjectileSettled();
+    }
+
+    private void OnDestroy() => SettleOnce(); // ensure settle if destroyed before Explode fires
+
+    private IEnumerator TemporaryIgnoreCharacters()
+    {
+        var bodies = FindObjectsByType<GravityBody>(FindObjectsSortMode.None);
+        var cols = new List<Collider2D>();
+        foreach (var body in bodies)
+            cols.AddRange(body.GetComponentsInChildren<Collider2D>());
+
+        foreach (var c in cols)
+            if (c != null) Physics2D.IgnoreCollision(col, c, true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        if (this == null) yield break;   // grenade already exploded
+
+        foreach (var c in cols)
+        {
+            if (c == null) continue;
+            // Owner collision is managed separately by ReenableOwnerCollision — don't override it
+            if (owner != null && c.transform.IsChildOf(owner.transform)) continue;
+            Physics2D.IgnoreCollision(col, c, false);
+        }
+    }
 
     private void ReenableOwnerCollision()
     {

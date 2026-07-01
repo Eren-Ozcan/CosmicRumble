@@ -1,59 +1,83 @@
-﻿using UnityEngine;
-using System.Collections;
+using UnityEngine;
 
-public class Bomb : WeaponBase
+[RequireComponent(typeof(GravityBody))]
+public class Bomb : AbilityBase
 {
+    [Header("Onay & Cooldown")]
+    public KeyCode activationKey = KeyCode.Alpha0;
+    public float cooldownTime = 8f;
+
+    public override int SlotIndex => 9;
+    public override KeyCode ActivationKey => activationKey;
+    public override float CooldownTime => cooldownTime;
+
+    [Header("Fire Settings")]
+    public Transform firePoint;
+    public GameObject projectilePrefab;
+    public float maxDragDistance = 3f;
+    public float powerMultiplier = 10f;
+
+    [Header("Bomb Settings")]
     public float fuseTime = 2f;
     public GameObject explosionPrefab;
 
-    void Start()
+    private bool isDragging;
+    private Vector2 dragStart;
+
+    protected override void Awake()
     {
-        ActivationKey = KeyCode.Alpha0;
+        base.Awake();
     }
 
-    protected override void FireProjectile(Vector2 direction, float power)
+    protected override void OnFireUpdate()
+    {
+        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            isDragging = true;
+            dragStart = mouseWorld;
+        }
+        else if (isDragging && Input.GetMouseButton(0))
+        {
+            Vector2 pull = dragStart - mouseWorld;
+            float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
+            Vector2 initial = pull.normalized * clamped * powerMultiplier;
+            float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
+            trajectory?.Show(initial, power01);
+        }
+        else if (isDragging && Input.GetMouseButtonUp(0))
+        {
+            Fire();
+            cooldownTimer = cooldownTime;
+            charAbilities?.OnAbilityConsumed();
+            CancelAim();
+            fireAllowed = false;
+            isSelected = false;
+        }
+    }
+
+    private void Fire()
     {
         if (projectilePrefab == null || firePoint == null) return;
+
+        Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
+        Vector2 initial = pull.normalized * clamped * powerMultiplier;
+
         GameObject bombObj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
         Rigidbody2D rb = bombObj.GetComponent<Rigidbody2D>();
         if (rb != null)
-            rb.linearVelocity = direction * power;
+            rb.AddForce(initial, ForceMode2D.Impulse);
 
         BombBehaviour bb = bombObj.AddComponent<BombBehaviour>();
         bb.Init(fuseTime, explosionPrefab);
-    }
-}
-
-public class BombBehaviour : MonoBehaviour
-{
-    private float fuse;
-    private GameObject explosionPrefab;
-    private bool hasExploded = false;
-
-    public void Init(float fuseTime, GameObject expPrefab)
-    {
-        fuse = fuseTime;
-        explosionPrefab = expPrefab;
-        StartCoroutine(FuseCoroutine());
+        // TurnManager bildirimleri BombBehaviour.Init() içinde yapılıyor
     }
 
-    IEnumerator FuseCoroutine()
+    protected override void CancelAim()
     {
-        yield return new WaitForSeconds(fuse);
-        Explode();
-    }
-
-    void Explode()
-    {
-        if (hasExploded) return;
-        hasExploded = true;
-        if (explosionPrefab != null)
-            Instantiate(explosionPrefab, transform.position, Quaternion.identity);
-        Destroy(gameObject);
-    }
-
-    void OnCollisionEnter2D(Collision2D collision)
-    {
-        Explode();
+        isDragging = false;
+        base.CancelAim(); // trajectory?.Hide()
     }
 }

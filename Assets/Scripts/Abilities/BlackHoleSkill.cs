@@ -1,36 +1,32 @@
 using UnityEngine;
 
 [RequireComponent(typeof(GravityBody))]
-public class BlackHoleSkill : MonoBehaviour, IAbilitySelectable, ICooldownResettable
+public class BlackHoleSkill : AbilityBase
 {
     [Header("Onay & Cooldown")]
-    public KeyCode activationKey = KeyCode.Alpha9;
+    public KeyCode activationKey = KeyCode.Alpha8;
     public float cooldownTime = 8f;
-    private float cooldownTimer;
-    private bool awaitingConfirmation;
-    private bool fireAllowed;
+
+    // Slot 8 corresponds to keyboard '9'
+    public override int SlotIndex => 8;
+    public override KeyCode ActivationKey => activationKey;
+    public override float CooldownTime => cooldownTime;
 
     [Header("Fire Settings")]
     public Transform firePoint;
     public GameObject projectilePrefab;
     public float maxDragDistance = 3f;
-    public float powerMultiplier = 5f;
+    public float powerMultiplier = 8f;
     public float ignoreOwnerDuration = 0.5f;
 
     private LineRenderer lr;
-    [SerializeField] private TrajectoryDots trajectory;
-    private GravityBody gravityBody;
-    private CharacterAbilities charAbilities;
     private bool isDragging;
     private Vector2 dragStart;
-    private bool wasActive;
-    private bool isSelected;
 
-    // Slot 8 corresponds to keyboard '9'
-    public int SlotIndex => 8;
-
-    void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+
         lr = GetComponent<LineRenderer>();
         if (lr != null)
         {
@@ -38,106 +34,32 @@ public class BlackHoleSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
             lr.positionCount = 0;
         }
 
-        gravityBody = GetComponent<GravityBody>();
-
-        trajectory = trajectory
-                  ?? GetComponent<TrajectoryDots>()
-                  ?? GetComponentInChildren<TrajectoryDots>(true)
-#if UNITY_2022_2_OR_NEWER
-                  ?? FindFirstObjectByType<TrajectoryDots>(FindObjectsInactive.Include);
-#else
-                  ?? FindObjectOfType<TrajectoryDots>();
-#endif
         if (trajectory != null)
         {
-            trajectory.Setup(
-                TrajectoryDots.GlobalDotCount,
-                TrajectoryDots.GlobalTimeStep,
-                firePoint
-            );
-            trajectory.startScale = TrajectoryDots.GlobalStartScale;
-            trajectory.endScale = TrajectoryDots.GlobalEndScale;
-        }
-
-        charAbilities = GetComponent<CharacterAbilities>();
-    }
-
-    public void SetSelected(bool selected)
-    {
-        isSelected = selected;
-        awaitingConfirmation = selected;
-        fireAllowed = false;
-        if (!selected)
-            CancelDrag();
-    }
-
-    public void Cancel()
-    {
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        CancelDrag();
-    }
-
-    public void ResetCooldown()
-    {
-        cooldownTimer = 0f;
-        awaitingConfirmation = false;
-        fireAllowed = false;
-        isSelected = false;
-        CancelDrag();
-    }
-
-    void Update()
-    {
-        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-            return;
-
-        if (cooldownTimer > 0f)
-            cooldownTimer -= Time.deltaTime;
-
-        if (gravityBody.isActive && !wasActive)
-        {
-            wasActive = true;
-            Cancel();
-        }
-        else if (!gravityBody.isActive)
-        {
-            wasActive = false;
-            return;
-        }
-
-        if (cooldownTimer > 0f)
-        {
-            CancelDrag();
-            return;
-        }
-
-        if (!isSelected)
-        {
-            if (Input.GetKeyDown(activationKey) || Input.GetKeyDown(KeyCode.Keypad9))
-                charAbilities?.SelectSkill(SlotIndex);
-            return;
-        }
-
-        if (awaitingConfirmation)
-        {
-            if (Input.GetKeyDown(KeyCode.Return))
+            if (firePoint == null)
             {
-                fireAllowed = true;
-                awaitingConfirmation = false;
-                UIManager.Instance?.ConfirmSkill(SlotIndex);
+#if UNITY_EDITOR
+                Debug.LogWarning("[BlackHoleSkill] firePoint is null, trajectory will not be set up.");
+#endif
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else
             {
-                charAbilities?.DeselectAll();
+                trajectory.Setup(
+                    TrajectoryDots.GlobalDotCount,
+                    TrajectoryDots.GlobalTimeStep,
+                    firePoint
+                );
+                trajectory.startScale = TrajectoryDots.GlobalStartScale;
+                trajectory.endScale = TrajectoryDots.GlobalEndScale;
             }
-            return;
         }
+    }
 
-        if (!fireAllowed)
-            return;
-
-        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+    protected override void OnFireUpdate()
+    {
+        Vector2 mouseWorld = Camera.main != null
+            ? (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition)
+            : Vector2.zero;
 
         if (Input.GetMouseButtonDown(0))
         {
@@ -148,20 +70,20 @@ public class BlackHoleSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
-            Vector2 initial = pull.normalized * clamped * powerMultiplier;
+            Vector2 initial = (clamped > 0f) ? pull.normalized * clamped * powerMultiplier : Vector2.zero;
             float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
             trajectory?.Show(initial, power01);
         }
         else if (isDragging && Input.GetMouseButtonUp(0))
         {
-            bool canFire = true; // sınırsız kullanım
+            bool canFire = charAbilities == null || charAbilities.UseBlackHole();
             if (canFire)
             {
                 Fire();
                 cooldownTimer = cooldownTime;
                 charAbilities?.OnAbilityConsumed();
             }
-            CancelDrag();
+            CancelAim();
             fireAllowed = false;
             isSelected = false;
         }
@@ -171,26 +93,40 @@ public class BlackHoleSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
     {
         if (projectilePrefab == null || firePoint == null)
         {
-            Debug.LogError("BlackHoleSkill: prefab veya firePoint eksik!");
+#if UNITY_EDITOR
+            Debug.LogError("[BlackHoleSkill] projectilePrefab veya firePoint eksik!");
+#endif
             return;
         }
 
-        Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 mouseWorld = Camera.main != null
+            ? (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition)
+            : dragStart;
+
+        Vector2 pull = dragStart - mouseWorld;
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
-        Vector2 initial = pull.normalized * clamped * powerMultiplier;
+        Vector2 initial = (clamped > 0f) ? pull.normalized * clamped * powerMultiplier : Vector2.zero;
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
+
         var proj = go.GetComponent<BlackHoleProjectile>();
         if (proj != null)
+        {
             proj.Init(initial, gameObject, ignoreOwnerDuration);
+        }
         else
         {
             var rb = go.GetComponent<Rigidbody2D>();
-            rb?.AddForce(initial, ForceMode2D.Impulse);
+            if (rb != null)
+                rb.AddForce(initial, ForceMode2D.Impulse);
+#if UNITY_EDITOR
+            else
+                Debug.LogWarning("[BlackHoleSkill] Projectile has no Rigidbody2D; applied no impulse.");
+#endif
         }
     }
 
-    private void CancelDrag()
+    protected override void CancelAim()
     {
         isDragging = false;
         if (lr != null)
@@ -198,7 +134,6 @@ public class BlackHoleSkill : MonoBehaviour, IAbilitySelectable, ICooldownResett
             lr.enabled = false;
             lr.positionCount = 0;
         }
-        trajectory?.Hide();
+        base.CancelAim(); // trajectory?.Hide()
     }
 }
-

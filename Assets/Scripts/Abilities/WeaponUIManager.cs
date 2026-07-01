@@ -7,10 +7,14 @@ public static class WeaponUIManager
     {
         foreach (IAbility a in abilities)
         {
-            if (a is WeaponBase)
+            if (a is AbilityBase)
             {
                 if (a.IsSelected)
+                {
+#if UNITY_EDITOR
                     Debug.Log($"[WeaponUI] Secili silah: {a.GetType().Name}");
+#endif
+                }
             }
         }
     }

@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// El bombası gibi atılır. Gecikme bitince düştüğü noktaya SAHİBİ ışınlar.
@@ -33,15 +35,48 @@ public class TeleportOrbProjectile : MonoBehaviour
     [Tooltip("GravitySource ararken bakılacak yarıçap (dünya boyutunuza göre)")]
     public float gravitySearchRadius = 100f;
 
+    [Header("Gezegen Kontrolü")]
+    [Tooltip("Herhangi bir gezegene değmeden ışınlamayı iptal et")]
+    public bool cancelIfNotOnGround = true;
+    [Tooltip("Orb etrafında gezegen yüzeyi arama yarıçapı")]
+    public float groundCheckRadius = 0.4f;
+
     private Rigidbody2D rb;
     private Collider2D col;
     private GameObject owner;
+    private bool _settled;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
         if (spawnFxPrefab) SpawnFx(spawnFxPrefab, transform.position);
+
+        // Temporarily ignore all characters for 0.3 s to prevent spawn-push
+        StartCoroutine(TemporaryIgnoreCharacters());
+    }
+
+    private IEnumerator TemporaryIgnoreCharacters()
+    {
+        var bodies = FindObjectsByType<GravityBody>(FindObjectsSortMode.None);
+        var cols = new List<Collider2D>();
+        foreach (var body in bodies)
+            cols.AddRange(body.GetComponentsInChildren<Collider2D>());
+
+        foreach (var c in cols)
+            if (c != null) Physics2D.IgnoreCollision(col, c, true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        if (this == null) yield break;   // orb already cleaned up
+
+        foreach (var c in cols)
+        {
+            if (c == null) continue;
+            // Owner collision is managed separately by Init/ReenableOwnerCollision — don't override it
+            if (owner != null && c.transform.IsChildOf(owner.transform)) continue;
+            Physics2D.IgnoreCollision(col, c, false);
+        }
     }
 
     /// <summary>
@@ -51,6 +86,8 @@ public class TeleportOrbProjectile : MonoBehaviour
     {
         owner = ownerObj;
         rb.linearVelocity = initialVelocity;
+        CameraController.OnProjectileSpawned(transform);
+        TurnManager.NotifyProjectileLaunched();
 
         // Sahibi çarpmadan muaf tut
         foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
@@ -67,14 +104,26 @@ public class TeleportOrbProjectile : MonoBehaviour
     {
         Vector2 orbPos = transform.position;
 
-        // 1) Gravity var mı?
+        // 1) Gezegene değiyor mu? (anlık kontrol)
+        if (cancelIfNotOnGround && !IsOnGround(orbPos))
+        {
+            #if UNITY_EDITOR
+            Debug.Log("[TeleportOrb] Gezegene değmedi. Işınlama İPTAL.");
+            #endif
+            Cleanup();
+            return;
+        }
+
+        // 2) Gravity var mı?
         GravitySource nearest;
         Vector2 gravityDir; // merkeze doğru (planet center - pos).normalized
         bool hasGravity = TryFindNearestGravity(orbPos, out nearest, out gravityDir);
 
         if (cancelIfNoGravity && !hasGravity)
         {
+            #if UNITY_EDITOR
             Debug.Log("[TeleportOrb] Gravity bulunamadı. Işınlama İPTAL.");
+            #endif
             Cleanup();
             return;
         }
@@ -102,8 +151,25 @@ public class TeleportOrbProjectile : MonoBehaviour
         }
 
         if (teleportFxPrefab) SpawnFx(teleportFxPrefab, target);
+        #if UNITY_EDITOR
         Debug.Log("[TeleportOrb] Işınlama gerçekleşti.");
+        #endif
         Cleanup();
+    }
+
+    /// <summary>
+    /// Orb'un şu anki konumunda gezegen yüzeyi var mı?
+    /// groundMask katmanlarındaki collider'ları kontrol eder, orb'un kendi collider'ını dışlar.
+    /// </summary>
+    private bool IsOnGround(Vector2 pos)
+    {
+        var hits = Physics2D.OverlapCircleAll(pos, groundCheckRadius, groundMask);
+        foreach (var h in hits)
+        {
+            if (h == null || h == col) continue; // kendi collider'ını atla
+            return true;
+        }
+        return false;
     }
 
     /// <summary>
@@ -180,8 +246,19 @@ public class TeleportOrbProjectile : MonoBehaviour
         fx.transform.localScale = Vector3.one * fxScale;
     }
 
+    private void SettleOnce()
+    {
+        if (_settled) return;
+        _settled = true;
+        TurnManager.NotifyProjectileSettled();
+    }
+
+    private void OnDestroy() => SettleOnce(); // ensure settle if destroyed before TryTeleportOwner fires
+
     private void Cleanup()
     {
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
         Destroy(gameObject);
     }
 

@@ -1,112 +1,72 @@
 using UnityEngine;
 
-public class ShieldSkill : MonoBehaviour, IAbilitySelectable, ICooldownResettable // ✨ DEĞİŞİKLİK
+[RequireComponent(typeof(GravityBody))]
+public class ShieldSkill : AbilityBase
 {
-    public GravityBody gravityBody;
+    [Header("Kalkan Bileşenleri")]
     public CharacterHealth characterHealth;
     public SpriteRenderer spriteRenderer;
 
+    [Header("Onay & Cooldown")]
     public KeyCode activationKey = KeyCode.Alpha6;
     public float cooldownTime = 5f;
-    private float cooldownTimer;
-    private bool awaitingConfirmation;
+
+    public override int SlotIndex => 5;
+    public override KeyCode ActivationKey => activationKey;
+    public override float CooldownTime => cooldownTime;
+
     private bool shieldActiveVisual;
 
-    private CharacterAbilities charAbilities;
-    private bool isSelected;
-
-    public int SlotIndex => 5;
-
-    void Start()
+    protected override void Awake()
     {
-        if (gravityBody == null)
-            gravityBody = GetComponent<GravityBody>();
+        base.Awake();
+
         if (characterHealth == null)
             characterHealth = GetComponent<CharacterHealth>();
         if (spriteRenderer == null)
             spriteRenderer = GetComponent<SpriteRenderer>();
-
-        charAbilities = GetComponent<CharacterAbilities>();
     }
 
-    public void SetSelected(bool selected)
+    public override void SetSelected(bool selected)
     {
-        isSelected = selected;
-        awaitingConfirmation = selected;
+        base.SetSelected(selected);
+        if (selected)
+            UIManager.Instance?.ShowConfirmPrompt("Shield için emin misin? [Enter]");
+        else
+            UIManager.Instance?.HideConfirmPrompt();
     }
 
-    public void Cancel()
+    public override void Cancel()
     {
-        awaitingConfirmation = false;
+        base.Cancel();
+        UIManager.Instance?.HideConfirmPrompt();
     }
 
-    public void ResetCooldown() // ✨ DEĞİŞİKLİK: Turn başında çağrılacak
+    protected override void Update()
     {
-        cooldownTimer = 0f;
-        awaitingConfirmation = false;
-        isSelected = false;
-    }
-
-    void Update()
-    {
-        if (gravityBody == null || !gravityBody.isActive)
-            return;
-
-        if (charAbilities != null && charAbilities.HasUsedSkillThisTurn)
-            return;
-
-        // Eğer kalkan görselde aktif ama karakterHealth tarafında kapalıysa eski haline dön
-        if (shieldActiveVisual && !characterHealth.isShielded)
+        // Kalkan görseli senkronizasyonu — her frame kontrol et
+        if (shieldActiveVisual && characterHealth != null && !characterHealth.isShielded)
         {
             spriteRenderer.color = Color.white;
             shieldActiveVisual = false;
         }
 
-        if (cooldownTimer > 0f)
-        {
-            cooldownTimer -= Time.deltaTime;
-            return;
-        }
-
-        if (!isSelected)
-        {
-            if (Input.GetKeyDown(activationKey))
-                charAbilities?.SelectSkill(SlotIndex);
-            return;
-        }
-
-        if (awaitingConfirmation)
-        {
-            if (Input.GetKeyDown(KeyCode.Return))
-            {
-                bool canUse = charAbilities == null || charAbilities.UseShield();
-                if (canUse)
-                {
-                    characterHealth.isShielded = true;
-                    spriteRenderer.color = new Color(0.5f, 0.5f, 1f);
-                    shieldActiveVisual = true;
-                    UIManager.Instance.ConfirmSkill(SlotIndex);
-                    cooldownTimer = cooldownTime;
-                    charAbilities?.OnAbilityConsumed();
-                }
-                isSelected = false;
-                awaitingConfirmation = false;
-            }
-            else if (Input.GetKeyDown(KeyCode.Escape))
-            {
-                charAbilities?.DeselectAll();
-            }
-        }
+        base.Update();
     }
 
-    private void OnGUI()
+    protected override void OnFireUpdate()
     {
-        if (gravityBody != null && gravityBody.isActive && awaitingConfirmation)
+        bool canUse = charAbilities == null || charAbilities.UseShield();
+        if (canUse)
         {
-            GUI.Label(
-                new Rect(Screen.width / 2f - 150, Screen.height / 2f - 25, 300, 50),
-                "Shield için emin misin? [Enter]"
-            );
+            characterHealth.isShielded = true;
+            spriteRenderer.color = new Color(0.5f, 0.5f, 1f);
+            shieldActiveVisual = true;
+            cooldownTimer = cooldownTime;
+            charAbilities?.OnAbilityConsumed();
         }
+        UIManager.Instance?.HideConfirmPrompt();
+        isSelected = false;
+        fireAllowed = false;
     }
 }

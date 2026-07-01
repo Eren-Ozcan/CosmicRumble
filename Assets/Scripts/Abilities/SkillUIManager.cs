@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections.Generic;
 
 public static class SkillUIManager
@@ -7,10 +7,14 @@ public static class SkillUIManager
     {
         foreach (IAbility a in abilities)
         {
-            if (!(a is WeaponBase))
+            if (!(a is AbilityBase))
             {
                 if (a.IsSelected)
+                {
+#if UNITY_EDITOR
                     Debug.Log($"[SkillUI] Secili skill: {a.GetType().Name}");
+#endif
+                }
             }
         }
     }

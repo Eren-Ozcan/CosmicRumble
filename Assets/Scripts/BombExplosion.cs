@@ -21,12 +21,15 @@ public class BombExplosion : MonoBehaviour
     [Tooltip("Opsiyonel: Patlama efekti prefab’ı")]
     public GameObject explosionEffectPrefab;
 
+    [Tooltip("Spawn sonrası kendi collider’ına çarpması önlemek için bekleme süresi (saniye)")]
+    public float launchEnableDelay = 0.1f;
+
     private bool launched = false;
 
     private void Start()
     {
         // Oluştuktan hemen sonra kendi collider’ına çarpmasını engellemek için kısa gecikme
-        Invoke(nameof(EnableLaunch), 0.1f);
+        Invoke(nameof(EnableLaunch), launchEnableDelay);
     }
 
     private void EnableLaunch()

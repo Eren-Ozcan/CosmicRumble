@@ -33,6 +33,8 @@ public class KineticProjectile : MonoBehaviour
     public bool useTrigger = true;
     public LayerMask planetChunkLayer;
     public bool drain2xInsideChunk = true;
+    [Tooltip("Range tüketim çarpanı chunk içinde (drain2xInsideChunk aktifken uygulanır)")]
+    public float chunkDrainMultiplier = 2f;
 
     [Header("Raycast (planet temas noktası)")]
     [Tooltip("Gezegen collider’ının layer’ı. Doğru set edilmezse fallback çalışır ve merkez delinir.")]
@@ -70,13 +72,21 @@ public class KineticProjectile : MonoBehaviour
         }
 
         rb.linearVelocity = initialVelocity;
+        CameraController.OnProjectileSpawned(transform);
     }
 
-    void Update()
+    void OnDestroy()
     {
+        CameraController.OnProjectileDestroyed();
+        TurnManager.NotifyProjectileSettled();
+    }
+
+    void FixedUpdate()
+    {
+        // Menzil takibi FixedUpdate'te — rb.position burada tutarlı
         Vector2 p = rb.position;
         float frameDist = (p - lastPos).magnitude;
-        traveled += frameDist * (insideChunk && drain2xInsideChunk ? 2f : 1f);
+        traveled += frameDist * (insideChunk && drain2xInsideChunk ? chunkDrainMultiplier : 1f);
         lastPos = p;
 
         if (traveled >= maxRange)
@@ -84,10 +94,7 @@ public class KineticProjectile : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-    }
 
-    void FixedUpdate()
-    {
         Vector2 vel = rb.linearVelocity;
         if (vel.sqrMagnitude > 0.01f)
             transform.right = vel.normalized;

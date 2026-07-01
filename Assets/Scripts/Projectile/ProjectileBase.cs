@@ -1,4 +1,6 @@
 ﻿// Assets/Scripts/Projectile/ProjectileBase.cs
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -6,7 +8,6 @@ public class ProjectileBase : MonoBehaviour
 {
     [Header("Fizik Ayarları")]
     public float mass = 1f;
-    public float gravityScale = 1f;
 
     [Header("Patlama/Çarpma Ayarları")]
     public float explosionRadius = 0f;
@@ -21,6 +22,9 @@ public class ProjectileBase : MonoBehaviour
     protected Collider2D col2d;
     protected float spawnTime;
 
+    // Guard: ensures TurnManager.NotifyProjectileSettled is called exactly once per projectile.
+    private bool _settled = false;
+
     protected virtual void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -34,12 +38,42 @@ public class ProjectileBase : MonoBehaviour
     protected virtual void Start()
     {
         spawnTime = Time.time;
+        StartCoroutine(TemporaryIgnoreCharacters());
+        CameraController.OnProjectileSpawned(transform);
+        TurnManager.NotifyProjectileLaunched();
+    }
+
+    // Ignores all character colliders for 0.3 s to prevent spawn-push,
+    // then re-enables them so damage/knockback hits work normally.
+    private IEnumerator TemporaryIgnoreCharacters()
+    {
+        var bodies = FindObjectsByType<GravityBody>(FindObjectsSortMode.None);
+        var cols = new List<Collider2D>();
+        foreach (var body in bodies)
+            cols.AddRange(body.GetComponentsInChildren<Collider2D>());
+
+        foreach (var c in cols)
+            if (c != null) Physics2D.IgnoreCollision(col2d, c, true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        if (this == null) yield break;   // projectile already destroyed
+
+        foreach (var c in cols)
+            if (c != null) Physics2D.IgnoreCollision(col2d, c, false);
     }
 
     protected virtual void FixedUpdate()
     {
-        Vector2 gravity = Physics2D.gravity * gravityScale * mass;
-        rb.AddForce(gravity * Time.fixedDeltaTime, ForceMode2D.Force);
+        // Gravity GravitySource.OnTriggerStay2D üzerinden uygulanır — Physics2D.gravity kapalı
+    }
+
+    /// <summary>Calls NotifyProjectileSettled exactly once, regardless of how many destroy paths fire.</summary>
+    protected void SettleOnce()
+    {
+        if (_settled) return;
+        _settled = true;
+        TurnManager.NotifyProjectileSettled();
     }
 
     protected virtual void OnCollisionEnter2D(Collision2D collision)
@@ -54,6 +88,8 @@ public class ProjectileBase : MonoBehaviour
         else
             ApplyDirectHit(collision);
 
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
         Destroy(gameObject);
     }
 
@@ -108,13 +144,21 @@ public class ProjectileBase : MonoBehaviour
     protected virtual void OnBecameInvisible()
     {
         if (destroyWhenOffScreen)
+        {
+            CameraController.OnProjectileDestroyed();
+            SettleOnce();
             Destroy(gameObject);
+        }
     }
 
     protected virtual void Update()
     {
         if (Time.time - spawnTime >= timeToLive)
+        {
+            CameraController.OnProjectileDestroyed();
+            SettleOnce();
             Destroy(gameObject);
+        }
     }
 
     protected virtual void OnDrawGizmosSelected()

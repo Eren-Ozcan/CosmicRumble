@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Drag sırasında nokta tabanlı yörünge önizlemesi + merkezi ayar kaynağı.
 /// - Havuzlanmış SpriteRenderer noktaları (reuse)
-/// - İlk nokta büyük → son nokta küçük (startScale → endScale)
+/// - İlk nokta küçük → son nokta büyük (endScale → startScale)
 /// - Güce göre renk: yeşil → sarı → kırmızı (0..1 power)
 /// - Ateş/iptalde Hide()
 /// - GLOBAL AYARLAR: Diğer scriptler buradan çeksin:
@@ -24,7 +24,7 @@ public class TrajectoryDots : MonoBehaviour
 {
     [Header("Pool / Visual")]
     [Min(2)] public int dotCount = 60;
-    [Min(0.0001f)] public float timeStep = 0.05f;
+    [Min(0.0001f)] public float timeStep = 0.02f;  // Unity fixedDeltaTime ile eşleşmeli
     [Min(0f)] public float startScale = 1f;
     [Min(0f)] public float endScale = 0.3f;
     public Transform firePoint;
@@ -56,19 +56,8 @@ public class TrajectoryDots : MonoBehaviour
     private readonly List<Transform> _dots = new();
     private readonly List<SpriteRenderer> _srs = new();
 
-    // Unity 2021.3 ile uyumlu arama
-    private GravitySource[] _gravitySources;
-
-    private const float EPS = 1e-4f;
-
     private void Awake()
     {
-#if UNITY_2022_2_OR_NEWER
-        _gravitySources = FindObjectsByType<GravitySource>(FindObjectsSortMode.None);
-#else
-        _gravitySources = FindObjectsOfType<GravitySource>();
-#endif
-
         // Global ayar kaynağı olarak kendini atar (ilk olan kazanır)
         if (useAsGlobalSettings && _global == null)
             _global = this;
@@ -117,7 +106,9 @@ public class TrajectoryDots : MonoBehaviour
 
         if (dotSprite == null)
         {
+            #if UNITY_EDITOR
             Debug.LogError("[TrajectoryDots] dotSprite is null. Assign a sprite in Inspector.");
+            #endif
             return;
         }
 
@@ -152,29 +143,11 @@ public class TrajectoryDots : MonoBehaviour
 
         for (int i = 0; i < _dots.Count; i++)
         {
-            // Çoklu gezegen ivme toplamı (1/r^2)
-            Vector2 acc = Vector2.zero;
-            if (_gravitySources != null)
-            {
-                for (int g = 0; g < _gravitySources.Length; g++)
-                {
-                    var src = _gravitySources[g];
-                    if (!src) continue;
-
-                    Vector2 to = (Vector2)src.transform.position - pos;
-                    float r2 = to.sqrMagnitude;
-                    if (r2 < EPS) continue;
-
-                    if (respectGravityRadius)
-                    {
-                        float r = Mathf.Sqrt(r2);
-                        if (r > src.gravityRadius) continue;
-                    }
-
-                    // 1/r^2 zayıflama + merkez yönü
-                    acc += to.normalized * (src.gravityForce / r2);
-                }
-            }
+            // Strateji üzerinden ivme hesapla — GravityManager.Instance.Strategy.CalculateAcceleration
+            // Single/MultiPlanetGravity, GravitySource.OnTriggerStay2D ile aynı sabit kuvvet formülünü kullanır.
+            Vector2 acc = (GravityManager.Instance != null && GravityManager.Instance.Strategy != null)
+                ? GravityManager.Instance.Strategy.CalculateAcceleration(pos)
+                : Vector2.zero;
 
             vel += acc * timeStep;
             pos += vel * timeStep;
@@ -184,7 +157,7 @@ public class TrajectoryDots : MonoBehaviour
             t.position = new Vector3(pos.x, pos.y, 0f);
 
             float u = (_dots.Count <= 1) ? 0f : (float)i / (_dots.Count - 1); // 0..1
-            float s = Mathf.Lerp(startScale, endScale, u);                    // büyük → küçük
+            float s = Mathf.Lerp(endScale, startScale, u);                    // küçük → büyük
             t.localScale = new Vector3(s, s, 1f);
 
             _srs[i].color = col;
