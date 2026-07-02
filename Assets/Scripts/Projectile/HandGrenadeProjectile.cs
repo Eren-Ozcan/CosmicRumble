@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class HandGrenadeProjectile : MonoBehaviour
@@ -53,6 +54,7 @@ public class HandGrenadeProjectile : MonoBehaviour
         }
 
         var hits = Physics2D.OverlapCircleAll(pos, explosionRadius);
+        bool hitAny = false;
         foreach (var hit in hits)
         {
             float distance = Vector2.Distance(hit.transform.position, pos);
@@ -60,7 +62,12 @@ public class HandGrenadeProjectile : MonoBehaviour
 
             // ✅ Yakınlığa göre hasar (sahip dahil)
             if (hit.TryGetComponent<IDamageable>(out var dmg))
-                dmg.TakeDamage(maxDamage * falloff);
+            {
+                float dmgAmount = maxDamage * falloff;
+                dmg.TakeDamage(dmgAmount);
+                hitAny = true;
+                CombatEventReporter.ReportHit(dmg, dmgAmount, pos);
+            }
 
             // ✅ Yakınlığa göre kuvvet + gezegen çekimi etkisi
             if (hit.attachedRigidbody != null)
@@ -78,14 +85,15 @@ public class HandGrenadeProjectile : MonoBehaviour
         Debug.Log("💣 El bombası patladı!");
         #endif
         CameraController.OnProjectileDestroyed();
-        SettleOnce();
+        SettleOnce(hitAny);
         Destroy(gameObject);
     }
 
-    private void SettleOnce()
+    private void SettleOnce(bool isHit = false)
     {
         if (_settled) return;
         _settled = true;
+        AchievementEvents.FireShotFired(isHit);
         TurnManager.NotifyProjectileSettled();
     }
 

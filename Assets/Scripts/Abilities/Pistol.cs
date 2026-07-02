@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class Pistol : AbilityBase
@@ -120,6 +121,7 @@ public class Pistol : AbilityBase
 
         TurnManager.Instance?.RegisterShot();
         TurnManager.NotifyProjectileLaunched();
+        AchievementEvents.FireWeaponUsed("weapon_pistol");
         kin.Init(initial, gameObject, ignoreOwnerDuration);
     }
 

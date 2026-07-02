@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Projectile : MonoBehaviour
@@ -104,10 +105,11 @@ public class Projectile : MonoBehaviour
         }
     }
 
-    void SettleOnce()
+    void SettleOnce(bool isHit = false)
     {
         if (_settled) return;
         _settled = true;
+        AchievementEvents.FireShotFired(isHit);
         TurnManager.NotifyProjectileSettled();
     }
 
@@ -150,6 +152,7 @@ public class Projectile : MonoBehaviour
 
         // Radial query (filtered)
         var hits = Physics2D.OverlapCircleAll(hitPos, explosionRadius, affectLayers);
+        bool hitAny = false;
         foreach (var hit in hits)
         {
             var go = hit.gameObject;
@@ -162,7 +165,12 @@ public class Projectile : MonoBehaviour
 
             // Deal damage (if any)
             if (hit.TryGetComponent<IDamageable>(out var dmg))
-                dmg.TakeDamage(maxDamage * falloff);
+            {
+                float dmgAmount = maxDamage * falloff;
+                dmg.TakeDamage(dmgAmount);
+                hitAny = true;
+                CombatEventReporter.ReportHit(dmg, dmgAmount, hitPos);
+            }
 
             // Apply impulse (physics)
             var targetRb = hit.attachedRigidbody;
@@ -175,7 +183,7 @@ public class Projectile : MonoBehaviour
         }
 
         CameraController.OnProjectileDestroyed();
-        SettleOnce();
+        SettleOnce(hitAny);
         Destroy(gameObject);
     }
 

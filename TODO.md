@@ -12,9 +12,42 @@ Deferred work identified during the economy/achievement audit and fix pass. Not 
   now translated to English, completing the English-language pass for this generator.
 
 ## Quests
-- Only 3 of the 14 spec'd quests exist (`Assets/Resources/Economy/Quests/`), all daily. Weekly/monthly pools
-  are empty, so those tiers can never populate even though `QuestManager.cs` supports them.
-- No `QuestPanel` UI exists.
+Done — full quest pool (14 assets: 8 daily / 4 weekly / 2 monthly), `QuestsPanelUI.cs` (Daily/Weekly/Monthly
+tabs, progress bars, rewards, reset countdown), and end-to-end gameplay event wiring are all in place and
+play-tested.
+
+- `QuestDefinition.cs` gained `requiredId` (filter a tracked event to one specific ability/weapon id, e.g.
+  `skill_blackhole`) and `distinctTracking` (progress = count of distinct ids seen, not a running +1) so
+  quests like "use every weapon this week" (`weekly_weapons`, target 5 = the 5 weapon ids) and "use 3
+  different abilities" (`weekly_abilities`, target 3 of 5 ability ids) are expressible without new code per
+  quest. `QuestManager.AdvanceById()` implements both.
+- **Found and fixed a bigger pre-existing gap while wiring this up:** almost none of `AchievementEvents`'
+  Fire* methods were ever called from gameplay code — only `TurnManager` fired match-level events
+  (`FireMatchWon/Lost/Completed/PlayerCountInMatch`). Damage, shots, weapon/ability usage, and planet
+  destruction were never reported, so every damage/shot/weapon/ability/planet-based quest *and* achievement
+  was dead on arrival regardless of UI. Wired: `CombatEventReporter` (new,
+  `Assets/Scripts/Achievements/Core/CombatEventReporter.cs`) centralizes `FireDamageDealt` + a headshot
+  heuristic (top half of the target's collider along its own `transform.up`, which `GravityBody` already keeps
+  oriented away from the planet surface) from every damage call site (`KineticProjectile`, `Projectile`,
+  `HandGrenadeProjectile`, `BombExplosion`, `ProjectileBase`, `BlackHoleZone`). `FireShotFired(isHit)` fires
+  once per weapon projectile at resolution (hit or miss/expiry), not at cast time, to avoid double-counting
+  shots (the master spec's literal "fire at cast time AND at hit time" wording would have silently halved
+  accuracy stats — deliberately deviated from that). `FireWeaponUsed`/`FireAbilityUsed` fire once per
+  cast/activation in each of the 9 weapon/ability scripts, using the same id strings `AchievementTracker.cs`
+  already expected (`weapon_pistol`, `skill_blackhole`, etc.). `DestructiblePlanet.cs` now tracks remaining
+  non-core pixels and fires `FirePlanetDestroyed()` once the destructible mass (outside `minDestructionRadius`)
+  is fully cleared.
+- **Also found and fixed: none of the economy/achievement singletons were ever instantiated anywhere in the
+  project** (`QuestManager`, `CurrencyManager`, `PlayerLevelManager`, `UnlockManager`, `ChestManager`,
+  `LoginStreakManager`, `AchievementManager`, `AchievementTracker` had no GameObject in any scene/prefab —
+  confirmed via play-mode testing that `QuestManager.Instance` was `null` and the quests panel silently showed
+  a fallback message). Added them all to `MainMenuUI.EnsureSingletons()` alongside the existing
+  `GameConfig`/`SceneFader`/`AuthManager`/`AudioManager` bootstrap (`CostumeManager` intentionally excluded,
+  see Costumes section above). This means achievements were very likely non-functional in any actual playtest
+  before this fix too, not just quests.
+- Play-tested end-to-end in the Unity Editor via MCP: bootstrap creates all managers, opening the quest panel
+  from the main menu shows real quest names/progress/rewards per tab (3 daily / 2 weekly / 1 monthly), tab
+  switching works, no runtime errors.
 
 ## Audio
 - Only one sound file exists in the project (`bomb_Explosion.mp3`). `AudioManager.cs` has no music/SFX

@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class Bomb : AbilityBase
@@ -64,6 +65,8 @@ public class Bomb : AbilityBase
         Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
+
+        AchievementEvents.FireWeaponUsed("weapon_bomb");
 
         GameObject bombObj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
         Rigidbody2D rb = bombObj.GetComponent<Rigidbody2D>();

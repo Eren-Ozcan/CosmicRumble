@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class BlackHoleZone : MonoBehaviour
@@ -64,7 +65,11 @@ public class BlackHoleZone : MonoBehaviour
             {
                 if (c == null) continue;
                 if (c.TryGetComponent<IDamageable>(out var dmg))
-                    dmg.TakeDamage(damagePerSecond * Time.fixedDeltaTime);
+                {
+                    float dmgAmount = damagePerSecond * Time.fixedDeltaTime;
+                    dmg.TakeDamage(dmgAmount);
+                    CombatEventReporter.ReportDamage(dmgAmount);
+                }
             }
         }
 

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd38e22430f0a2042be508da4a9eab92, type: 3}
+  m_Name: daily_play_2
+  m_EditorClassIdentifier:
+  questId: daily_play_2
+  displayName: Playtime
+  description: Play 2 matches today
+  period: 0
+  trackedEventKey: MatchCompleted
+  targetValue: 2
+  rewardXP: 150
+  rewardGold: 75
+  rewardGem: 0
+  requiredId:
+  distinctTracking: 0

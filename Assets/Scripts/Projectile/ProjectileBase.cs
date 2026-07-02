@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class ProjectileBase : MonoBehaviour
@@ -86,7 +87,7 @@ public class ProjectileBase : MonoBehaviour
         if (explosionRadius > 0f && explosionForce > 0f)
             Explode(impactPoint);
         else
-            ApplyDirectHit(collision);
+            ApplyDirectHit(collision, impactPoint);
 
         CameraController.OnProjectileDestroyed();
         SettleOnce();
@@ -116,11 +117,12 @@ public class ProjectileBase : MonoBehaviour
             {
                 float amount = CalculateDamageByDistance(center, hit.transform.position);
                 dmg.TakeDamage(amount);
+                CombatEventReporter.ReportHit(dmg, amount, center);
             }
         }
     }
 
-    protected virtual void ApplyDirectHit(Collision2D collision)
+    protected virtual void ApplyDirectHit(Collision2D collision, Vector2 impactPoint)
     {
         Rigidbody2D rbHit = collision.rigidbody;
         if (rbHit != null)
@@ -131,7 +133,10 @@ public class ProjectileBase : MonoBehaviour
 
         var dmg = collision.gameObject.GetComponent<IDamageable>();
         if (dmg != null)
+        {
             dmg.TakeDamage(explosionForce);
+            CombatEventReporter.ReportHit(dmg, explosionForce, impactPoint);
+        }
     }
 
     protected virtual float CalculateDamageByDistance(Vector2 center, Vector2 targetPos)

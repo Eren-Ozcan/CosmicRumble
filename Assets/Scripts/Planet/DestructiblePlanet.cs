@@ -1,5 +1,6 @@
 ﻿// Assets/Scripts/Planet/DestructiblePlanet.cs
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 /// <summary>
 /// DestructiblePlanet:
@@ -19,6 +20,10 @@ public class DestructiblePlanet : MonoBehaviour
     private Texture2D runtimeTex;
     private PolygonCollider2D poly;
     private float ppu; // pixels per unit
+
+    // Çekirdek dışındaki (yıkılabilir) piksel sayısı — sıfıra inince gezegen "tamamen yok edilmiş" sayılır.
+    private int nonCorePixelsRemaining = -1;
+    private bool destroyedFired;
 
     private void Start()
     {
@@ -64,6 +69,9 @@ public class DestructiblePlanet : MonoBehaviour
         poly = GetComponent<PolygonCollider2D>();
         poly.isTrigger = false;  // solid yüzey: karakter üstünde yürür
         RebuildCollider();
+
+        // 5) Çekirdek dışındaki yıkılabilir piksel sayısını hesapla (achievement/quest için)
+        nonCorePixelsRemaining = CountNonCorePixels();
     }
 
     /// <summary>
@@ -122,11 +130,18 @@ public class DestructiblePlanet : MonoBehaviour
                 {
                     c.a = 0f;
                     runtimeTex.SetPixel(tx, ty, c);
+                    nonCorePixelsRemaining--;
                 }
             }
         }
 
         runtimeTex.Apply();
+
+        if (!destroyedFired && nonCorePixelsRemaining <= 0)
+        {
+            destroyedFired = true;
+            AchievementEvents.FirePlanetDestroyed();
+        }
 
         // Sprite’ı yeniden oluştur: physics shape texture değişimiyle güncellenir
         Sprite old = sr.sprite;
@@ -144,6 +159,30 @@ public class DestructiblePlanet : MonoBehaviour
 
         // Collider’ı yeniden oluştur
         RebuildCollider();
+    }
+
+    /// <summary>Çekirdek yarıçapı (minDestructionRadius) dışında kalan, hâlâ opak olan piksel sayısını hesaplar.</summary>
+    private int CountNonCorePixels()
+    {
+        int w = runtimeTex.width;
+        int h = runtimeTex.height;
+        Vector2 pivot = sr.sprite.pivot;
+        Color32[] pixels = runtimeTex.GetPixels32();
+
+        int count = 0;
+        for (int y = 0; y < h; y++)
+        {
+            float dyLocal = (y - pivot.y) / ppu;
+            for (int x = 0; x < w; x++)
+            {
+                float dxLocal = (x - pivot.x) / ppu;
+                if (dxLocal * dxLocal + dyLocal * dyLocal < minDestructionRadius * minDestructionRadius)
+                    continue;
+
+                if (pixels[y * w + x].a != 0) count++;
+            }
+        }
+        return count;
     }
 
     private void RebuildCollider()

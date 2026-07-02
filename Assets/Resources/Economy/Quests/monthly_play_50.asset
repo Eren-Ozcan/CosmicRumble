@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd38e22430f0a2042be508da4a9eab92, type: 3}
+  m_Name: monthly_play_50
+  m_EditorClassIdentifier:
+  questId: monthly_play_50
+  displayName: Monthly Warrior
+  description: Play 50 matches this month
+  period: 2
+  trackedEventKey: MatchCompleted
+  targetValue: 50
+  rewardXP: 3000
+  rewardGold: 1500
+  rewardGem: 50
+  requiredId:
+  distinctTracking: 0

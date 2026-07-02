@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class Teleport : AbilityBase
@@ -106,6 +107,8 @@ public class Teleport : AbilityBase
         Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
+
+        AchievementEvents.FireAbilityUsed("skill_teleport");
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

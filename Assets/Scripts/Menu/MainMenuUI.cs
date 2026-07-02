@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
+using CosmicRumble.Achievements;
 
 /// <summary>
 /// MenuScene'e boş bir GameObject ekle, bu scripti yapıştır — bitti.
@@ -93,6 +94,16 @@ public class MainMenuUI : MonoBehaviour
         if (SceneFader.Instance   == null) new GameObject("SceneFader").AddComponent<SceneFader>();
         if (AuthManager.Instance  == null) new GameObject("AuthManager").AddComponent<AuthManager>();
         if (AudioManager.Instance == null) new GameObject("AudioManager").AddComponent<AudioManager>();
+
+        // Economy/achievement backend — CostumeManager kasıtlı olarak dahil edilmedi (bkz. TODO.md).
+        if (CurrencyManager.Instance    == null) new GameObject("CurrencyManager").AddComponent<CurrencyManager>();
+        if (PlayerLevelManager.Instance == null) new GameObject("PlayerLevelManager").AddComponent<PlayerLevelManager>();
+        if (UnlockManager.Instance      == null) new GameObject("UnlockManager").AddComponent<UnlockManager>();
+        if (QuestManager.Instance       == null) new GameObject("QuestManager").AddComponent<QuestManager>();
+        if (ChestManager.Instance       == null) new GameObject("ChestManager").AddComponent<ChestManager>();
+        if (LoginStreakManager.Instance == null) new GameObject("LoginStreakManager").AddComponent<LoginStreakManager>();
+        if (AchievementManager.Instance == null) new GameObject("AchievementManager").AddComponent<AchievementManager>();
+        if (AchievementTracker.Instance == null) new GameObject("AchievementTracker").AddComponent<AchievementTracker>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -211,8 +222,8 @@ public class MainMenuUI : MonoBehaviour
         var backdropRt  = backdropImg.rectTransform;
         backdropRt.anchorMin        = new Vector2(0.5f, 0.5f);
         backdropRt.anchorMax        = new Vector2(0.5f, 0.5f);
-        backdropRt.sizeDelta        = new Vector2(340, 340);
-        backdropRt.anchoredPosition = new Vector2(0, -40);
+        backdropRt.sizeDelta        = new Vector2(340, 408);
+        backdropRt.anchoredPosition = new Vector2(0, -74);
 
         // Side accent bar
         var sideGO  = new GameObject("SideAccent");
@@ -230,8 +241,9 @@ public class MainMenuUI : MonoBehaviour
         float topY  = 110f;
         MakeBtn(_mainPanel, "btn_play",          "▶  PLAY",           topY - BTN_GAP * 0, AccBlue,   AccBlueHov,   () => { Click(); LobbyPanelUI.Instance?.Show(); });
         MakeBtn(_mainPanel, "btn_achievements",  "★  ACHIEVEMENTS",   topY - BTN_GAP * 1, AccPurple, AccPurpleHov, () => { Click(); AchievementsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 2, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
-        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 3, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
+        MakeBtn(_mainPanel, "btn_quests",        "◆  QUESTS",         topY - BTN_GAP * 2, AccGreen,  AccGreenHov,  () => { Click(); QuestsPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 3, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
+        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 4, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
     }
 
     // ────────────────────────────────────────────────────────────────────────

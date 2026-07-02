@@ -1,5 +1,6 @@
 ﻿// Assets/Scripts/Planet/BombExplosion.cs
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 /// <summary>
 /// BombExplosion:
@@ -51,6 +52,7 @@ public class BombExplosion : MonoBehaviour
 
         // Patlama yarıçapındaki tüm objelere hem fiziksel itme hem hasar uygula
         Collider2D[] hits = Physics2D.OverlapCircleAll(explosionPos, explosionRadius);
+        bool hitAny = false;
         foreach (var hit in hits)
         {
             // Fiziksel itme (Impulse)
@@ -70,6 +72,8 @@ public class BombExplosion : MonoBehaviour
                 float falloff = 1f - Mathf.Clamp01(dist / explosionRadius);
                 float damageAmount = maxDamage * falloff;
                 dmgTarget.TakeDamage(damageAmount);
+                hitAny = true;
+                CombatEventReporter.ReportHit(dmgTarget, damageAmount, explosionPos);
             }
         }
 
@@ -78,6 +82,8 @@ public class BombExplosion : MonoBehaviour
         {
             Instantiate(explosionEffectPrefab, explosionPos, Quaternion.identity);
         }
+
+        AchievementEvents.FireShotFired(hitAny);
 
         // Bombayı yok et
         Destroy(gameObject);

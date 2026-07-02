@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class HandGrenade : AbilityBase
@@ -89,6 +90,8 @@ public class HandGrenade : AbilityBase
         Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
+
+        AchievementEvents.FireWeaponUsed("weapon_grenade");
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();

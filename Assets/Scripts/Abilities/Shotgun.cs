@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class Shotgun : AbilityBase
@@ -98,6 +99,7 @@ public class Shotgun : AbilityBase
         float half = totalSpreadAngle * 0.5f;
 
         TurnManager.Instance?.RegisterShot();
+        AchievementEvents.FireWeaponUsed("weapon_shotgun");
 
         for (int i = 0; i < pelletCount; i++)
         {

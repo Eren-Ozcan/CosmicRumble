@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class BatHammerSkill : AbilityBase
@@ -82,6 +83,7 @@ public class BatHammerSkill : AbilityBase
             {
                 cooldownTimer = cooldownTime;
                 charAbilities?.OnAbilityConsumed();
+                AchievementEvents.FireAbilityUsed("skill_bathammer");
             }
 #if UNITY_EDITOR
             else

@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class ShieldSkill : AbilityBase
@@ -64,6 +65,7 @@ public class ShieldSkill : AbilityBase
             shieldActiveVisual = true;
             cooldownTimer = cooldownTime;
             charAbilities?.OnAbilityConsumed();
+            AchievementEvents.FireAbilityUsed("skill_shield");
         }
         UIManager.Instance?.HideConfirmPrompt();
         isSelected = false;

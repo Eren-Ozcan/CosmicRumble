@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class BlackHoleSkill : AbilityBase
@@ -106,6 +107,8 @@ public class BlackHoleSkill : AbilityBase
         Vector2 pull = dragStart - mouseWorld;
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = (clamped > 0f) ? pull.normalized * clamped * powerMultiplier : Vector2.zero;
+
+        AchievementEvents.FireAbilityUsed("skill_blackhole");
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

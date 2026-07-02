@@ -1,4 +1,5 @@
 using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(GravityBody))]
 public class SuperJumpSkill : AbilityBase
@@ -45,6 +46,7 @@ public class SuperJumpSkill : AbilityBase
             gravityBody.nextJumpIsSuper = true;
             charAbilities?.OnAbilityConsumed();
             cooldownTimer = cooldownTime;
+            AchievementEvents.FireAbilityUsed("skill_superjump");
         }
         isSelected = false;
         fireAllowed = false;

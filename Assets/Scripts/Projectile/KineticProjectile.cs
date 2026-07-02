@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class KineticProjectile : MonoBehaviour
@@ -49,6 +50,7 @@ public class KineticProjectile : MonoBehaviour
     float traveled;
     bool insideChunk;
     bool planetDamageApplied; // ✅ aynı mermide tekrar delmeyi önle
+    bool hitCharacter;        // isabet/miss raporlaması için (OnDestroy'da)
 
     void Awake()
     {
@@ -79,6 +81,7 @@ public class KineticProjectile : MonoBehaviour
     {
         CameraController.OnProjectileDestroyed();
         TurnManager.NotifyProjectileSettled();
+        AchievementEvents.FireShotFired(hitCharacter);
     }
 
     void FixedUpdate()
@@ -114,7 +117,10 @@ public class KineticProjectile : MonoBehaviour
 
         if (other.TryGetComponent<IDamageable>(out var dmg))
         {
-            dmg.TakeDamage(ComputeDamage());
+            float dmgAmount = ComputeDamage();
+            dmg.TakeDamage(dmgAmount);
+            hitCharacter = true;
+            CombatEventReporter.ReportHit(dmg, dmgAmount, other.bounds.center);
             if (stopOnDamageable) Destroy(gameObject);
             return;
         }
@@ -161,7 +167,10 @@ public class KineticProjectile : MonoBehaviour
 
         if (c.collider.TryGetComponent<IDamageable>(out var dmg))
         {
-            dmg.TakeDamage(ComputeDamage());
+            float dmgAmount = ComputeDamage();
+            dmg.TakeDamage(dmgAmount);
+            hitCharacter = true;
+            CombatEventReporter.ReportHit(dmg, dmgAmount, c.GetContact(0).point);
             if (stopOnDamageable) Destroy(gameObject);
             return;
         }

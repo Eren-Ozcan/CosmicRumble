@@ -14,9 +14,10 @@ namespace CosmicRumble.Economy
         [Serializable]
         private class QuestProgress
         {
-            public string questId;
-            public int    progress;
-            public bool   completed;
+            public string       questId;
+            public int          progress;
+            public bool         completed;
+            public List<string> distinctIds = new List<string>(); // distinctTracking quest'ler için
         }
 
         [Serializable]
@@ -118,10 +119,10 @@ namespace CosmicRumble.Economy
             _hMatchCompleted  = shots => Advance("MatchCompleted", 1);
             _hDamageDealt     = amt   => Advance("DamageDealt", amt);
             _hHeadshotLanded  = ()    => Advance("HeadshotLanded", 1);
-            _hAbilityUsed     = id    => Advance("AbilityUsed", 1);
+            _hAbilityUsed     = id    => AdvanceById("AbilityUsed", id);
             _hShotFired       = hit   => Advance("ShotFired", 1);
             _hPlanetDestroyed = ()    => Advance("PlanetDestroyed", 1);
-            _hWeaponUsed      = id    => Advance("WeaponUsed", 1);
+            _hWeaponUsed      = id    => AdvanceById("WeaponUsed", id);
 
             AchievementEvents.OnMatchWon        += _hMatchWon;
             AchievementEvents.OnMatchCompleted  += _hMatchCompleted;
@@ -157,6 +158,45 @@ namespace CosmicRumble.Economy
                 if (entry.completed) continue;
 
                 entry.progress += amount;
+                OnQuestProgress?.Invoke(def, entry.progress);
+
+                if (entry.progress >= def.targetValue)
+                {
+                    entry.progress  = def.targetValue;
+                    entry.completed = true;
+                    GrantReward(def);
+                    OnQuestCompleted?.Invoke(def);
+                }
+                dirty = true;
+            }
+            if (dirty) Save();
+        }
+
+        /// <summary>AbilityUsed/WeaponUsed gibi id'li event'ler için: requiredId filtresi ve
+        /// distinctTracking (farklı id sayısı) desteği ekler.</summary>
+        private void AdvanceById(string eventKey, string id)
+        {
+            bool dirty = false;
+            foreach (var questId in AllActiveIds())
+            {
+                var def = GetDef(questId);
+                if (def == null || def.trackedEventKey != eventKey) continue;
+                if (!string.IsNullOrEmpty(def.requiredId) && def.requiredId != id) continue;
+
+                var entry = GetOrCreateProgress(questId);
+                if (entry.completed) continue;
+
+                if (def.distinctTracking)
+                {
+                    if (entry.distinctIds.Contains(id)) continue; // zaten sayıldı, ilerleme yok
+                    entry.distinctIds.Add(id);
+                    entry.progress = entry.distinctIds.Count;
+                }
+                else
+                {
+                    entry.progress += 1;
+                }
+
                 OnQuestProgress?.Invoke(def, entry.progress);
 
                 if (entry.progress >= def.targetValue)
