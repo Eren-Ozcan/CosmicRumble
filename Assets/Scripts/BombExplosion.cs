@@ -44,6 +44,8 @@ public class BombExplosion : MonoBehaviour
 
         Vector2 explosionPos = transform.position;
 
+        AudioManager.Instance?.PlaySfx("explosion_large");
+
         // Çarptığı obje DestructiblePlanet ise patlat
         if (col.collider.TryGetComponent<DestructiblePlanet>(out var dp))
         {

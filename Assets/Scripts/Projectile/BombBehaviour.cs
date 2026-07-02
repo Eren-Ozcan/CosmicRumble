@@ -15,6 +15,7 @@ public class BombBehaviour : MonoBehaviour
         CameraController.OnProjectileSpawned(transform);
         TurnManager.Instance?.RegisterShot();
         TurnManager.NotifyProjectileLaunched();
+        AudioManager.Instance?.PlayLoopingSfxOnObject(gameObject, "projectile_flight_bomb");
         StartCoroutine(FuseCoroutine());
     }
 

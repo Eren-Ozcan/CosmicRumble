@@ -92,6 +92,7 @@ public class HandGrenade : AbilityBase
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
         AchievementEvents.FireWeaponUsed("weapon_grenade");
+        AudioManager.Instance?.PlaySfx("weapon_grenade_throw");
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();

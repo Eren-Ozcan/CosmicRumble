@@ -84,6 +84,7 @@ public class BatHammerSkill : AbilityBase
                 cooldownTimer = cooldownTime;
                 charAbilities?.OnAbilityConsumed();
                 AchievementEvents.FireAbilityUsed("skill_bathammer");
+                AudioManager.Instance?.PlaySfx("skill_bathammer_swing");
             }
 #if UNITY_EDITOR
             else

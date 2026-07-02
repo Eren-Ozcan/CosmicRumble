@@ -21,6 +21,13 @@ public class HandGrenadeProjectile : MonoBehaviour
     private Collider2D col;
     private GameObject owner;
     private bool _settled;
+    private float _lastBounceSfxTime = -999f;
+
+    [Header("Sekme Sesi")]
+    [Tooltip("Art arda sekmelerde sesin spam olmaması için minimum aralık (saniye)")]
+    public float bounceSfxCooldown = 0.15f;
+    [Tooltip("Bu hızın altındaki temaslar sekme sayılmaz (yavaş yuvarlanma sırasında spam'i önler)")]
+    public float minBounceSpeed = 0.5f;
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
@@ -34,6 +41,7 @@ public class HandGrenadeProjectile : MonoBehaviour
         rb.linearVelocity = initialVelocity;
         CameraController.OnProjectileSpawned(transform);
         TurnManager.NotifyProjectileLaunched();
+        AudioManager.Instance?.PlayLoopingSfxOnObject(gameObject, "projectile_flight_grenade");
 
         // Owner-specific ignore for the full ignoreTime duration
         foreach (var oc in owner.GetComponentsInChildren<Collider2D>())
@@ -46,6 +54,8 @@ public class HandGrenadeProjectile : MonoBehaviour
     private void Explode()
     {
         Vector2 pos = transform.position;
+
+        AudioManager.Instance?.PlaySfx("explosion_small");
 
         if (explosionEffect != null)
         {
@@ -98,6 +108,19 @@ public class HandGrenadeProjectile : MonoBehaviour
     }
 
     private void OnDestroy() => SettleOnce(); // ensure settle if destroyed before Explode fires
+
+    // Zamanlayıcıyla patlıyor, temas anında değil — bu yüzden yere/gezegene her sekişinde
+    // ayrı bir "bounce" sesi gerekiyor (patlamayla karıştırılmamalı). Hızlı art arda
+    // sekmelerde spam olmasın diye cooldown + minimum hız eşiği var.
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        float impactSpeed = collision.relativeVelocity.magnitude;
+        if (impactSpeed < minBounceSpeed) return;
+        if (Time.time - _lastBounceSfxTime < bounceSfxCooldown) return;
+
+        _lastBounceSfxTime = Time.time;
+        AudioManager.Instance?.PlaySfx("grenade_bounce");
+    }
 
     private IEnumerator TemporaryIgnoreCharacters()
     {

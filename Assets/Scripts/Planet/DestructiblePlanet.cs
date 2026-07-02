@@ -141,6 +141,7 @@ public class DestructiblePlanet : MonoBehaviour
         {
             destroyedFired = true;
             AchievementEvents.FirePlanetDestroyed();
+            AudioManager.Instance?.PlaySfx("planet_destroyed");
         }
 
         // Sprite’ı yeniden oluştur: physics shape texture değişimiyle güncellenir

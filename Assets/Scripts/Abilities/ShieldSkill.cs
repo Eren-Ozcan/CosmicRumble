@@ -66,6 +66,7 @@ public class ShieldSkill : AbilityBase
             cooldownTimer = cooldownTime;
             charAbilities?.OnAbilityConsumed();
             AchievementEvents.FireAbilityUsed("skill_shield");
+            AudioManager.Instance?.PlaySfx("skill_shield_activate");
         }
         UIManager.Instance?.HideConfirmPrompt();
         isSelected = false;

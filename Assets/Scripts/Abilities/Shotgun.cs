@@ -100,6 +100,7 @@ public class Shotgun : AbilityBase
 
         TurnManager.Instance?.RegisterShot();
         AchievementEvents.FireWeaponUsed("weapon_shotgun");
+        AudioManager.Instance?.PlaySfx("weapon_shotgun_fire");
 
         for (int i = 0; i < pelletCount; i++)
         {

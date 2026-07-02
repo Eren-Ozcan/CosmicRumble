@@ -109,6 +109,7 @@ public class Teleport : AbilityBase
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
         AchievementEvents.FireAbilityUsed("skill_teleport");
+        AudioManager.Instance?.PlaySfx("skill_teleport");
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

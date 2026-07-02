@@ -91,6 +91,7 @@ public class RPG : AbilityBase
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
         AchievementEvents.FireWeaponUsed("weapon_rpg");
+        AudioManager.Instance?.PlaySfx("weapon_rpg_fire");
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var proj = bulletGO.GetComponent<Projectile>();

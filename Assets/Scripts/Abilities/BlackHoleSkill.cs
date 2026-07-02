@@ -109,6 +109,7 @@ public class BlackHoleSkill : AbilityBase
         Vector2 initial = (clamped > 0f) ? pull.normalized * clamped * powerMultiplier : Vector2.zero;
 
         AchievementEvents.FireAbilityUsed("skill_blackhole");
+        AudioManager.Instance?.PlaySfx("skill_blackhole_activate");
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

@@ -71,6 +71,7 @@ public class Projectile : MonoBehaviour
         rb.linearVelocity = initialVelocity;
         CameraController.OnProjectileSpawned(transform);
         TurnManager.NotifyProjectileLaunched();
+        AudioManager.Instance?.PlayLoopingSfxOnObject(gameObject, "projectile_flight_rocket");
         if (ignoreOwnerTime > 0f)
             Invoke(nameof(ReenableOwnerCollision), ignoreOwnerTime);
     }
@@ -142,6 +143,8 @@ public class Projectile : MonoBehaviour
 
         // Impact position (more accurate than transform.position)
         Vector2 hitPos = collision.GetContact(0).point;
+
+        AudioManager.Instance?.PlaySfx("explosion_large");
 
         if (splashEffectPrefab != null)
             Instantiate(splashEffectPrefab, hitPos, Quaternion.identity);

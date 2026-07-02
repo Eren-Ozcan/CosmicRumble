@@ -96,6 +96,8 @@ public class ProjectileBase : MonoBehaviour
 
     protected virtual void Explode(Vector2 center)
     {
+        AudioManager.Instance?.PlaySfx("explosion_small");
+
         Collider2D[] colliders = Physics2D.OverlapCircleAll(center, explosionRadius);
         foreach (var hit in colliders)
         {

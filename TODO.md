@@ -50,8 +50,73 @@ play-tested.
   switching works, no runtime errors.
 
 ## Audio
-- Only one sound file exists in the project (`bomb_Explosion.mp3`). `AudioManager.cs` has no music/SFX
-  library beyond menu click/hover clips.
+Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop
+track since ElevenLabs SFX isn't built for long loops), placed in `Assets/Resources/Audio/{SFX,Music}/`, and
+play-tested end-to-end in the Unity Editor (Resources.Load finds every clip, AudioManager plays/loops them,
+no console errors).
+
+- `AudioManager.cs` was rewritten to load clips by id from `Resources/Audio/{SFX,Music}/{id}` instead of
+  requiring manual Inspector drag-and-drop. Missing files are a silent no-op (cached as null so it doesn't
+  retry `Resources.Load` every call), so drop-in works incrementally — add one file, it plays; nothing else
+  breaks in the meantime.
+- All 9 weapon/ability `Fire()` sites, 4 explosion call sites (`ProjectileBase`, `Projectile`/RPG,
+  `HandGrenadeProjectile`, `BombExplosion`), `DestructiblePlanet` (planet fully destroyed), and `TurnManager`
+  (match win/lose) now call `AudioManager.Instance?.PlaySfx("...")`. Menu click/hover already wired
+  (`PlayClick()`/`PlayHover()` — `PlayHover()` itself works but nothing calls it yet, no button has
+  pointer-enter wiring; out of scope, separate task if wanted).
+- **Explosive weapons (RPG, HandGrenade, Bomb) got a 3-stage sound treatment** — fire/throw → in-flight loop
+  → impact — since a single "fire" clip wasn't enough to sell a rocket/grenade/bomb actually traveling.
+  Added `AudioManager.PlayLoopingSfxOnObject(GameObject, clipId)`: attaches an `AudioSource` to the projectile
+  itself and loops the clip for as long as the projectile is alive (dies with it automatically, no explicit
+  stop needed — acceptable minor cutoff on impact). Pistol/Shotgun (`KineticProjectile`, non-explosive
+  single-hole-punch weapons) were deliberately left out of this — fire sound only, no flight/impact stage,
+  since they don't explode and a whoosh-per-bullet felt like the wrong fidelity for that weapon type.
+  - **HandGrenade is the special case**: unlike RPG/Bomb it does NOT explode on first contact — it has a
+    `delayBeforeExplosion` fuse timer, so it can bounce off terrain multiple times before detonating.
+    `HandGrenadeProjectile.cs` gained an `OnCollisionEnter2D` bounce detector (debounced via
+    `bounceSfxCooldown` + `minBounceSpeed` so rapid low-speed rolling doesn't spam the sound) that plays
+    `grenade_bounce` on every real bounce, separate from `projectile_flight_grenade` (loop, plays throughout)
+    and `explosion_small` (plays once, on fuse timeout).
+  - Bomb also gets a flight loop even though `BombBehaviour.OnCollisionEnter2D` detonates on first contact
+    (no bounce phase) — just for the brief airborne moment between throw and impact.
+- Coplay MCP's AI audio generation (`generate_sfx`/`generate_music`) returned 401 Unauthorized — needs
+  Coplay account credits/Professional subscription, not available in this session. Decided to source files
+  externally instead (free libraries like freesound.org/Kenney/Zapsplat/Mixkit, or another AI tool) and just
+  drop them in.
+- **Manifest — exact filename (no extension shown; `.wav` or `.mp3` both work), folder, and what's needed:**
+
+  `Assets/Resources/Audio/SFX/`
+  | id | sound |
+  |---|---|
+  | `weapon_pistol_fire` | sharp kinetic pistol shot |
+  | `weapon_shotgun_fire` | shotgun blast, multiple pellets |
+  | `weapon_rpg_fire` | rocket launch whoosh |
+  | `projectile_flight_rocket` | **loop** — rocket flying through the air |
+  | `weapon_grenade_throw` | pin-pull + throw whoosh |
+  | `projectile_flight_grenade` | **loop** — grenade tumbling through the air |
+  | `grenade_bounce` | one-shot — grenade bouncing off terrain |
+  | `weapon_bomb_place` | mechanical drop/arm beep |
+  | `projectile_flight_bomb` | **loop** — bomb briefly airborne after being thrown |
+  | `skill_blackhole_activate` | vortex suction whoosh, deep bass |
+  | `skill_teleport` | warp zap whoosh |
+  | `skill_shield_activate` | energy shield hum/shimmer |
+  | `skill_bathammer_swing` | heavy swing + metallic impact |
+  | `skill_superjump` | energy charge + launch whoosh |
+  | `explosion_small` | grenade/generic ability explosion |
+  | `explosion_large` | RPG/bomb explosion, deeper boom |
+  | `planet_destroyed` | big rumble/crumble, planet fully cleared |
+  | `match_win` | short victory fanfare |
+  | `match_lose` | short defeat stinger |
+  | `ui_button_click` | crisp UI click |
+  | `ui_button_hover` | soft UI hover blip |
+
+  `Assets/Resources/Audio/Music/`
+  | id | sound |
+  |---|---|
+  | `menu_music` | loopable ambient sci-fi menu background music |
+
+  The old `Assets/Audio/bomb_Explosion.mp3` is NOT under a `Resources/` folder so `AudioManager` can't find
+  it — either move/rename a copy into the manifest above, or leave it (unused, harmless).
 
 ## Achievement platform providers
 - `SteamAchievementProvider`, `GooglePlayAchievementProvider`, `AppStoreAchievementProvider`

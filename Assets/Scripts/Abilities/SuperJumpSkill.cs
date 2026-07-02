@@ -47,6 +47,7 @@ public class SuperJumpSkill : AbilityBase
             charAbilities?.OnAbilityConsumed();
             cooldownTimer = cooldownTime;
             AchievementEvents.FireAbilityUsed("skill_superjump");
+            AudioManager.Instance?.PlaySfx("skill_superjump");
         }
         isSelected = false;
         fireAllowed = false;

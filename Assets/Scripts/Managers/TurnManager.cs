@@ -269,6 +269,7 @@ public class TurnManager : MonoBehaviour
         AchievementEvents.FireMatchCompleted(_totalShots);
         if (isWinner) AchievementEvents.FireMatchWon();
         else          AchievementEvents.FireMatchLost();
+        AudioManager.Instance?.PlaySfx(isWinner ? "match_win" : "match_lose");
 
         long xp   = MatchRewardCalculator.CalculateMatchXP(isWinner, matchDuration);
         long gold = MatchRewardCalculator.CalculateMatchGold(isWinner, matchDuration);

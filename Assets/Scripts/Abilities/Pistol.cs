@@ -122,6 +122,7 @@ public class Pistol : AbilityBase
         TurnManager.Instance?.RegisterShot();
         TurnManager.NotifyProjectileLaunched();
         AchievementEvents.FireWeaponUsed("weapon_pistol");
+        AudioManager.Instance?.PlaySfx("weapon_pistol_fire");
         kin.Init(initial, gameObject, ignoreOwnerDuration);
     }
 

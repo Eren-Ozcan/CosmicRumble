@@ -67,6 +67,7 @@ public class Bomb : AbilityBase
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
         AchievementEvents.FireWeaponUsed("weapon_bomb");
+        AudioManager.Instance?.PlaySfx("weapon_bomb_place");
 
         GameObject bombObj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
         Rigidbody2D rb = bombObj.GetComponent<Rigidbody2D>();
