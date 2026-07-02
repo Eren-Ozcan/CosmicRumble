@@ -3,50 +3,40 @@ using UnityEngine;
 
 /// <summary>
 /// GameScene yüklenince çalışır.
-/// Tüm GravitySource'ları bulur, açısal dağılım + Raycast ile
-/// insan + bot spawn pozisyonlarını hesaplar, TurnManager'a kaydeder.
+/// GravitySource'ları bulur, Raycast ile insan oyuncunun spawn
+/// pozisyonunu hesaplar, TurnManager'a kaydeder.
 ///
 /// Inspector atamaları:
 ///   Human Prefab : Assets/Art/Sprites/Prefabs/Player.prefab
-///   Bot Spawner  : BotSpawner component'ı olan herhangi bir GO
 ///
 /// [DefaultExecutionOrder(-100)] → TurnManager.Start()'tan önce çalışır.
 /// </summary>
 // +10: DestructiblePlanet (0) önce Start() yaparak polygon'ı solid + doğru boyuta getirir,
-// sonra GameInitializer çalışır → BotSpawner doğru yüzey noktasını bulur.
+// sonra GameInitializer çalışır → SpawnPositioning doğru yüzey noktasını bulur.
 // TurnManager [+100] ise RegisterPlayers'tan sonra çalışır.
 [DefaultExecutionOrder(10)]
 public class GameInitializer : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] GameObject _humanPrefab;
-    [SerializeField] BotSpawner _botSpawner;
 
     void Start()
     {
         // ── 0. Gezegenleri bul, sırala ───────────────────────────────────
-        var sortedPlanets = BotSpawner.GetSortedPlanets();
+        var sortedPlanets = SpawnPositioning.GetSortedPlanets();
         if (sortedPlanets.Count == 0)
             #if UNITY_EDITOR
             Debug.LogWarning("[GameInitializer] Sahnede hiç GravitySource bulunamadı!");
             #endif
 
-        // ── 1. Bot sayısını LobbyData'dan al ─────────────────────────────
-        int botCount = 1;
-        if (_botSpawner != null)
-        {
-            _botSpawner.botCount = LobbyData.BotCount;
-            botCount = _botSpawner.botCount;
-        }
-
-        int totalPlayers = 1 + botCount; // 1 insan + N bot
+        int totalPlayers = 1; // sadece insan oyuncu
 
         // ── 2. Tüm spawn slotlarını hesapla ──────────────────────────────
-        var slots = BotSpawner.CalculateSpawnPositions(totalPlayers, sortedPlanets);
+        var slots = SpawnPositioning.CalculateSpawnPositions(totalPlayers, sortedPlanets);
 
         // slot sayısı yetersizse padding ekle (kenar durum)
         while (slots.Count < totalPlayers)
-            slots.Add(new BotSpawner.SpawnSlot
+            slots.Add(new SpawnPositioning.SpawnSlot
             {
                 position = Vector3.up * 3f,
                 upDir    = Vector3.up
@@ -89,20 +79,6 @@ public class GameInitializer : MonoBehaviour
                 #if UNITY_EDITOR
                 Debug.LogWarning("[GameInitializer] humanPrefab atanmamış — sahnedeki oyuncu kullanıldı.");
                 #endif
-            }
-        }
-
-        // ── 4. Botları spawn et (slot 1..n) ──────────────────────────────
-        if (_botSpawner != null)
-        {
-            var spawnedBots = _botSpawner.SpawnBots(slots, humanSlotIndex: 0);
-            foreach (var botGO in spawnedBots)
-            {
-                if (botGO == null) continue;
-                AddNameTag(botGO, botGO.name);
-                AddHealthBar(botGO);
-                var gb = botGO.GetComponent<GravityBody>();
-                if (gb != null) allPlayers.Add(gb);
             }
         }
 

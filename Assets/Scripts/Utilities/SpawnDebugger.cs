@@ -67,9 +67,9 @@ public class SpawnDebugger : MonoBehaviour
         }
 
         // Gezegen yüzeyine olan mesafe (merkeze mesafe - gezegen yarıçapı değil, raycast ile)
-        Vector3 surfacePoint = BotSpawner.FindSurfacePoint(planet, angleDeg);
+        Vector3 surfacePoint = SpawnPositioning.FindSurfacePoint(planet, angleDeg);
         float distFromSurface = Vector3.Distance(transform.position, surfacePoint);
-        float spawnLift       = BotSpawner.SpawnLift;
+        float spawnLift       = SpawnPositioning.SpawnLift;
 
         #if UNITY_EDITOR
         Debug.Log($"  Karakter pozisyonu : {transform.position:F3}");
@@ -78,7 +78,7 @@ public class SpawnDebugger : MonoBehaviour
         Debug.Log($"  En yakın gezegen   : {planet.name}  (merkez={planet.transform.position:F2})");
         #endif
         #if UNITY_EDITOR
-        Debug.Log($"  Gezegene açı       : {angleDeg:F1}°  (BotSpawner DirectionFromAngle formatı)");
+        Debug.Log($"  Gezegene açı       : {angleDeg:F1}°  (SpawnPositioning DirectionFromAngle formatı)");
         #endif
         #if UNITY_EDITOR
         Debug.Log($"  Merkeze mesafe     : {distFromCenter:F2}");
@@ -105,11 +105,11 @@ public class SpawnDebugger : MonoBehaviour
         // SpawnLift önerisi
         float idealLift = distFromSurface;
         #if UNITY_EDITOR
-        Debug.Log($"  SpawnLift önerisi  : BotSpawner.SpawnLift = {idealLift:F2}f  (şu an: {spawnLift:F2}f)");
+        Debug.Log($"  SpawnLift önerisi  : SpawnPositioning.SpawnLift = {idealLift:F2}f  (şu an: {spawnLift:F2}f)");
         #endif
 
         // Tüm gezegenler
-        var all = BotSpawner.GetSortedPlanets();
+        var all = SpawnPositioning.GetSortedPlanets();
         #if UNITY_EDITOR
         Debug.Log($"  Sahnedeki geçerli gezegenler ({all.Count}):");
         #endif
@@ -146,11 +146,11 @@ public class SpawnDebugger : MonoBehaviour
             return null;
         }
 
-        // Karakterden gezegen merkezine vektör → açı (BotSpawner.DirectionFromAngle ile uyumlu)
+        // Karakterden gezegen merkezine vektör → açı (SpawnPositioning.DirectionFromAngle ile uyumlu)
         Vector2 toChar  = (Vector2)(transform.position - closest.transform.position);
         upDir           = toChar.normalized;
 
-        // atan2 yerine BotSpawner'ın Sin/Cos formatıyla uyumlu açı:
+        // atan2 yerine SpawnPositioning'in Sin/Cos formatıyla uyumlu açı:
         // DirectionFromAngle: x=Sin(angle), y=Cos(angle)  → angle = atan2(x, y)
         angleDeg = Mathf.Atan2(toChar.x, toChar.y) * Mathf.Rad2Deg;
         if (angleDeg < 0f) angleDeg += 360f;

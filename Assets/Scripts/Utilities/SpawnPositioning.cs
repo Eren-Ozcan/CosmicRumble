@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Bot spawn + paylaşımlı pozisyon hesabı.
+/// Gezegen yüzeyinde spawn pozisyonu hesabı (oyuncu + debug araçları için).
 ///
 /// Yüzey tespiti:
 ///   1. gravity alanı dışından içe RaycastAll
@@ -10,20 +10,10 @@ using UnityEngine;
 ///   3. Sonraki çarpma = gezegen yüzeyi (solid veya trigger surface)
 ///   4. SpawnLift kadar yukarı kaydırılır
 /// </summary>
-public class BotSpawner : MonoBehaviour
+public static class SpawnPositioning
 {
-    [Header("References")]
-    [Tooltip("Player prefab (Assets/Art/Sprites/Prefabs/Player.prefab)")]
-    public GameObject botPrefab;
-
-    [Header("Config")]
-    [Tooltip("LobbyData.BotCount üzerinden GameInitializer tarafından set edilir.")]
-    public int botCount = 3;
-
     /// <summary>Yüzey noktasının dışına eklenen mesafe (pivot → ayak + buffer).</summary>
     public static float SpawnLift = 0.5f;
-
-    // ── Spawn Slot ────────────────────────────────────────────────────────
 
     public struct SpawnSlot
     {
@@ -69,7 +59,7 @@ public class BotSpawner : MonoBehaviour
                 });
 
 #if UNITY_EDITOR
-                Debug.Log($"[BotSpawner] Slot {result.Count - 1}: {planet.name} {angleDeg:F0}° → {spawnPos}");
+                Debug.Log($"[SpawnPositioning] Slot {result.Count - 1}: {planet.name} {angleDeg:F0}° → {spawnPos}");
 #endif
             }
         }
@@ -109,7 +99,7 @@ public class BotSpawner : MonoBehaviour
             Vector2 up      = (surface - center).normalized;
 
 #if UNITY_EDITOR
-            Debug.Log($"[BotSpawner] {planet.name} {angleDeg:F0}°: " +
+            Debug.Log($"[SpawnPositioning] {planet.name} {angleDeg:F0}°: " +
                       $"yüzey={surface} collider={h.collider.name} ({h.collider.GetType().Name})");
 #endif
 
@@ -120,7 +110,7 @@ public class BotSpawner : MonoBehaviour
 
         // Fallback
 #if UNITY_EDITOR
-        Debug.LogWarning($"[BotSpawner] {planet.name} {angleDeg:F0}°: yüzey bulunamadı " +
+        Debug.LogWarning($"[SpawnPositioning] {planet.name} {angleDeg:F0}°: yüzey bulunamadı " +
                          $"(center={center} gR={gR:F1}). Tüm çarpmalar:");
         foreach (var h in hits)
             Debug.LogWarning($"  → {h.collider?.name} ({h.collider?.GetType().Name}) " +
@@ -129,44 +119,6 @@ public class BotSpawner : MonoBehaviour
 
         Vector2 fb = center + dir * (gR * 0.9f);
         return new Vector3(fb.x, fb.y, 0f);
-    }
-
-    // ── Bot Spawn ─────────────────────────────────────────────────────────
-
-    public List<GameObject> SpawnBots(List<SpawnSlot> slots, int humanSlotIndex = 0)
-    {
-        var spawned = new List<GameObject>();
-
-        if (botPrefab == null)
-        {
-#if UNITY_EDITOR
-            Debug.LogError("[BotSpawner] botPrefab atanmamış!");
-#endif
-            return spawned;
-        }
-
-        int botIndex = 0;
-        for (int s = 0; s < slots.Count; s++)
-        {
-            if (s == humanSlotIndex) continue;
-
-            var slot = slots[s];
-            var bot  = Instantiate(botPrefab, slot.position, Quaternion.identity);
-            bot.name         = $"Bot_{++botIndex}";
-            bot.transform.up = slot.upDir;
-
-            bot.tag = "Bot";
-
-            var ctrl = bot.GetComponent<PlayerController2D>();
-            if (ctrl != null) ctrl.enabled = false;
-
-            spawned.Add(bot);
-            #if UNITY_EDITOR
-            Debug.Log($"[BotSpawner] {bot.name} → {slot.position}");
-            #endif
-        }
-
-        return spawned;
     }
 
     // ── Yardımcılar ───────────────────────────────────────────────────────
@@ -178,22 +130,6 @@ public class BotSpawner : MonoBehaviour
         list.RemoveAll(s => s == null || !s.gameObject.activeInHierarchy);
         list.Sort((a, b) => b.gravityRadius.CompareTo(a.gravityRadius));
         return list;
-    }
-
-    /// <summary>
-    /// GravityTrigger dışında en az 1 collider olan kaynaklar spawn için geçerlidir.
-    /// Sadece GravityTrigger'dan oluşan Planet_Interior gibi objeler dışlanır.
-    /// </summary>
-    static bool HasAnySurface(GravitySource src)
-    {
-        var cols = src.GetComponentsInChildren<Collider2D>(includeInactive: false);
-        foreach (var c in cols)
-        {
-            if (c == null) continue;
-            if (IsCircleTrigger(c)) continue;  // gravity/core CircleCollider → atla
-            return true;                        // PolygonCollider (trigger olsa da) veya solid = yüzey
-        }
-        return false;
     }
 
     // Yalnızca CircleCollider2D trigger'ları atla (gravity field + inner core).

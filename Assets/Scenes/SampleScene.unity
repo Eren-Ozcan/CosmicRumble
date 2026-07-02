@@ -5598,7 +5598,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1438792894}
   - component: {fileID: 1438792893}
-  - component: {fileID: 1438792895}
   m_Layer: 0
   m_Name: GameInitializer
   m_TagString: Untagged
@@ -5619,7 +5618,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _humanPrefab: {fileID: 6939517175187225860, guid: 7bfdfe85378413744ad8662df7a50629, type: 3}
-  _botSpawner: {fileID: 1438792895}
 --- !u!4 &1438792894
 Transform:
   m_ObjectHideFlags: 0
@@ -5635,20 +5633,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1438792895
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1438792892}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4b1d19daab9f6e8419e9d26a4ddcb36e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  botPrefab: {fileID: 6939517175187225860, guid: 7bfdfe85378413744ad8662df7a50629, type: 3}
-  botCount: 3
 --- !u!1 &1489870059
 GameObject:
   m_ObjectHideFlags: 0
