@@ -107,7 +107,7 @@ public class MainMenuAuthButton : MonoBehaviour
         loRt.anchorMin = Vector2.zero; loRt.anchorMax = Vector2.one;
         loRt.offsetMin = loRt.offsetMax = Vector2.zero;
 
-        var loginBtn = MakeButton(_loggedOutPanel, "LoginBtn", "GİRİŞ YAP",
+        var loginBtn = MakeButton(_loggedOutPanel, "LoginBtn", "LOG IN",
             AccentBlue, AccentBlueHov, () => LoginPanelUI.Instance?.Show());
         StretchFull(loginBtn.GetComponent<RectTransform>());
 
@@ -128,7 +128,7 @@ public class MainMenuAuthButton : MonoBehaviour
             TextAlignmentOptions.Left,
             new Vector2(0f, 1f), new Vector2(0.68f, 1f), new Vector2(10, -8), new Vector2(-4, -30));
 
-        var logoutBtn = MakeButton(parent, "LogoutBtn", "ÇIKIŞ",
+        var logoutBtn = MakeButton(parent, "LogoutBtn", "LOG OUT",
             AccentRed, AccentRedHov, OnLogout);
         var lbRt = logoutBtn.GetComponent<RectTransform>();
         lbRt.anchorMin        = new Vector2(0.72f, 1f);

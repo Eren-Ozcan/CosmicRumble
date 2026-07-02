@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: skin_cosmic_master
   m_EditorClassIdentifier: 
   itemId: skin_cosmic_master
-  displayName: Kozmik Usta
+  displayName: Cosmic Master
   icon: {fileID: 0}
   type: 2
   unlockMethod: 3

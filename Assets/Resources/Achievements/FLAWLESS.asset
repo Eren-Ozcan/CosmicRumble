@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: FLAWLESS
   m_EditorClassIdentifier: 
   achievementId: FLAWLESS
-  displayName: Flawless Victory
-  description: Win without taking damage
+  displayName: Flawless
+  description: Win a match without taking damage
   icon: {fileID: 0}
   rarity: 2
-  triggerType: 2
+  triggerType: 0
   targetValue: 1
   isSecret: 0
-  rewardXP: 500
+  rewardXP: 600
   rewardGold: 400
   rewardGem: 5
   rewardCostumeId: 

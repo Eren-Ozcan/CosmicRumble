@@ -86,16 +86,16 @@ public class LobbyPanelUI : MonoBehaviour
         rootRt.anchorMax = Vector2.one;
         rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
 
-        // ── Başlık ────────────────────────────────────────────────────────
-        MakeText(_root, "Title", "LOBİ", 42,
+        // ── Title ────────────────────────────────────────────────────────
+        MakeText(_root, "Title", "LOBBY", 42,
             new Vector2(0.5f, 0.93f), new Vector2(400, 55), Color.white);
 
-        // ── İki sütun ─────────────────────────────────────────────────────
+        // ── Two columns ─────────────────────────────────────────────────────
         BuildLeftColumn();
         BuildRightColumn();
 
-        // ── Alt butonlar ─────────────────────────────────────────────────
-        MakeButton(_root, "btn_back", "← GERİ",
+        // ── Bottom buttons ─────────────────────────────────────────────────
+        MakeButton(_root, "btn_back", "← BACK",
             new Vector2(0.20f, 0.06f), new Vector2(160, 46),
             new Color(0.2f, 0.2f, 0.35f), new Color(0.3f, 0.3f, 0.5f), OnBackClicked);
 
@@ -114,19 +114,19 @@ public class LobbyPanelUI : MonoBehaviour
         // Kart
         var card = MakeCard(_root, "LeftCard", new Vector2(0.25f, 0.55f), new Vector2(320, 400));
 
-        MakeText(card, "hdr", "LOBİ OLUŞTUR", 18,
+        MakeText(card, "hdr", "CREATE LOBBY", 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
 
-        // Oyuncu adı
+        // Player name
         string playerName = (AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn)
             ? AuthManager.Instance.CurrentUsername
-            : "Misafir";
+            : "Guest";
 
         MakeText(card, "playerName", playerName, 16,
             new Vector2(0.5f, 0.78f), new Vector2(280, 26), SuccessColor);
 
-        // Bot sayısı seçici
-        MakeText(card, "bot_lbl", "Bot Sayısı", 15,
+        // Bot count selector
+        MakeText(card, "bot_lbl", "Bot Count", 15,
             new Vector2(0.5f, 0.64f), new Vector2(280, 24), TextSecondary);
 
         // [-] [1] [+]
@@ -148,8 +148,8 @@ public class LobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_root, "RightCard", new Vector2(0.72f, 0.55f), new Vector2(320, 400));
 
-        // Harita
-        MakeText(card, "map_hdr", "HARİTA SEÇ", 18,
+        // Map
+        MakeText(card, "map_hdr", "SELECT MAP", 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
 
         var mapCard = MakeCard(card, "MapCard",
@@ -171,8 +171,8 @@ public class LobbyPanelUI : MonoBehaviour
         MakeText(mapCard, "map_name", "Cosmic Arena", 14,
             new Vector2(0.5f, 0.12f), new Vector2(200, 22), Color.white);
 
-        // Oyun modu
-        MakeText(card, "mode_hdr", "OYUN MODU", 18,
+        // Game mode
+        MakeText(card, "mode_hdr", "GAME MODE", 18,
             new Vector2(0.5f, 0.36f), new Vector2(280, 30), Color.white);
 
         var modeCard = MakeCard(card, "ModeCard",
@@ -206,13 +206,13 @@ public class LobbyPanelUI : MonoBehaviour
     }
 
     string GetBotPreviewText() =>
-        $"Toplam: {_botCount + 1} oyuncu (1 insan + {_botCount} bot)";
+        $"Total: {_botCount + 1} players (1 human + {_botCount} bots)";
 
     void RefreshStartButton()
     {
         if (_startBtnLabel == null) return;
         bool loggedIn = AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn;
-        _startBtnLabel.text = loggedIn ? "OYUNA BAŞLA" : "GİRİŞ YAP VE BAŞLA";
+        _startBtnLabel.text = loggedIn ? "START GAME" : "LOG IN AND START";
     }
 
     void OnStartClicked()

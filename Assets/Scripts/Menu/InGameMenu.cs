@@ -18,10 +18,40 @@ public class InGameMenu : MonoBehaviour
     GameObject _mainPanel;
     GameObject _settingsPanel;
 
+    GameObject _audioTab, _graphicsTab, _controlsTab;
+
     Slider  _masterSlider, _musicSlider, _sfxSlider;
     Toggle  _fsToggle;
+    Toggle  _vsyncToggle;
+    CyclerControl _resolutionCycler, _qualityCycler;
+
+    TextMeshProUGUI _btnMoveLeftLabel, _btnMoveRightLabel, _btnJumpLabel;
+    string _awaitingRebindFor; // null | "MoveLeft" | "MoveRight" | "Jump"
 
     bool _isOpen;
+
+    /// <summary>Simple prev/next value cycler used for Resolution/Quality settings rows.</summary>
+    class CyclerControl
+    {
+        public int Index;
+        public string[] Options;
+        public TextMeshProUGUI Label;
+        public System.Action<int> OnChanged;
+
+        public void Set(int idx)
+        {
+            if (Options.Length == 0) return;
+            Index = Mathf.Clamp(idx, 0, Options.Length - 1);
+            Label.text = Options[Index];
+            OnChanged?.Invoke(Index);
+        }
+
+        public void Step(int dir)
+        {
+            if (Options.Length == 0) return;
+            Set(((Index + dir) % Options.Length + Options.Length) % Options.Length);
+        }
+    }
 
     // ── Renkler ───────────────────────────────────────────────────
     readonly Color _overlayColor  = new Color(0f, 0f, 0f, 0.65f);
@@ -46,11 +76,48 @@ public class InGameMenu : MonoBehaviour
 
     void Update()
     {
+        if (_awaitingRebindFor != null)
+        {
+            if (TryGetAnyKeyDown(out var pressed))
+            {
+                if (pressed != KeyCode.Escape)
+                {
+                    var cfg = GameConfig.Instance;
+                    if (cfg != null)
+                    {
+                        switch (_awaitingRebindFor)
+                        {
+                            case "MoveLeft":  cfg.MoveLeftKey  = pressed; break;
+                            case "MoveRight": cfg.MoveRightKey = pressed; break;
+                            case "Jump":      cfg.JumpKey      = pressed; break;
+                        }
+                        cfg.Save();
+                    }
+                }
+                _awaitingRebindFor = null;
+                RefreshControlsLabels();
+            }
+            return;
+        }
+
         // Don't intercept ESC while free camera is active
         if (FreeCameraController.IsActive) return;
 
         if (Input.GetKeyDown(toggleKey))
             SetOpen(!_isOpen);
+    }
+
+    static readonly KeyCode[] AllKeyCodes = (KeyCode[])System.Enum.GetValues(typeof(KeyCode));
+
+    static bool TryGetAnyKeyDown(out KeyCode pressed)
+    {
+        foreach (var kc in AllKeyCodes)
+        {
+            if (kc == KeyCode.None) continue;
+            if (Input.GetKeyDown(kc)) { pressed = kc; return true; }
+        }
+        pressed = KeyCode.None;
+        return false;
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -79,6 +146,15 @@ public class InGameMenu : MonoBehaviour
     {
         _mainPanel.SetActive(false);
         _settingsPanel.SetActive(true);
+        ShowSettingsTab(_audioTab);
+    }
+
+    void ShowSettingsTab(GameObject tab)
+    {
+        _audioTab.SetActive(tab == _audioTab);
+        _graphicsTab.SetActive(tab == _graphicsTab);
+        _controlsTab.SetActive(tab == _controlsTab);
+        if (tab == _controlsTab) RefreshControlsLabels();
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -140,14 +216,39 @@ public class InGameMenu : MonoBehaviour
         MakeBtn(_mainPanel, "Return to Main Menu", -140, OnQuitToMenu, _btnDanger);
 
         // ── Settings Panel ───────────────────────────────────────
-        _settingsPanel = MakeCenteredPanel("SettingsPanel", 360, 420);
+        _settingsPanel = MakeCenteredPanel("SettingsPanel", 420, 560);
         _settingsPanel.transform.SetParent(_root.transform, false);
 
         MakeTitle(_settingsPanel, "SETTINGS");
 
-        _masterSlider = MakeLabeledSlider(_settingsPanel, "Master Volume", 0f, 1f, 0.8f,  80);
-        _musicSlider  = MakeLabeledSlider(_settingsPanel, "Music",         0f, 1f, 0.7f,   0);
-        _sfxSlider    = MakeLabeledSlider(_settingsPanel, "SFX",           0f, 1f, 1f,    -80);
+        MakeTabBtn(_settingsPanel, "Audio",     -110, 200, () => ShowSettingsTab(_audioTab));
+        MakeTabBtn(_settingsPanel, "Graphics",     0, 200, () => ShowSettingsTab(_graphicsTab));
+        MakeTabBtn(_settingsPanel, "Controls",   110, 200, () => ShowSettingsTab(_controlsTab));
+
+        _audioTab    = MakeRect(_settingsPanel, "AudioTab");
+        _graphicsTab = MakeRect(_settingsPanel, "GraphicsTab");
+        _controlsTab = MakeRect(_settingsPanel, "ControlsTab");
+        StretchFull(_audioTab.GetComponent<RectTransform>());
+        StretchFull(_graphicsTab.GetComponent<RectTransform>());
+        StretchFull(_controlsTab.GetComponent<RectTransform>());
+
+        BuildAudioTab(_audioTab);
+        BuildGraphicsTab(_graphicsTab);
+        BuildControlsTab(_controlsTab);
+
+        MakeBtn(_settingsPanel, "← Back", -240, () => {
+            GameConfig.Instance?.Save();
+            ShowMain();
+        }, _btnColor);
+
+        ShowSettingsTab(_audioTab);
+    }
+
+    void BuildAudioTab(GameObject parent)
+    {
+        _masterSlider = MakeLabeledSlider(parent, "Master Volume", 0f, 1f, 0.8f, 110);
+        _musicSlider  = MakeLabeledSlider(parent, "Music",         0f, 1f, 0.7f,  40);
+        _sfxSlider    = MakeLabeledSlider(parent, "SFX",           0f, 1f, 1f,   -30);
 
         _masterSlider.onValueChanged.AddListener(v => {
             if (GameConfig.Instance != null) GameConfig.Instance.MasterVolume = v; });
@@ -155,11 +256,80 @@ public class InGameMenu : MonoBehaviour
             if (GameConfig.Instance != null) GameConfig.Instance.MusicVolume  = v; });
         _sfxSlider.onValueChanged.AddListener(v => {
             if (GameConfig.Instance != null) GameConfig.Instance.SfxVolume    = v; });
+    }
 
-        MakeBtn(_settingsPanel, "← Back", -195, () => {
+    void BuildGraphicsTab(GameObject parent)
+    {
+        MakeTxt(parent, "Resolution", 110, 15, TextAlignmentOptions.Center, Color.white);
+
+        var resolutions = Screen.resolutions;
+        var resOptions  = new string[resolutions.Length];
+        for (int i = 0; i < resolutions.Length; i++)
+            resOptions[i] = $"{resolutions[i].width} x {resolutions[i].height}";
+        if (resOptions.Length == 0) resOptions = new[] { $"{Screen.width} x {Screen.height}" };
+
+        var cfg = GameConfig.Instance;
+        int startRes = cfg != null
+            ? Mathf.Clamp(cfg.ResolutionIndex, 0, resOptions.Length - 1)
+            : Mathf.Max(0, resOptions.Length - 1);
+        _resolutionCycler = MakeCycler(parent, "res", 80, resOptions, startRes,
+            idx => { if (GameConfig.Instance != null) GameConfig.Instance.ResolutionIndex = idx; });
+
+        MakeTxt(parent, "Quality", 20, 15, TextAlignmentOptions.Center, Color.white);
+
+        var qualityOptions = QualitySettings.names;
+        int startQuality = cfg != null
+            ? Mathf.Clamp(cfg.QualityLevel, 0, Mathf.Max(0, qualityOptions.Length - 1))
+            : QualitySettings.GetQualityLevel();
+        _qualityCycler = MakeCycler(parent, "quality", -10, qualityOptions, startQuality,
+            idx => { if (GameConfig.Instance != null) GameConfig.Instance.QualityLevel = idx; });
+
+        MakeTxt(parent, "VSync", -70, 15, TextAlignmentOptions.Center, Color.white);
+        _vsyncToggle = MakeToggle(parent, -95);
+        _vsyncToggle.isOn = cfg == null || cfg.VSync;
+        _vsyncToggle.onValueChanged.AddListener(v => { if (GameConfig.Instance != null) GameConfig.Instance.VSync = v; });
+
+        MakeBtn(parent, "Apply", -150, () => {
+            GameConfig.Instance?.ApplyGraphics();
             GameConfig.Instance?.Save();
-            ShowMain();
-        }, _btnColor);
+        }, _btnResume);
+    }
+
+    void BuildControlsTab(GameObject parent)
+    {
+        MakeTxt(parent, "Move Left", 110, 15, TextAlignmentOptions.Center, Color.white);
+        _btnMoveLeftLabel = MakeRebindBtn(parent, 80, () => BeginRebind("MoveLeft"));
+
+        MakeTxt(parent, "Move Right", 20, 15, TextAlignmentOptions.Center, Color.white);
+        _btnMoveRightLabel = MakeRebindBtn(parent, -10, () => BeginRebind("MoveRight"));
+
+        MakeTxt(parent, "Jump", -70, 15, TextAlignmentOptions.Center, Color.white);
+        _btnJumpLabel = MakeRebindBtn(parent, -100, () => BeginRebind("Jump"));
+
+        MakeTxt(parent, "Click a button, then press the new key (Esc to cancel)", -160, 12,
+            TextAlignmentOptions.Center, new Color(0.75f, 0.78f, 0.88f));
+
+        RefreshControlsLabels();
+    }
+
+    // ── Controls tab: rebinding ─────────────────────────────────────
+
+    void BeginRebind(string action)
+    {
+        _awaitingRebindFor = action;
+        RefreshControlsLabels();
+    }
+
+    void RefreshControlsLabels()
+    {
+        var cfg = GameConfig.Instance;
+        KeyCode left  = cfg != null ? cfg.MoveLeftKey  : KeyCode.A;
+        KeyCode right = cfg != null ? cfg.MoveRightKey : KeyCode.D;
+        KeyCode jump  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
+
+        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? "Press a key…" : left.ToString();
+        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? "Press a key…" : right.ToString();
+        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? "Press a key…" : jump.ToString();
     }
 
     void LoadSettingsValues()
@@ -301,5 +471,139 @@ public class InGameMenu : MonoBehaviour
     {
         rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
         rt.offsetMin = rt.offsetMax = Vector2.zero;
+    }
+
+    // ── Settings-tab helpers ─────────────────────────────────────
+
+    void MakeTabBtn(GameObject parent, string label, float xOff, float yOff, UnityEngine.Events.UnityAction cb)
+    {
+        var go  = new GameObject("Tab_" + label);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = _btnColor;
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(cb);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(120, 34);
+        rt.anchoredPosition = new Vector2(xOff, yOff);
+
+        var tGO = new GameObject("Label"); tGO.transform.SetParent(go.transform, false);
+        var txt = tGO.AddComponent<TextMeshProUGUI>();
+        txt.text = label; txt.fontSize = 14; txt.fontStyle = FontStyles.Bold;
+        txt.alignment = TextAlignmentOptions.Center; txt.color = Color.white;
+        var trt = txt.rectTransform;
+        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+        trt.offsetMin = trt.offsetMax = Vector2.zero;
+    }
+
+    GameObject MakeTxt(GameObject parent, string text, float yOff, int fontSize,
+                        TextAlignmentOptions align, Color color)
+    {
+        var go = new GameObject("Txt_" + text);
+        go.transform.SetParent(parent.transform, false);
+        var txt = go.AddComponent<TextMeshProUGUI>();
+        txt.text = text; txt.fontSize = fontSize; txt.alignment = align; txt.color = color;
+        var rt = txt.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(360, 24);
+        rt.anchoredPosition = new Vector2(0, yOff);
+        return go;
+    }
+
+    Toggle MakeToggle(GameObject parent, float yOff)
+    {
+        var go = new GameObject("Toggle");
+        go.transform.SetParent(parent.transform, false);
+        var toggle = go.AddComponent<Toggle>();
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(46, 24);
+        rt.anchoredPosition = new Vector2(0, yOff);
+
+        var bgGO = new GameObject("Bg"); bgGO.transform.SetParent(go.transform, false);
+        var bgImg = bgGO.AddComponent<Image>(); bgImg.color = new Color(0.22f, 0.22f, 0.30f);
+        var bgRt = bgImg.rectTransform;
+        bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one; bgRt.offsetMin = bgRt.offsetMax = Vector2.zero;
+
+        var checkGO = new GameObject("Checkmark"); checkGO.transform.SetParent(bgGO.transform, false);
+        var checkImg = checkGO.AddComponent<Image>(); checkImg.color = _btnResume;
+        var checkRt = checkImg.rectTransform;
+        checkRt.anchorMin = new Vector2(0.08f, 0.08f);
+        checkRt.anchorMax = new Vector2(0.92f, 0.92f);
+        checkRt.offsetMin = checkRt.offsetMax = Vector2.zero;
+
+        toggle.targetGraphic = bgImg;
+        toggle.graphic       = checkImg;
+        return toggle;
+    }
+
+    CyclerControl MakeCycler(GameObject parent, string name, float yOff, string[] options,
+                              int startIndex, System.Action<int> onChanged)
+    {
+        var labelGO = new GameObject(name + "_Value");
+        labelGO.transform.SetParent(parent.transform, false);
+        var label = labelGO.AddComponent<TextMeshProUGUI>();
+        label.fontSize = 15; label.alignment = TextAlignmentOptions.Center; label.color = Color.white;
+        var lrt = label.rectTransform;
+        lrt.anchorMin = lrt.anchorMax = new Vector2(0.5f, 0.5f);
+        lrt.sizeDelta = new Vector2(200, 24);
+        lrt.anchoredPosition = new Vector2(0, yOff);
+
+        var cycler = new CyclerControl { Options = options, Label = label, OnChanged = onChanged };
+
+        MakeArrowBtn(parent, name + "_Prev", "◀", new Vector2(-120, yOff), () => cycler.Step(-1));
+        MakeArrowBtn(parent, name + "_Next", "▶", new Vector2(120, yOff),  () => cycler.Step(1));
+
+        cycler.Set(startIndex);
+        return cycler;
+    }
+
+    void MakeArrowBtn(GameObject parent, string name, string glyph, Vector2 pos, UnityEngine.Events.UnityAction cb)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = new Color(0.18f, 0.28f, 0.42f);
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(cb);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(26, 24);
+        rt.anchoredPosition = pos;
+
+        var tGO = new GameObject("Glyph"); tGO.transform.SetParent(go.transform, false);
+        var txt = tGO.AddComponent<TextMeshProUGUI>();
+        txt.text = glyph; txt.fontSize = 14; txt.alignment = TextAlignmentOptions.Center; txt.color = Color.white;
+        var trt = txt.rectTransform;
+        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+        trt.offsetMin = trt.offsetMax = Vector2.zero;
+    }
+
+    TextMeshProUGUI MakeRebindBtn(GameObject parent, float yOff, UnityEngine.Events.UnityAction cb)
+    {
+        var go = new GameObject("RebindBtn");
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = _btnColor;
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(cb);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(150, 30);
+        rt.anchoredPosition = new Vector2(0, yOff);
+
+        var tGO = new GameObject("Label"); tGO.transform.SetParent(go.transform, false);
+        var txt = tGO.AddComponent<TextMeshProUGUI>();
+        txt.fontSize = 14; txt.fontStyle = FontStyles.Bold;
+        txt.alignment = TextAlignmentOptions.Center; txt.color = Color.white;
+        var trt = txt.rectTransform;
+        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+        trt.offsetMin = trt.offsetMax = Vector2.zero;
+
+        return txt;
     }
 }

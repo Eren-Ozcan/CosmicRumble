@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: skin_neon_pulse
   m_EditorClassIdentifier: 
   itemId: skin_neon_pulse
-  displayName: "Neon Nabz\u0131"
+  displayName: Neon Pulse
   icon: {fileID: 0}
   type: 2
   unlockMethod: 1

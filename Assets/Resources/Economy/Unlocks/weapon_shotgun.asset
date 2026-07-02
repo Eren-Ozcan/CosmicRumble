@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: weapon_shotgun
   m_EditorClassIdentifier: 
   itemId: weapon_shotgun
-  displayName: "Pompal\u0131 T\xFCfek"
+  displayName: Shotgun
   icon: {fileID: 0}
   type: 0
   unlockMethod: 0

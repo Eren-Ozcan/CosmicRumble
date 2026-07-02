@@ -31,7 +31,7 @@ public class ShieldSkill : AbilityBase
     {
         base.SetSelected(selected);
         if (selected)
-            UIManager.Instance?.ShowConfirmPrompt("Shield için emin misin? [Enter]");
+            UIManager.Instance?.ShowConfirmPrompt("Confirm Shield? [Enter]");
         else
             UIManager.Instance?.HideConfirmPrompt();
     }

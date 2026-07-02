@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   achievementId: HIZLI_BITIR
   displayName: Speed Run
-  description: Win in under 5 minutes
+  description: Win a match within 5 turns
   icon: {fileID: 0}
   rarity: 1
-  triggerType: 2
+  triggerType: 0
   targetValue: 1
   isSecret: 0
   rewardXP: 300

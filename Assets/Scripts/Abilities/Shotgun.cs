@@ -20,10 +20,10 @@ public class Shotgun : AbilityBase
 
     [Header("Pellet & Spread")]
     public int pelletCount = 5;
-    public float totalSpreadAngle = 12f;
+    public float totalSpreadAngle = 24f;
 
     [Header("Kinetic Projectile Ayarları")]
-    public float pelletMaxRange = 2f;
+    public float pelletMaxRange = 1.152f;
     [Range(0f, 1f)] public float fullDamagePortion = 0.30f;
     public float pelletMaxDamage = 8f;
     public float pelletMinDamage = 0f;

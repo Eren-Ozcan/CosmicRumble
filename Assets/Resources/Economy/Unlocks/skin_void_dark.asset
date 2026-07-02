@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: skin_void_dark
   m_EditorClassIdentifier: 
   itemId: skin_void_dark
-  displayName: "Void Karas\u0131"
+  displayName: Void Black
   icon: {fileID: 0}
   type: 2
   unlockMethod: 1

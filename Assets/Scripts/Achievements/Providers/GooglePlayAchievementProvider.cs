@@ -1,5 +1,10 @@
 using System;
 using UnityEngine;
+using UnityEngine.SocialPlatforms;
+
+#if GPGS_INSTALLED
+using GooglePlayGames;
+#endif
 
 namespace CosmicRumble.Achievements
 {
@@ -10,30 +15,45 @@ namespace CosmicRumble.Achievements
 
         public void Initialize(Action onReady)
         {
-            // TODO: Google Play Games Services initialization
+#if GPGS_INSTALLED
+            PlayGamesPlatform.Activate();
+            Social.localUser.Authenticate(success =>
+            {
 #if UNITY_EDITOR
-            Debug.Log("[GooglePlayAchievementProvider] Initialized (placeholder).");
+                Debug.Log($"[GooglePlayAchievementProvider] Authenticate: {success}");
 #endif
+                onReady?.Invoke();
+            });
+#else
+            Debug.LogWarning("[GooglePlayAchievementProvider] Google Play Games Plugin is not installed — " +
+                "see TODO.md 'Achievement platform providers' for setup steps. Falling back to no-op.");
             onReady?.Invoke();
+#endif
         }
+
+        public void Tick() { }
 
         public void UnlockAchievement(string id)
         {
-            // TODO: Social.ReportProgress(id, 100.0, result => { });
-#if UNITY_EDITOR
-            Debug.Log($"[GooglePlayAchievementProvider] Unlock: {id}");
+#if GPGS_INSTALLED
+            if (!Social.localUser.authenticated) return;
+            Social.ReportProgress(id, 100.0, _ => { });
 #endif
         }
 
         public void UpdateProgress(string id, int current, int max)
         {
-            // TODO: Social.ReportProgress(id, (double)current / max * 100.0, result => { });
-#if UNITY_EDITOR
-            Debug.Log($"[GooglePlayAchievementProvider] Progress {id}: {current}/{max}");
+#if GPGS_INSTALLED
+            if (!Social.localUser.authenticated || max <= 0) return;
+            Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
 #endif
         }
 
+        // Play Games achievement state requires an async Social.LoadAchievements callback;
+        // AchievementManager already tracks unlock state locally, so this stays false here.
         public bool IsUnlocked(string id) => false;
+
+        public void Shutdown() { }
     }
 #endif
 }

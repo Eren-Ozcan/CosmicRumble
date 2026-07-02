@@ -315,18 +315,6 @@ MonoBehaviour:
   kApplyPlanetDamage: 1
   kPlanetDamageRadius: 0.5
   kPlanetDamageForce: 2
-  kUseElongatedPlanetDamage: 0
-  kOvalLength: 6
-  kOvalWidth: 3
-  kOvalStamps: 1
-  kPlanetChunkLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  kPlanetLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  kUseTrigger: 1
-  kStopOnDamageable: 1
 --- !u!114 &8419486536768381218
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -346,6 +334,10 @@ MonoBehaviour:
   maxDragDistance: 3
   powerMultiplier: 6
   ignoreOwnerDuration: 1.5
+  explosionRadius: 1
+  explosionForce: 5
+  maxDamage: 10
+  projectileTTL: 15
 --- !u!114 &-4980835287136157885
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -365,6 +357,11 @@ MonoBehaviour:
   maxDragDistance: 3
   powerMultiplier: 5
   ignoreOwnerDuration: 0.5
+  explosionRadius: 1
+  explosionForce: 5
+  maxDamage: 20
+  delayBeforeExplosion: 6
+  gravityForceMultiplier: 1
 --- !u!114 &-7917154408194715751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -385,8 +382,8 @@ MonoBehaviour:
   powerMultiplier: 5
   ignoreOwnerDuration: 0.5
   pelletCount: 5
-  totalSpreadAngle: 12
-  pelletMaxRange: 12
+  totalSpreadAngle: 24
+  pelletMaxRange: 1.152
   fullDamagePortion: 0.3
   pelletMaxDamage: 8
   pelletMinDamage: 0
@@ -400,14 +397,6 @@ MonoBehaviour:
   ovalStamps: 1
   alignToVelocity: 1
   anchorAtSurface: 1
-  planetChunkLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  planetLayer:
-    serializedVersion: 2
-    m_Bits: 0
-  useTrigger: 1
-  stopOnDamageable: 1
 --- !u!114 &-7348377678887645225
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -483,9 +472,6 @@ MonoBehaviour:
   coneAngleDeg: 100
   coneSegments: 48
   knockbackForce: 10
-  targetLayers:
-    serializedVersion: 2
-    m_Bits: 0
   onlyAffectTaggedPlayers: 1
   maxDragDistance: 3
   previewBaseAlpha: 0.894

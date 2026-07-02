@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: skin_prestige_shadow
   m_EditorClassIdentifier: 
   itemId: skin_prestige_shadow
-  displayName: "Prestij G\xF6lgesi"
+  displayName: Prestige Shadow
   icon: {fileID: 0}
   type: 2
   unlockMethod: 1

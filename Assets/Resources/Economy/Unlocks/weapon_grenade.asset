@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: weapon_grenade
   m_EditorClassIdentifier: 
   itemId: weapon_grenade
-  displayName: "El Bombas\u0131"
+  displayName: Grenade
   icon: {fileID: 0}
   type: 0
   unlockMethod: 1

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   achievementId: FIRST_BLOOD
   displayName: First Blood
-  description: Deal damage for first time
+  description: Win your first match
   icon: {fileID: 0}
   rarity: 0
   triggerType: 0

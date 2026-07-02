@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.SocialPlatforms;
+using UnityEngine.SocialPlatforms.GameCenter;
 
 namespace CosmicRumble.Achievements
 {
@@ -10,30 +12,35 @@ namespace CosmicRumble.Achievements
 
         public void Initialize(Action onReady)
         {
-            // TODO: Game Center initialization via UnityEngine.SocialPlatforms
+            GameCenterPlatform.ShowDefaultAchievementCompletionBanner(true);
+            Social.localUser.Authenticate(success =>
+            {
 #if UNITY_EDITOR
-            Debug.Log("[AppStoreAchievementProvider] Initialized (placeholder).");
+                Debug.Log($"[AppStoreAchievementProvider] Authenticate: {success}");
 #endif
-            onReady?.Invoke();
+                onReady?.Invoke();
+            });
         }
+
+        public void Tick() { }
 
         public void UnlockAchievement(string id)
         {
-            // TODO: Social.ReportProgress(id, 100.0, result => { });
-#if UNITY_EDITOR
-            Debug.Log($"[AppStoreAchievementProvider] Unlock: {id}");
-#endif
+            if (!Social.localUser.authenticated) return;
+            Social.ReportProgress(id, 100.0, _ => { });
         }
 
         public void UpdateProgress(string id, int current, int max)
         {
-            // TODO: Social.ReportProgress(id, (double)current / max * 100.0, result => { });
-#if UNITY_EDITOR
-            Debug.Log($"[AppStoreAchievementProvider] Progress {id}: {current}/{max}");
-#endif
+            if (!Social.localUser.authenticated || max <= 0) return;
+            Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
         }
 
+        // Game Center achievement state requires an async Social.LoadAchievements callback;
+        // AchievementManager already tracks unlock state locally, so this stays false here.
         public bool IsUnlocked(string id) => false;
+
+        public void Shutdown() { }
     }
 #endif
 }

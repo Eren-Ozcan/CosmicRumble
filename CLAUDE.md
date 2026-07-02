@@ -7,7 +7,7 @@
 - Fizik: Custom gravity — Unity'nin default gravity'si (`Physics2D.gravity`) KAPALI
 - Karakter: 360° yüzey hareketi, vektörel çekim
 - Silahlar/Yetenekler: Pistol, RPG, Shotgun, Grenade, BlackHole, Teleport, Shield, BatHammer, Bomb
-- Multiplayer: Photon Fusion (henüz entegre edilmedi)
+- Multiplayer: henüz entegre edilmedi — önerilen yaklaşım için `TODO.md`'ye bak
 
 ## Klasör Yapısı
 ```
@@ -34,3 +34,6 @@ Assets/Scripts/
 - `/review [dosya]` — fizik, mimari, performans, Unity kullanımı ve gameplay açısından 5 lensli kod incelemesi yapar.
 - `/optimize [dosya|sistem]` — performans (FPS, GC, object pool) ve kod kalitesi (SOLID, refactor fırsatları) analizini P0/P1/P2 önceliğiyle raporlar.
 - `/commit` — staged değişiklikleri analiz edip semantic commit mesajı önerir.
+
+## Backlog
+Ertelenen işler (kostümler, quest içeriği, ses içeriği, multiplayer, tam tuş rebinding, cloud save vb.) için `TODO.md`'ye bak.

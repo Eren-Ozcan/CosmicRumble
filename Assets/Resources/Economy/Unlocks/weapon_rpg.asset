@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: weapon_rpg
   m_EditorClassIdentifier: 
   itemId: weapon_rpg
-  displayName: "Roket F\u0131rlat\u0131c\u0131"
+  displayName: Rocket Launcher
   icon: {fileID: 0}
   type: 0
   unlockMethod: 0

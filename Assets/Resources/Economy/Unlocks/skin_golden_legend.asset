@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: skin_golden_legend
   m_EditorClassIdentifier: 
   itemId: skin_golden_legend
-  displayName: "Alt\u0131n Efsane"
+  displayName: Golden Legend
   icon: {fileID: 0}
   type: 2
   unlockMethod: 1

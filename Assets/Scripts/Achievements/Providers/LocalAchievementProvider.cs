@@ -34,5 +34,8 @@ namespace CosmicRumble.Achievements
         }
 
         public bool IsUnlocked(string id) => _unlocked.Contains(id);
+
+        public void Tick() { }
+        public void Shutdown() { }
     }
 }

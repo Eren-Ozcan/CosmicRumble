@@ -89,12 +89,12 @@ public class AchievementsPanelUI : MonoBehaviour
         var card = MakePanel(_panelRoot, "Card", CardBg, Vector2.zero,
             new Vector2(760, 580), new Vector2(0.5f, 0.5f));
 
-        // Başlık
-        MakeTxt(card, "Title", "BAŞARIMLAR", 28, Color.white,
+        // Title
+        MakeTxt(card, "Title", "ACHIEVEMENTS", 28, Color.white,
             new Vector2(0.5f, 0.92f), new Vector2(680, 46));
 
-        // Kapat butonu
-        MakeBtn(card, "btn_close", "X KAPAT",
+        // Close button
+        MakeBtn(card, "btn_close", "X CLOSE",
             new Vector2(0.88f, 0.92f), new Vector2(100, 34),
             new Color(0.25f, 0.25f, 0.4f), new Color(0.38f, 0.38f, 0.58f), Hide);
 
@@ -125,7 +125,7 @@ public class AchievementsPanelUI : MonoBehaviour
         rt.sizeDelta        = new Vector2(160, 40);
         rt.anchoredPosition = new Vector2(90, -30);
 
-        var lbl = MakeTxt(go, "Lbl", "BAŞARIMLAR", 14, Color.white,
+        var lbl = MakeTxt(go, "Lbl", "ACHIEVEMENTS", 14, Color.white,
             new Vector2(0.5f, 0.5f), Vector2.zero);
         lbl.rectTransform.anchorMin = Vector2.zero;
         lbl.rectTransform.anchorMax = Vector2.one;
@@ -229,8 +229,8 @@ public class AchievementsPanelUI : MonoBehaviour
 
         if (db == null || db.allAchievements == null || db.allAchievements.Count == 0)
         {
-            MakeEmptyRow("Henüz başarım tanımlanmamış.");
-            if (_statsText) _statsText.text = "0 / 0 tamamlandı";
+            MakeEmptyRow("No achievements defined yet.");
+            if (_statsText) _statsText.text = "0 / 0 completed";
             return;
         }
 
@@ -251,7 +251,7 @@ public class AchievementsPanelUI : MonoBehaviour
         }
 
         if (_statsText)
-            _statsText.text = $"{totalUnlocked} / {all.Count} başarım tamamlandı";
+            _statsText.text = $"{totalUnlocked} / {all.Count} achievements completed";
     }
 
     // ── Satır yapısı (HorizontalLayoutGroup sütunları) ──────────────────
@@ -311,7 +311,7 @@ public class AchievementsPanelUI : MonoBehaviour
         infoVLG.childForceExpandHeight = false;
 
         string displayName = isSecret ? "???" : def.displayName;
-        string desc        = isSecret ? "Gizli başarım" : def.description;
+        string desc        = isSecret ? "Secret achievement" : def.description;
 
         var nameTxt = MakeTxtLE(infoCol, "Name", displayName, 15,
             unlocked ? Color.white : LockedGray, TextAlignmentOptions.Left);
@@ -344,7 +344,7 @@ public class AchievementsPanelUI : MonoBehaviour
 
         if (unlocked)
         {
-            MakeTxtLE(statusCol, "StatusLbl", "OK TAMAM", 13,
+            MakeTxtLE(statusCol, "StatusLbl", "UNLOCKED", 13,
                 UnlockedGold, TextAlignmentOptions.Center);
         }
         else if (def.triggerType == AchievementTriggerType.Cumulative && def.targetValue > 0)
@@ -375,7 +375,7 @@ public class AchievementsPanelUI : MonoBehaviour
         }
         else
         {
-            MakeTxtLE(statusCol, "StatusLbl", "Kilitli", 12,
+            MakeTxtLE(statusCol, "StatusLbl", "Locked", 12,
                 LockedGray, TextAlignmentOptions.Center);
         }
     }

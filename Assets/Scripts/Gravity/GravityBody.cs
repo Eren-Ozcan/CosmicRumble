@@ -95,12 +95,20 @@ public class GravityBody : MonoBehaviour
             return;
         }
 
-        // Input bu frame'de Update'te cache'lenir
-        cachedHorizontalInput = -Input.GetAxisRaw("Horizontal");
+        // Input is cached this frame in Update (keys are rebindable via GameConfig)
+        var cfg = GameConfig.Instance;
+        KeyCode leftKey  = cfg != null ? cfg.MoveLeftKey  : KeyCode.A;
+        KeyCode rightKey = cfg != null ? cfg.MoveRightKey : KeyCode.D;
+        KeyCode jumpKey  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
+
+        float h = 0f;
+        if (Input.GetKey(leftKey))  h += 1f;
+        if (Input.GetKey(rightKey)) h -= 1f;
+        cachedHorizontalInput = h;
 
         bool grounded = _isGrounded;
 
-        if (cooldownTimer <= 0f && (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.Space)))
+        if (cooldownTimer <= 0f && Input.GetKeyDown(jumpKey))
         {
             if (grounded)
             {

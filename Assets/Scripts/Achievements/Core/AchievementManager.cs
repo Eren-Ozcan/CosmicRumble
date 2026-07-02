@@ -60,6 +60,10 @@ namespace CosmicRumble.Achievements
             });
         }
 
+        private void Update() => _provider?.Tick();
+
+        private void OnApplicationQuit() => _provider?.Shutdown();
+
         private void SelectProvider()
         {
 #if UNITY_STANDALONE && !UNITY_EDITOR

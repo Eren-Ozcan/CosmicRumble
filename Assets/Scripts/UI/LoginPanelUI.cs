@@ -96,27 +96,27 @@ public class LoginPanelUI : MonoBehaviour
         MakeText(cardGO, "Title", "CosmicRumble", 36,
             new Vector2(0.5f, 0.87f), new Vector2(360, 50), Color.white);
 
-        // Kullanıcı adı input
-        MakeLabel(cardGO, "lbl_user", "Kullanıcı Adı", new Vector2(0.5f, 0.72f));
+        // Username input
+        MakeLabel(cardGO, "lbl_user", "Username", new Vector2(0.5f, 0.72f));
         _userInput = MakeInputField(cardGO, "inp_user", "Username",
             new Vector2(0.5f, 0.62f), new Vector2(320, 44), false);
 
-        // Şifre input
-        MakeLabel(cardGO, "lbl_pass", "Şifre", new Vector2(0.5f, 0.50f));
+        // Password input
+        MakeLabel(cardGO, "lbl_pass", "Password", new Vector2(0.5f, 0.50f));
         _passInput = MakeInputField(cardGO, "inp_pass", "Password",
             new Vector2(0.5f, 0.40f), new Vector2(320, 44), true);
 
-        // Hata mesajı
+        // Error message
         _errorText = MakeText(cardGO, "err_text", "", 14,
             new Vector2(0.5f, 0.30f), new Vector2(340, 30), new Color(1f, 0.3f, 0.3f));
         _errorText.gameObject.SetActive(false);
 
-        // Butonlar
-        MakeButton(cardGO, "btn_login",    "GİRİŞ YAP",      new Vector2(0.5f, 0.23f),
+        // Buttons
+        MakeButton(cardGO, "btn_login",    "LOG IN",      new Vector2(0.5f, 0.23f),
             new Vector2(320, 44), PrimaryBtn, PrimaryHover, OnLoginClicked);
-        MakeButton(cardGO, "btn_register", "KAYIT OL",        new Vector2(0.5f, 0.14f),
+        MakeButton(cardGO, "btn_register", "REGISTER",        new Vector2(0.5f, 0.14f),
             new Vector2(320, 44), DangerBtn,  DangerHover,  OnRegisterClicked);
-        MakeButton(cardGO, "btn_guest",    "MİSAFİR OLARAK OYNA", new Vector2(0.5f, 0.05f),
+        MakeButton(cardGO, "btn_guest",    "PLAY AS GUEST", new Vector2(0.5f, 0.05f),
             new Vector2(320, 40),
             new Color(0.25f, 0.25f, 0.30f), new Color(0.35f, 0.35f, 0.42f),
             OnGuestClicked);
@@ -138,10 +138,10 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
+        if (AuthManager.Instance == null) { ShowError("AuthManager not found."); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Kullanıcı adı ve şifre gerekli.");
+            ShowError("Username and password are required.");
             StartCoroutine(Shake());
             return;
         }
@@ -154,7 +154,7 @@ public class LoginPanelUI : MonoBehaviour
         }
         else
         {
-            ShowError("Kullanıcı adı veya şifre hatalı.");
+            ShowError("Incorrect username or password.");
             StartCoroutine(Shake());
         }
     }
@@ -164,17 +164,17 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
+        if (AuthManager.Instance == null) { ShowError("AuthManager not found."); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Kullanıcı adı ve şifre gerekli.");
+            ShowError("Username and password are required.");
             StartCoroutine(Shake());
             return;
         }
 
         if (AuthManager.Instance.Register(user, pass))
         {
-            // Kayıt sonrası otomatik giriş
+            // Auto-login after registering
             AuthManager.Instance.Login(user, pass);
             ClearError();
             Hide();
@@ -182,7 +182,7 @@ public class LoginPanelUI : MonoBehaviour
         }
         else
         {
-            ShowError("Bu kullanıcı adı zaten alınmış.");
+            ShowError("This username is already taken.");
             StartCoroutine(Shake());
         }
     }

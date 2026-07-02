@@ -24,14 +24,6 @@ public class GameInitializer : MonoBehaviour
 
     void Start()
     {
-        var debug = FindObjectsByType<GravitySource>(FindObjectsSortMode.None);
-        #if UNITY_EDITOR
-        Debug.Log($"[DEBUG] GravitySource count: {debug.Length}");
-        #endif
-        foreach (var g in debug)
-            #if UNITY_EDITOR
-            Debug.Log($"  → {g.name} GO={g.gameObject.name} active={g.gameObject.activeInHierarchy}");
-            #endif
         // ── 0. Gezegenleri bul, sırala ───────────────────────────────────
         var sortedPlanets = BotSpawner.GetSortedPlanets();
         if (sortedPlanets.Count == 0)

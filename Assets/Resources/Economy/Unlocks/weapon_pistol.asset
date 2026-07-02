@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: weapon_pistol
   m_EditorClassIdentifier: 
   itemId: weapon_pistol
-  displayName: Tabanca
+  displayName: Pistol
   icon: {fileID: 0}
   type: 0
   unlockMethod: 0

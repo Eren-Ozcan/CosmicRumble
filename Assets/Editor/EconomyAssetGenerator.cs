@@ -49,11 +49,11 @@ public class EconomyAssetGenerator
         var defs = new List<(string id, string name, UnlockableType type, UnlockMethod method, int lvl, long gold, long gem, bool isDefault)>
         {
             // Weapons
-            ("weapon_pistol",  "Tabanca",          UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
-            ("weapon_shotgun", "Pompalı Tüfek",     UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
-            ("weapon_rpg",     "Roket Fırlatıcı",   UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
-            ("weapon_bomb",    "Bomba",              UnlockableType.Weapon, UnlockMethod.ByLevel, 2,  0,   0, false),
-            ("weapon_grenade", "El Bombası",         UnlockableType.Weapon, UnlockMethod.ByLevel, 6,  0,   0, false),
+            ("weapon_pistol",  "Pistol",           UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
+            ("weapon_shotgun", "Shotgun",          UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
+            ("weapon_rpg",     "Rocket Launcher",  UnlockableType.Weapon, UnlockMethod.Default, 0,  0,   0, true),
+            ("weapon_bomb",    "Bomb",             UnlockableType.Weapon, UnlockMethod.ByLevel, 2,  0,   0, false),
+            ("weapon_grenade", "Grenade",          UnlockableType.Weapon, UnlockMethod.ByLevel, 6,  0,   0, false),
             // Skills
             ("skill_superjump","Super Jump",         UnlockableType.Skill,  UnlockMethod.ByLevel, 4,  0,   0, false),
             ("skill_shield",   "Shield",             UnlockableType.Skill,  UnlockMethod.ByLevel, 8,  0,   0, false),
@@ -61,13 +61,13 @@ public class EconomyAssetGenerator
             ("skill_teleport", "Teleport",           UnlockableType.Skill,  UnlockMethod.ByLevel, 10, 0,   0, false),
             ("skill_bathammer","Bat Hammer",         UnlockableType.Skill,  UnlockMethod.ByLevel, 10, 0,   0, false),
             // Cosmetics
-            ("skin_cosmic_blue",     "Kozmik Mavi",     UnlockableType.Cosmetic, UnlockMethod.ByLevel, 15,  500,  0, false),
-            ("skin_fire_red",        "Ateş Kırmızısı",  UnlockableType.Cosmetic, UnlockMethod.ByLevel, 20,  800,  0, false),
-            ("skin_void_dark",       "Void Karası",      UnlockableType.Cosmetic, UnlockMethod.ByLevel, 30, 1200,  0, false),
-            ("skin_golden_legend",   "Altın Efsane",     UnlockableType.Cosmetic, UnlockMethod.ByLevel, 45, 2000,  0, false),
-            ("skin_neon_pulse",      "Neon Nabzı",       UnlockableType.Cosmetic, UnlockMethod.ByLevel, 60, 3000,  0, false),
-            ("skin_prestige_shadow", "Prestij Gölgesi",  UnlockableType.Cosmetic, UnlockMethod.ByLevel, 80, 5000,  0, false),
-            ("skin_cosmic_master",   "Kozmik Usta",      UnlockableType.Cosmetic, UnlockMethod.ByGem,  100,    0, 100, false),
+            ("skin_cosmic_blue",     "Cosmic Blue",      UnlockableType.Cosmetic, UnlockMethod.ByLevel, 15,  500,  0, false),
+            ("skin_fire_red",        "Fire Red",         UnlockableType.Cosmetic, UnlockMethod.ByLevel, 20,  800,  0, false),
+            ("skin_void_dark",       "Void Black",       UnlockableType.Cosmetic, UnlockMethod.ByLevel, 30, 1200,  0, false),
+            ("skin_golden_legend",   "Golden Legend",    UnlockableType.Cosmetic, UnlockMethod.ByLevel, 45, 2000,  0, false),
+            ("skin_neon_pulse",      "Neon Pulse",       UnlockableType.Cosmetic, UnlockMethod.ByLevel, 60, 3000,  0, false),
+            ("skin_prestige_shadow", "Prestige Shadow",  UnlockableType.Cosmetic, UnlockMethod.ByLevel, 80, 5000,  0, false),
+            ("skin_cosmic_master",   "Cosmic Master",    UnlockableType.Cosmetic, UnlockMethod.ByGem,  100,    0, 100, false),
         };
 
         var created = new List<UnlockableItem>();
