@@ -10,7 +10,7 @@ public class ColliderDebugVisualizer : MonoBehaviour
 
     void Update()
     {
-        Collider2D[] colliders = FindObjectsOfType<Collider2D>();
+        Collider2D[] colliders = FindObjectsByType<Collider2D>(FindObjectsSortMode.None);
 
         foreach (var col in colliders)
         {
