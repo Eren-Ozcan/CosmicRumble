@@ -1,25 +1,25 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Security.Cryptography;
-using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using Unity.Services.Core;
+using Unity.Services.Authentication;
 using CosmicRumble.Achievements;
+using CosmicRumble.Economy;
 
-[System.Serializable]
-public class UserEntry
-{
-    public string username;
-    public string passwordHash;
-    public string createdAt;
-}
-
-[System.Serializable]
-public class UserDatabase
-{
-    public List<UserEntry> users = new List<UserEntry>();
-}
-
+/// <summary>
+/// UGS Authentication sarmalayıcısı. Kayıt/giriş artık gerçek, cihazlar arası taşınabilir
+/// hesaplar (Unity Gaming Services username/password kimlik sağlayıcısı) — eski local
+/// users.json/SHA256 sistemi kaldırıldı. Var olan eski local hesaplar bu değişiklikle geçersiz
+/// kalır: şifrenin düz hali hiçbir yerde saklanmadığı için (sadece hash) otomatik taşıma mümkün
+/// değil.
+///
+/// CloudSaveManager, MenuScene açılışında zaten otomatik bir anonim UGS oturumu kuruyor —
+/// Register() bu oturuma kimlik bilgisi EKLER (AddUsernamePasswordAsync), yani misafirken
+/// biriken ilerleme kaybolmaz. Login() ise gerçekten FARKLI bir hesaba geçtiği için (farklı
+/// Player ID / bulut verisi) mevcut progress manager'ların bellekteki verisi geçersiz kalır —
+/// bu yüzden kimlik gerçekten değiştiğinde sahne yeniden yüklenir (bkz. ReloadSessionScene).
+/// </summary>
 public class AuthManager : MonoBehaviour
 {
     public static AuthManager Instance { get; private set; }
@@ -29,132 +29,175 @@ public class AuthManager : MonoBehaviour
     public string        CurrentUsername { get; private set; }
     public PlayerProfile CurrentProfile  { get; private set; }
 
-    private string       _dbPath;
-    private UserDatabase _db;
-
     void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-
-        _dbPath = Path.Combine(Application.persistentDataPath, "users.json");
-        LoadDatabase();
-    }
-
-    // ── Persistence ──────────────────────────────────────────────────────
-
-    void LoadDatabase()
-    {
-        if (File.Exists(_dbPath))
-        {
-            try
-            {
-                string json = File.ReadAllText(_dbPath);
-                _db = JsonUtility.FromJson<UserDatabase>(json);
-            }
-            catch (Exception e)
-            {
-#if UNITY_EDITOR
-                Debug.LogWarning($"[AuthManager] users.json okunamadı: {e.Message}");
-#endif
-            }
-        }
-
-        if (_db == null) _db = new UserDatabase();
-    }
-
-    void SaveDatabase()
-    {
-        try
-        {
-            File.WriteAllText(_dbPath, JsonUtility.ToJson(_db, true));
-        }
-        catch (Exception e)
-        {
-#if UNITY_EDITOR
-            Debug.LogError($"[AuthManager] users.json kaydedilemedi: {e.Message}");
-#endif
-        }
     }
 
     // ── Public API ───────────────────────────────────────────────────────
 
-    /// <summary>Yeni kullanıcı kaydeder. Başarılı → true, kullanıcı zaten varsa → false.</summary>
-    public bool Register(string username, string password)
+    /// <summary>Mevcut (genelde anonim) oturuma username/password kimlik bilgisi ekler —
+    /// aynı Player ID/bulut verisi korunur, misafir ilerlemesi kaybolmaz.</summary>
+    public async Task<(bool success, string error)> Register(string username, string password)
     {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return false;
+        string validationError = ValidateCredentials(username, password);
+        if (validationError != null) return (false, validationError);
 
-        if (_db.users.Exists(u =>
-            string.Equals(u.username, username, StringComparison.OrdinalIgnoreCase)))
-            return false;
-
-        _db.users.Add(new UserEntry
+        try
         {
-            username     = username.Trim(),
-            passwordHash = HashPassword(password),
-            createdAt    = DateTime.UtcNow.ToString("o")
-        });
+            await AuthenticationService.Instance.AddUsernamePasswordAsync(username, password);
 
-        SaveDatabase();
-        return true;
+            IsLoggedIn      = true;
+            IsGuest         = false;
+            CurrentUsername = username;
+            LoadProfile(username);
+            AchievementManager.Instance?.LoadForUser(username);
+
+            // Aynı kimlik korunuyor (sadece kimlik bilgisi eklendi) — progress manager'lar
+            // zaten doğru veriyle bellekte, reload gerekmiyor.
+            return (true, null);
+        }
+        catch (AuthenticationException e) { return (false, e.Message); }
+        catch (RequestFailedException e)  { return (false, $"Couldn't reach the server: {e.Message}"); }
+        catch (Exception e)               { return (false, $"Unexpected error: {e.Message}"); }
     }
 
-    /// <summary>Giriş yapar. Başarılıysa profili yükler ve true döner.</summary>
-    public bool Login(string username, string password)
+    /// <summary>Var olan farklı bir hesaba (farklı Player ID) giriş yapar.</summary>
+    public async Task<(bool success, string error)> Login(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return false;
+            return (false, "Username and password are required.");
 
-        var entry = _db.users.Find(u =>
-            string.Equals(u.username, username, StringComparison.OrdinalIgnoreCase));
+        // Yeni hesaba geçmeden önce eski oturumdan çıkılıyor — bu SignInWithUsernamePasswordAsync
+        // başarısız olsa bile geri alınamıyor (credentials zaten temizlendi). Bu yüzden hata
+        // durumunda local state'i de "çıkış yapıldı" olarak güncellemek gerekiyor, aksi halde
+        // IsLoggedIn artık geçersiz olan eski hesabı göstermeye devam eder.
+        bool hadActiveSession = AuthenticationService.Instance.IsSignedIn;
+        if (hadActiveSession)
+            AuthenticationService.Instance.SignOut(clearCredentials: true);
 
-        if (entry == null) return false;
-        if (entry.passwordHash != HashPassword(password)) return false;
+        try
+        {
+            await AuthenticationService.Instance.SignInWithUsernamePasswordAsync(username, password);
 
-        IsLoggedIn      = true;
-        CurrentUsername = entry.username;
+            IsLoggedIn      = true;
+            IsGuest         = false;
+            CurrentUsername = username;
+            LoadProfile(username);
+            AchievementManager.Instance?.LoadForUser(username);
 
-        CurrentProfile = PlayerProfile.Load(entry.username) ?? new PlayerProfile { username = entry.username };
-        CurrentProfile.lastLogin = DateTime.UtcNow.ToString("o");
-        CurrentProfile.Save();
-
-        AchievementManager.Instance?.LoadForUser(entry.username);
-
-        return true;
+            ReloadSessionScene(); // farklı kimlik = farklı bulut verisi, manager'lar taze okumalı
+            return (true, null);
+        }
+        catch (AuthenticationException e) { ResetIfSessionLost(hadActiveSession); return (false, e.Message); }
+        catch (RequestFailedException e)  { ResetIfSessionLost(hadActiveSession); return (false, $"Couldn't reach the server: {e.Message}"); }
+        catch (Exception e)               { ResetIfSessionLost(hadActiveSession); return (false, $"Unexpected error: {e.Message}"); }
     }
 
-    /// <summary>Hesap açmadan misafir olarak oynar. Profil kaydedilmez.</summary>
-    public void LoginAsGuest()
+    /// <summary>Hesap açmadan misafir olarak oynar. Zaten anonim bir oturum varsa (normal durum
+    /// — CloudSaveManager açılışta kuruyor) onu korur; adlı bir hesaptan geliniyorsa temiz bir
+    /// anonim oturuma geçer.</summary>
+    public async Task LoginAsGuest()
     {
+        bool wasNamedAccount = IsLoggedIn && !IsGuest;
+        try
+        {
+            if (wasNamedAccount)
+            {
+                AuthenticationService.Instance.SignOut(clearCredentials: true);
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            }
+            else if (!AuthenticationService.Instance.IsSignedIn)
+            {
+                await AuthenticationService.Instance.SignInAnonymouslyAsync();
+            }
+        }
+        catch (Exception e)
+        {
+#if UNITY_EDITOR
+            Debug.LogWarning($"[AuthManager] Guest sign-in failed: {e.Message}");
+#endif
+        }
+
         IsLoggedIn      = true;
         IsGuest         = true;
-        CurrentUsername = "Misafir";
+        CurrentUsername = "Guest";
         CurrentProfile  = null;
         AchievementManager.Instance?.LoadForUser(null);
+
+        if (wasNamedAccount) ReloadSessionScene();
     }
 
-    /// <summary>Oturumu kapatır ve profili kaydeder.</summary>
+    /// <summary>Oturumu kapatır. Sahne yeniden yüklenince BootstrapSequence temiz bir anonim
+    /// oturumla baştan başlar.</summary>
     public void Logout()
     {
-        CurrentProfile?.Save();
+        if (AuthenticationService.Instance.IsSignedIn)
+            AuthenticationService.Instance.SignOut(clearCredentials: true);
+
         IsLoggedIn      = false;
         IsGuest         = false;
         CurrentUsername = null;
         CurrentProfile  = null;
 
-        AchievementManager.Instance?.LoadForUser(null);
+        ReloadSessionScene();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────
+    // ── Internals ────────────────────────────────────────────────────────
 
-    static string HashPassword(string password)
+    void LoadProfile(string username)
     {
-        using var sha = SHA256.Create();
-        byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(password));
-        var sb = new StringBuilder(64);
-        foreach (byte b in bytes) sb.Append(b.ToString("x2"));
-        return sb.ToString();
+        CurrentProfile = PlayerProfile.Load(username) ?? new PlayerProfile { username = username };
+        CurrentProfile.lastLogin = DateTime.UtcNow.ToString("o");
+        CurrentProfile.Save();
+    }
+
+    /// <summary>Login() başarısız olduğunda, eğer önceden aktif bir oturum sign-out edilmişse
+    /// (artık geri alınamaz), local state'i buna göre "çıkış yapıldı" olarak düzeltir.</summary>
+    void ResetIfSessionLost(bool hadActiveSession)
+    {
+        if (!hadActiveSession) return;
+        IsLoggedIn      = false;
+        IsGuest         = false;
+        CurrentUsername = null;
+        CurrentProfile  = null;
+    }
+
+    /// <summary>
+    /// Kimlik gerçekten değişti — mevcut progress manager'ları (eski kimliğin verisini bellekte
+    /// tutuyorlar) yok edip sahneyi yeniden yükler. MainMenuUI'nin BootstrapSequence'i,
+    /// CloudSaveManager'ın zaten aktif olan yeni kimlikle otomatik pull yapmasını ve
+    /// manager'ların taze veriyle yeniden oluşturulmasını sağlar.
+    /// </summary>
+    void ReloadSessionScene()
+    {
+        DestroyIfExists(CurrencyManager.Instance?.gameObject);
+        DestroyIfExists(PlayerLevelManager.Instance?.gameObject);
+        DestroyIfExists(UnlockManager.Instance?.gameObject);
+        DestroyIfExists(QuestManager.Instance?.gameObject);
+        DestroyIfExists(ChestManager.Instance?.gameObject);
+        DestroyIfExists(LoginStreakManager.Instance?.gameObject);
+        DestroyIfExists(AchievementManager.Instance?.gameObject);
+        DestroyIfExists(AchievementTracker.Instance?.gameObject);
+
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    static void DestroyIfExists(GameObject go)
+    {
+        if (go != null) Destroy(go);
+    }
+
+    static string ValidateCredentials(string username, string password)
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            return "Username and password are required.";
+        if (username.Length < 3 || username.Length > 20)
+            return "Username must be 3-20 characters.";
+        if (password.Length < 8 || password.Length > 30)
+            return "Password must be 8-30 characters.";
+        return null;
     }
 }

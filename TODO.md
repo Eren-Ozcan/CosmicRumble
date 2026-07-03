@@ -213,13 +213,58 @@ against the live UGS backend has been verified (see below) — not just local-on
     every push/pull call becomes a safe no-op, and the game runs exactly as before — additive, not breaking,
     whether or not cloud is configured.
 
+**Login/Register screen (`LoginPanelUI.cs`/`AuthManager.cs`) now uses real UGS accounts, not the old fully
+local system — this is what makes progress actually portable across devices/reinstalls, not just backed up.**
+
+- The old system stored a local username + SHA256 password hash in `users.json` with zero server component —
+  it only let one device distinguish between multiple local profiles, it never enabled cross-device play.
+  Replaced with Unity Gaming Services' Username & Password identity provider (enabled in the Unity Cloud
+  Dashboard under Player Authentication → Identity Providers). Old local accounts do not carry over (the
+  plaintext password was never stored anywhere, only an irreversible hash, so there's nothing to migrate from
+  — not a concern here since none were real players).
+- **Register** calls `AuthenticationService.Instance.AddUsernamePasswordAsync()` — this *adds* credentials to
+  whatever session is already active (normally the anonymous session `CloudSaveManager` established
+  automatically at boot), rather than creating a brand new identity from scratch. This means playing as a
+  guest first and registering later keeps that guest progress — the intended mobile pattern ("play now, save
+  your progress by making an account later"), not a reset to zero.
+- **Login** switches to a genuinely different account (different Player ID, different cloud data), so unlike
+  Register it can't just keep using the already-loaded local files — `AuthManager.ReloadSessionScene()`
+  destroys the 8 `DontDestroyOnLoad` progress-manager GameObjects (Currency/PlayerLevel/Unlock/Quest/Chest/
+  Streak/Achievement/AchievementTracker — the ones whose `Awake()`-time `Load()` only ever reads local files
+  once) and reloads the scene, so `MainMenuUI`'s `BootstrapSequence` runs fresh: `CloudSaveManager` re-pulls
+  under the new identity, then the progress managers are recreated reading the newly-synced files. Logout
+  does the same (signs out, reloads — the fresh boot then re-establishes a clean anonymous session
+  automatically, same as a first-ever launch). Register does NOT reload — same identity, no data changed.
+- **Bug found and fixed during testing:** `Login()` signs out of the previous session *before* attempting the
+  new sign-in (has to — can't hold two sessions at once). If the new sign-in then fails, that sign-out can't
+  be undone (credentials already cleared), but the old code left `IsLoggedIn`/`CurrentUsername` still
+  reporting the now-invalid previous account as active. Fixed: on failure, local state resets to signed-out
+  if a session had been active (`ResetIfSessionLost`) — verified a failed login now correctly leaves
+  `IsLoggedIn=false`, and the app can recover into a normal guest session immediately after.
+- **Verified against the real backend** (test account `cosmictest02`): Register (no reload, instance IDs
+  unchanged), Logout (reload, instance IDs changed), Login with correct credentials (reload, succeeds), Login
+  with wrong password (fails cleanly, correct state reset), Register with a taken username (fails cleanly,
+  `ENTITY_EXISTS`), Guest login/switch. Zero Editor hangs, zero unhandled exceptions across the full matrix.
+- **Tooling gotcha hit twice during this work, for future reference:** testing `async`/`Task`-returning code
+  via Unity Editor script execution must never synchronously block the calling thread on an incomplete Task
+  (`.Result`/`.Wait()`/`.GetAwaiter().GetResult()`) — this deadlocks Unity's main thread (the awaited
+  continuation needs that same thread's `SynchronizationContext` to resume) and freezes the entire Editor
+  solid, requiring a manual restart. Safe pattern: fire-and-forget an `async void` wrapper that does a real
+  `await`, log the outcome, and check back via the console log in a separate, later call — never poll a
+  blocking call in the same script.
+- **Left open, not done:** `achievements_<username>.json` still isn't synced to Cloud Save (see the
+  `CloudSaveManager` note above). Now that usernames are real, globally-unique, cross-device UGS identities
+  (not just an arbitrary local string), this would be safer to revisit than before — but it's still a
+  separate task, not done as part of this pass.
+
 **How the developer set it up (for reference / repeating on another machine):**
 1. Sign in with a Unity ID in the Editor: **Edit → Project Settings → Services** (or the cloud icon in the
    toolbar) → sign in → create or select an organization → create a new Unity Cloud project (or link this
    Unity project to an existing one) → note the **Project ID**.
-2. In the Unity Cloud Dashboard (`cloud.unity.com`), open that project → **Authentication** service → enable
-   it (Anonymous sign-in is on by default, no extra config needed to match this code). → **Cloud Save**
-   service → enable it. Both have no-payment-method-required free tiers (per the research above).
+2. In the Unity Cloud Dashboard (`cloud.unity.com`), open that project → **Authentication** service →
+   **Identity Providers** → **Add Identity Provider** → add both **Username & Password** (needed for
+   `AuthManager`'s Register/Login) and confirm Anonymous is available (no separate toggle needed, it's the
+   SDK default) → **Cloud Save** service → enable it. All free-tier, no payment method required.
 3. Back in the Editor, once Project Settings → Services shows the project as linked, just enter Play mode —
    `CloudSaveManager` will pick it up automatically, no code changes needed. Ask to have it re-verified once
    linked and I'll play-test an actual push/pull round-trip (write local progress → confirm it appears in the

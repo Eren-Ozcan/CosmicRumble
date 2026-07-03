@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -27,6 +28,10 @@ public class LoginPanelUI : MonoBehaviour
     TMP_InputField    _userInput;
     TMP_InputField    _passInput;
     TextMeshProUGUI   _errorText;
+    Button            _loginBtn;
+    Button            _registerBtn;
+    Button            _guestBtn;
+    bool              _busy;
 
     // ─────────────────────────────────────────────────────────────────────
 
@@ -50,6 +55,8 @@ public class LoginPanelUI : MonoBehaviour
     public void Show()
     {
         _root.SetActive(true);
+        _busy = false;
+        SetButtonsInteractable(true);
         ClearError();
     }
 
@@ -112,11 +119,11 @@ public class LoginPanelUI : MonoBehaviour
         _errorText.gameObject.SetActive(false);
 
         // Buttons
-        MakeButton(cardGO, "btn_login",    "LOG IN",      new Vector2(0.5f, 0.23f),
+        _loginBtn = MakeButton(cardGO, "btn_login",    "LOG IN",      new Vector2(0.5f, 0.23f),
             new Vector2(320, 44), PrimaryBtn, PrimaryHover, OnLoginClicked);
-        MakeButton(cardGO, "btn_register", "REGISTER",        new Vector2(0.5f, 0.14f),
+        _registerBtn = MakeButton(cardGO, "btn_register", "REGISTER",        new Vector2(0.5f, 0.14f),
             new Vector2(320, 44), DangerBtn,  DangerHover,  OnRegisterClicked);
-        MakeButton(cardGO, "btn_guest",    "PLAY AS GUEST", new Vector2(0.5f, 0.05f),
+        _guestBtn = MakeButton(cardGO, "btn_guest",    "PLAY AS GUEST", new Vector2(0.5f, 0.05f),
             new Vector2(320, 40),
             new Color(0.25f, 0.25f, 0.30f), new Color(0.35f, 0.35f, 0.42f),
             OnGuestClicked);
@@ -133,8 +140,9 @@ public class LoginPanelUI : MonoBehaviour
     //  CALLBACKS
     // ════════════════════════════════════════════════════════════════════
 
-    void OnLoginClicked()
+    async void OnLoginClicked()
     {
+        if (_busy) return;
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
@@ -146,21 +154,12 @@ public class LoginPanelUI : MonoBehaviour
             return;
         }
 
-        if (AuthManager.Instance.Login(user, pass))
-        {
-            ClearError();
-            Hide();
-            MainMenuAuthButton.Instance?.RefreshButton();
-        }
-        else
-        {
-            ShowError("Incorrect username or password.");
-            StartCoroutine(Shake());
-        }
+        await RunAuthAction(AuthManager.Instance.Login(user, pass), "Signing in...");
     }
 
-    void OnRegisterClicked()
+    async void OnRegisterClicked()
     {
+        if (_busy) return;
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
@@ -172,28 +171,57 @@ public class LoginPanelUI : MonoBehaviour
             return;
         }
 
-        if (AuthManager.Instance.Register(user, pass))
-        {
-            // Auto-login after registering
-            AuthManager.Instance.Login(user, pass);
-            ClearError();
-            Hide();
-            MainMenuAuthButton.Instance?.RefreshButton();
-        }
-        else
-        {
-            ShowError("This username is already taken.");
-            StartCoroutine(Shake());
-        }
+        await RunAuthAction(AuthManager.Instance.Register(user, pass), "Creating account...");
     }
 
-    void OnGuestClicked()
+    async void OnGuestClicked()
     {
-        if (AuthManager.Instance == null) return;
-        AuthManager.Instance.LoginAsGuest();
+        if (_busy || AuthManager.Instance == null) return;
+
+        _busy = true;
+        SetButtonsInteractable(false);
+        ShowStatus("Signing in...");
+
+        await AuthManager.Instance.LoginAsGuest();
+
+        _busy = false;
+        SetButtonsInteractable(true);
+        ClearError();
         Hide();
         MainMenuAuthButton.Instance?.RefreshButton();
         LobbyPanelUI.Instance?.Show();
+    }
+
+    /// <summary>Login()/Register() ortak akışı: yükleniyor durumunu göster, sonucu bekle, başarı/hata işle.</summary>
+    async Task RunAuthAction(Task<(bool success, string error)> action, string statusMessage)
+    {
+        _busy = true;
+        SetButtonsInteractable(false);
+        ShowStatus(statusMessage);
+
+        var (success, error) = await action;
+
+        _busy = false;
+        SetButtonsInteractable(true);
+
+        if (success)
+        {
+            ClearError();
+            Hide();
+            MainMenuAuthButton.Instance?.RefreshButton();
+        }
+        else
+        {
+            ShowError(error);
+            StartCoroutine(Shake());
+        }
+    }
+
+    void SetButtonsInteractable(bool interactable)
+    {
+        if (_loginBtn    != null) _loginBtn.interactable    = interactable;
+        if (_registerBtn != null) _registerBtn.interactable = interactable;
+        if (_guestBtn    != null) _guestBtn.interactable     = interactable;
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -203,7 +231,16 @@ public class LoginPanelUI : MonoBehaviour
     void ShowError(string msg)
     {
         if (_errorText == null) return;
-        _errorText.text = msg;
+        _errorText.color = new Color(1f, 0.3f, 0.3f);
+        _errorText.text  = msg;
+        _errorText.gameObject.SetActive(true);
+    }
+
+    void ShowStatus(string msg)
+    {
+        if (_errorText == null) return;
+        _errorText.color = TextSecondary;
+        _errorText.text  = msg;
         _errorText.gameObject.SetActive(true);
     }
 
@@ -303,7 +340,7 @@ public class LoginPanelUI : MonoBehaviour
         return field;
     }
 
-    static void MakeButton(GameObject parent, string name, string label,
+    static Button MakeButton(GameObject parent, string name, string label,
         Vector2 anchor, Vector2 size, Color normal, Color hover,
         UnityEngine.Events.UnityAction callback)
     {
@@ -337,6 +374,8 @@ public class LoginPanelUI : MonoBehaviour
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
+
+        return btn;
     }
 }
 
