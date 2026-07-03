@@ -53,7 +53,7 @@ namespace CosmicRumble.Cloud
         /// böylece onların kendi Awake/Load'u zaten senkronlanmış veriyi okur. timeoutSeconds
         /// içinde bitmezse (ağ yok / UGS yapılandırılmamış) local-only devam eder.
         /// </summary>
-        public IEnumerator InitializeAndPull(float timeoutSeconds = 4f)
+        public IEnumerator InitializeAndPull(float timeoutSeconds = 6f)
         {
             var task = InitializeAndPullAsync();
             float elapsed = 0f;
@@ -72,34 +72,52 @@ namespace CosmicRumble.Cloud
             }
         }
 
+        // Unity Cloud Project'e yeni bağlanıldığında ya da Editor'ün ilk Play girişinde UGS'nin
+        // dahili servis kaydı henüz hazır olmayabiliyor (UnityProjectNotLinkedException, config
+        // gerçekte doğruyken bile) — bu geçici bir yarış durumu, kalıcı bir yapılandırma hatası
+        // değil. Bir kere yeniden deneme, tüm oturumu gereksiz yere local-only'ye düşürmeyi önler.
+        private const int MaxInitAttempts = 2;
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(1);
+
         private async Task InitializeAndPullAsync()
         {
-            try
+            for (int attempt = 1; attempt <= MaxInitAttempts; attempt++)
             {
-                if (UnityServices.State == ServicesInitializationState.Uninitialized)
-                    await UnityServices.InitializeAsync();
-
-                if (!AuthenticationService.Instance.IsSignedIn)
-                    await AuthenticationService.Instance.SignInAnonymouslyAsync();
-
-                var keys = new HashSet<string>(SyncedFiles.Keys);
-                var remote = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
-
-                foreach (var kvp in remote)
+                try
                 {
-                    if (!SyncedFiles.TryGetValue(kvp.Key, out var fileName)) continue;
-                    string localPath = Path.Combine(Application.persistentDataPath, fileName);
-                    File.WriteAllText(localPath, kvp.Value.Value.GetAsString());
-                }
+                    if (UnityServices.State == ServicesInitializationState.Uninitialized)
+                        await UnityServices.InitializeAsync();
 
-                IsReady = true;
-            }
-            catch (Exception e)
-            {
+                    if (!AuthenticationService.Instance.IsSignedIn)
+                        await AuthenticationService.Instance.SignInAnonymouslyAsync();
+
+                    var keys = new HashSet<string>(SyncedFiles.Keys);
+                    var remote = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
+
+                    foreach (var kvp in remote)
+                    {
+                        if (!SyncedFiles.TryGetValue(kvp.Key, out var fileName)) continue;
+                        string localPath = Path.Combine(Application.persistentDataPath, fileName);
+                        File.WriteAllText(localPath, kvp.Value.Value.GetAsString());
+                    }
+
+                    IsReady = true;
+                    return;
+                }
+                catch (Exception e)
+                {
+                    bool willRetry = attempt < MaxInitAttempts;
 #if UNITY_EDITOR
-                Debug.LogWarning($"[CloudSaveManager] UGS unavailable, continuing local-only. {e.Message}");
+                    Debug.LogWarning($"[CloudSaveManager] UGS init attempt {attempt}/{MaxInitAttempts} failed" +
+                        $"{(willRetry ? ", retrying" : ", continuing local-only")}. {e.Message}");
 #endif
-                _unavailable = true;
+                    if (!willRetry)
+                    {
+                        _unavailable = true;
+                        return;
+                    }
+                    await Task.Delay(RetryDelay);
+                }
             }
         }
 

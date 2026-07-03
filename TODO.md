@@ -175,8 +175,9 @@ Done — Move Left / Move Right / Jump plus the 9 ability hotkeys are considered
 rebinding work planned.
 
 ## Save / sync — cross-platform online backend
-**Code side is done for 7 of the 8 persistence files; blocked on linking a Unity Cloud Project (needs the
-developer's own Unity ID login, can't be done by an assistant).**
+**Done and live.** Unity Cloud Project is linked (org `eren-zcan`, project `CosmicRumble`, project ID
+`3165363e-befa-4137-8a10-ea7978e902d9`), Authentication + Cloud Save enabled, and a real push/pull round-trip
+against the live UGS backend has been verified (see below) — not just local-only fallback.
 
 - Installed `com.unity.services.core`, `com.unity.services.authentication`, `com.unity.services.cloudsave`.
 - Added `Assets/Scripts/Cloud/CloudSaveManager.cs` (namespace `CosmicRumble.Cloud`): initializes UGS, signs in
@@ -191,17 +192,28 @@ developer's own Unity ID login, can't be done by an assistant).**
     (`BootstrapSequence`): core singletons (`GameConfig`, `AuthManager`, `AudioManager`, `CloudSaveManager`)
     first, then `CloudSaveManager.InitializeAndPull()` (pulls all 7 keys from the cloud and overwrites the
     matching local files, so the *other* progress managers' own `Awake()`-time `Load()` reads already-synced
-    data — ordering matters here), capped at a 4s timeout so a slow/unreachable network can never hang the
+    data — ordering matters here), capped at a 6s timeout so a slow/unreachable network can never hang the
     menu, then the 7 progress managers + achievements are created as before.
   - Each of the 7 managers' `Save()` now also calls `CloudSaveManager.Instance?.QueuePush("<key>", SavePath)`
     (fire-and-forget) right after writing the local file, mirroring the `AchievementEvents`/`AudioManager`
     wiring pattern already used elsewhere in this codebase.
-  - **Verified in the Unity Editor (play-tested):** with no Unity Cloud Project linked, `UnityServices.InitializeAsync()`
-    fails fast (caught internally), `CloudSaveManager.IsReady` correctly reports `false`, every push/pull call
-    becomes a safe no-op, and the game runs exactly as before — this is a strictly additive layer, not a
-    breaking change, whether or not cloud is ever configured.
+  - `InitializeAndPullAsync()` retries once (1s delay) before giving up — the very first Play-mode entry right
+    after linking the Cloud Project hit a transient `UnityProjectNotLinkedException` even with a genuinely
+    correct link (UGS's internal service registry warming up), which without a retry would've silently
+    disabled cloud sync for that entire session. 5 subsequent Play-mode entries all succeeded cleanly without
+    needing the retry — the registry stays warm once the project's been linked and used a few times, so this
+    mainly protects the first session after (re-)linking, not everyday play.
+  - **Verified against the real backend, not just local-only fallback:** pushed `currency.json` via
+    `CurrencyManager.Save()`, independently confirmed the identical JSON landed in the live Cloud Save
+    backend via `CloudSaveService.Instance.Data.Player.LoadAsync`; then deleted the local file entirely,
+    re-entered Play mode, and confirmed it was recreated from the cloud with matching content — full
+    push-then-restore cycle proven, not assumed.
+  - Also verified the pre-linking fallback path still holds: with no Cloud Project linked,
+    `UnityServices.InitializeAsync()` fails fast (caught internally), `IsReady` correctly reports `false`,
+    every push/pull call becomes a safe no-op, and the game runs exactly as before — additive, not breaking,
+    whether or not cloud is configured.
 
-**What's left — requires the developer, not code:**
+**How the developer set it up (for reference / repeating on another machine):**
 1. Sign in with a Unity ID in the Editor: **Edit → Project Settings → Services** (or the cloud icon in the
    toolbar) → sign in → create or select an organization → create a new Unity Cloud project (or link this
    Unity project to an existing one) → note the **Project ID**.
