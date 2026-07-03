@@ -47,7 +47,8 @@ public class BatHammerSkill : AbilityBase
     // Keypad8 alternatif tuş — AbilityBase sadece ActivationKey'i dinler
     protected override void Update()
     {
-        if (gravityBody != null && gravityBody.isActive &&
+        if (gravityBody != null && gravityBody.isActive.Value &&
+            (!gravityBody.IsSpawned || gravityBody.IsOwner) &&
             !isSelected && Input.GetKeyDown(KeyCode.Keypad8))
             charAbilities?.SelectSkill(SlotIndex);
         base.Update();

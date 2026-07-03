@@ -1,12 +1,13 @@
 ﻿using UnityEngine;
 using System;
 using System.Collections.Generic;
+using Unity.Netcode;
 using CosmicRumble.Achievements;
 using CosmicRumble.Economy;
 
 // +100: GameInitializer [+10] RegisterPlayers'ı tamamladıktan sonra çalışır.
 [DefaultExecutionOrder(100)]
-public class TurnManager : MonoBehaviour
+public class TurnManager : NetworkBehaviour
 {
     public static TurnManager Instance { get; private set; }
 
@@ -54,7 +55,7 @@ public class TurnManager : MonoBehaviour
             if (gb != null)
             {
                 Instance._currentShooter = gb;
-                gb.isActive = false;
+                gb.isActive.Value = false;
             }
         }
     }
@@ -78,7 +79,7 @@ public class TurnManager : MonoBehaviour
             if (Instance._currentShooter != null)
             {
                 Instance._currentShooter.movementLocked = false;
-                Instance._currentShooter.isActive = true;
+                Instance._currentShooter.isActive.Value = true;
                 Instance._currentShooter = null;
             }
             // Mermi patladıktan sonra kalan süreyi 5 saniye ile sınırla
@@ -115,36 +116,50 @@ public class TurnManager : MonoBehaviour
         Instance = this;
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        base.OnDestroy();
     }
 
     private void Start()
     {
+        // IsSpawned=false → offline hotseat, eski davranış (tek makine her şeyi yönetir).
+        // IsSpawned=true  → networked, sadece server tur mantığını çalıştırır.
+        if (IsSpawned && !IsServer) return;
+
         if (characters == null || characters.Count == 0)
         {
+            // Offline: GameInitializer RegisterPlayers'ı henüz çağırmamış demektir — uyar.
+            // Online (server): oyuncular henüz bağlanmamış olabilir — NetworkPlayerSpawner
+            // ikisi de bağlanınca RegisterPlayers() + BeginMatch()'i kendisi çağıracak.
             #if UNITY_EDITOR
             Debug.LogWarning("[TurnManager] characters listesi boş!");
             #endif
             return;
         }
 
-        // Menüden gelen ayarları uygula
+        BeginMatch();
+    }
+
+    /// <summary>
+    /// Maçı başlatır: ilk oyuncu sayısını bildirir, ilk karakteri aktif eder. Offline'da
+    /// Start() tarafından; online'da NetworkPlayerSpawner tarafından (RegisterPlayers'tan
+    /// hemen sonra, 2 client de bağlandığında) çağrılır.
+    /// </summary>
+    public void BeginMatch()
+    {
         if (GameConfig.Instance != null)
             turnDuration = GameConfig.Instance.TurnDuration;
 
         _matchStartTime = Time.time;
-
-        // AchievementEvents: maç başında oyuncu sayısını bildir
         AchievementEvents.FirePlayerCountInMatch(characters.Count);
-
-        // İlk karakteri aktif et
         ActivateCharacter(0);
     }
 
     private void Update()
     {
+        if (IsSpawned && !IsServer) return;
         if (gameOver) return;
 
         // Yok edilmiş karakterleri her frame temizle (aynı tur içi ölümleri yakala)
@@ -186,7 +201,7 @@ public class TurnManager : MonoBehaviour
         {
             var oldAb = oldGb.GetComponent<CharacterAbilities>();
             oldAb?.DeselectAll();
-            oldGb.isActive = false;
+            oldGb.isActive.Value = false;
             oldGb.ZeroHorizontalVelocity();
         }
 
@@ -197,7 +212,7 @@ public class TurnManager : MonoBehaviour
         GravityBody newGb = characters[currentIndex];
         if (newGb != null)
         {
-            newGb.isActive = true;
+            newGb.isActive.Value = true;
             newGb.OnTurnStart();
             CameraController.Instance?.SetActiveCharacter(newGb.transform);
 
@@ -253,7 +268,7 @@ public class TurnManager : MonoBehaviour
 
         // Aktif karakteri durdur
         foreach (var gb in characters)
-            if (gb != null) gb.isActive = false;
+            if (gb != null) gb.isActive.Value = false;
 
         string winnerName = winner != null ? winner.gameObject.name : null;
         #if UNITY_EDITOR

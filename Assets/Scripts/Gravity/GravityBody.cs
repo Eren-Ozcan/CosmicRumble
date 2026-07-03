@@ -1,12 +1,16 @@
 // Assets/Scripts/Gravity/GravityBody.cs
 using System;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
-public class GravityBody : MonoBehaviour
+public class GravityBody : NetworkBehaviour
 {
-    [HideInInspector] public bool isActive = false;
+    // Sadece server yazar (TurnManager) — offline hotseat'te (IsSpawned=false) network'ten
+    // bağımsız normal bir bool gibi davranır, hiçbir NetworkManager/spawn gerektirmez.
+    public NetworkVariable<bool> isActive =
+        new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
     [HideInInspector] public bool movementLocked = false;
 
@@ -77,8 +81,13 @@ public class GravityBody : MonoBehaviour
         rb   = GetComponent<Rigidbody2D>();
         _col = GetComponent<Collider2D>();
         rb.freezeRotation = true;
-        isActive = false;
         _planetMask = LayerMask.GetMask("Planet");
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        isActive.OnValueChanged += (oldValue, newValue) =>
+            Debug.Log($"[TURN] {name} isActive {oldValue}->{newValue} IsOwner={IsOwner} frame={Time.frameCount}");
     }
 
     private void Update()
@@ -86,7 +95,10 @@ public class GravityBody : MonoBehaviour
         if (cooldownTimer > 0f)
             cooldownTimer -= Time.deltaTime;
 
-        if (!isActive)
+        // IsSpawned=false → offline hotseat, herkes tek makineden kontrol edilir (eski davranış).
+        // IsSpawned=true  → networked, sadece bu GravityBody'nin sahibi kendi input'unu uygulayabilir
+        // (aksi halde her client'in klavyesi kimin sirasi olursa olsun o karakteri hareket ettirirdi).
+        if (!isActive.Value || (IsSpawned && !IsOwner))
             return;
 
         if (movementLocked)
@@ -232,7 +244,9 @@ public class GravityBody : MonoBehaviour
         // moveDir step 3'te tanımlandı — burada tekrar tanımlanmaz
 
         // ── 6. Sıra dışı: Zone 1-2'de tangential hızı sıfırla (kayma engeli) ──
-        if (!isActive)
+        // Bu, tur senkronu (isActive) durumuna göre TÜM client'larda aynı şekilde uygulanır —
+        // sahiplik kontrolü gerekmez, sadece "bu karakter aktif değil" fiziksel sabitlemesi.
+        if (!isActive.Value)
         {
             if (_isGrounded && surfaceAngle <= stableAngleLimit)
             {

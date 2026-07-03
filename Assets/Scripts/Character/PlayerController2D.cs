@@ -31,7 +31,7 @@ public class PlayerController2D : MonoBehaviour
 
     private void Update()
     {
-        if (!gravityBody.isActive) return;
+        if (!gravityBody.isActive.Value) return;
 
         // Yüz yönü: karakterin yerel transform.right ekseni (gezegen rotasyonuna göre döner)
         // üzerindeki hız bileşenine bakarak flip yapılır.

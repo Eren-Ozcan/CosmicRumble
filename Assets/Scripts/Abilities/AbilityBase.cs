@@ -103,16 +103,20 @@ public abstract class AbilityBase : MonoBehaviour, IAbilitySelectable, ICooldown
         if (cooldownTimer > 0f) cooldownTimer -= Time.deltaTime;
 
         // 3. isActive değişim tespiti
-        if (gravityBody != null && gravityBody.isActive && !wasActive)
+        if (gravityBody != null && gravityBody.isActive.Value && !wasActive)
         {
             wasActive = true;
             Cancel();
         }
-        else if (gravityBody != null && !gravityBody.isActive)
+        else if (gravityBody != null && !gravityBody.isActive.Value)
         {
             wasActive = false;
             return;
         }
+
+        // 3b. Networked modda sadece bu karakterin sahibi input okuyabilir (offline hotseat'te
+        // IsSpawned=false olduğu için bu kontrol devre dışı kalır, eski davranış korunur).
+        if (gravityBody != null && gravityBody.IsSpawned && !gravityBody.IsOwner) return;
 
         // 4. Cooldown dolmadıysa aim iptal
         if (cooldownTimer > 0f) { CancelAim(); return; }

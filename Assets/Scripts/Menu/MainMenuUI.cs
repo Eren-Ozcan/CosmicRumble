@@ -27,6 +27,8 @@ public class MainMenuUI : MonoBehaviour
     static readonly Color AccGreenHov  = new Color(0.18f, 0.82f, 0.30f, 1.00f);
     static readonly Color AccRed       = new Color(0.60f, 0.12f, 0.12f, 1.00f);
     static readonly Color AccRedHov    = new Color(0.80f, 0.18f, 0.18f, 1.00f);
+    static readonly Color AccCyan      = new Color(0.15f, 0.70f, 0.75f, 1.00f);
+    static readonly Color AccCyanHov   = new Color(0.25f, 0.85f, 0.90f, 1.00f);
     static readonly Color AccPress     = new Color(0.10f, 0.18f, 0.45f, 1.00f);
     static readonly Color TextPrimary  = Color.white;
     static readonly Color TextDim      = new Color(0.65f, 0.70f, 0.82f, 1.00f);
@@ -256,7 +258,7 @@ public class MainMenuUI : MonoBehaviour
         var backdropRt  = backdropImg.rectTransform;
         backdropRt.anchorMin        = new Vector2(0.5f, 0.5f);
         backdropRt.anchorMax        = new Vector2(0.5f, 0.5f);
-        backdropRt.sizeDelta        = new Vector2(340, 476);
+        backdropRt.sizeDelta        = new Vector2(340, 544);
         backdropRt.anchoredPosition = new Vector2(0, -74);
 
         // Side accent bar
@@ -274,11 +276,12 @@ public class MainMenuUI : MonoBehaviour
         // Buttons — centered vertically in card
         float topY  = 110f;
         MakeBtn(_mainPanel, "btn_play",          "▶  PLAY",           topY - BTN_GAP * 0, AccBlue,   AccBlueHov,   () => { Click(); LobbyPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_achievements",  "★  ACHIEVEMENTS",   topY - BTN_GAP * 1, AccPurple, AccPurpleHov, () => { Click(); AchievementsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_quests",        "◆  QUESTS",         topY - BTN_GAP * 2, AccGreen,  AccGreenHov,  () => { Click(); QuestsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_shop",          "$  SHOP",           topY - BTN_GAP * 3, AccGold,   AccGoldHov,   () => { Click(); ShopPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 4, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
-        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 5, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
+        MakeBtn(_mainPanel, "btn_online",        "⇄  ONLINE",         topY - BTN_GAP * 1, AccCyan,   AccCyanHov,   () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_achievements",  "★  ACHIEVEMENTS",   topY - BTN_GAP * 2, AccPurple, AccPurpleHov, () => { Click(); AchievementsPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_quests",        "◆  QUESTS",         topY - BTN_GAP * 3, AccGreen,  AccGreenHov,  () => { Click(); QuestsPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_shop",          "$  SHOP",           topY - BTN_GAP * 4, AccGold,   AccGoldHov,   () => { Click(); ShopPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 5, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
+        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 6, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
     }
 
     // ────────────────────────────────────────────────────────────────────────

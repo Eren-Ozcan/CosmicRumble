@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
 /// <summary>
@@ -24,12 +25,19 @@ public class GameInitializer : MonoBehaviour
 
     void Start()
     {
+        // Online oturum aktifse spawn işini NetworkPlayerSpawner yapar — burada hiçbir şey
+        // yapmadan çık (offline hotseat'te NetworkManager hiç dinlemediği için bu her zaman
+        // false olur, mevcut davranış aynen korunur).
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening) return;
+
         // ── 0. Gezegenleri bul, sırala ───────────────────────────────────
         var sortedPlanets = SpawnPositioning.GetSortedPlanets();
         if (sortedPlanets.Count == 0)
+        {
             #if UNITY_EDITOR
             Debug.LogWarning("[GameInitializer] Sahnede hiç GravitySource bulunamadı!");
             #endif
+        }
 
         // ── 1. Bot sayısını LobbyData'dan al (test amaçlı, varsayılan 0) ──
         int botCount = 0;

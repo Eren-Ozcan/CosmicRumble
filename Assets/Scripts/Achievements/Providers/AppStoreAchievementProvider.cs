@@ -1,7 +1,9 @@
 using System;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
+#if UNITY_IOS
 using UnityEngine.SocialPlatforms.GameCenter;
+#endif
 
 namespace CosmicRumble.Achievements
 {
