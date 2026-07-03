@@ -67,6 +67,11 @@ public class CurrencyHUD : MonoBehaviour
         var scaler = canvasGO.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
+        // Match by height, not width: the game is landscape-only and phone width varies far more
+        // than height across devices (16:9 to 21:9+) -- matching width would scale this top-left
+        // badge up/down with device width instead of keeping it a consistent size relative to the
+        // vertical space actually available, same reasoning as the main gameplay Canvas.
+        scaler.matchWidthOrHeight  = 1f;
 
         var safeAreaGO = new GameObject("SafeAreaRoot", typeof(RectTransform));
         safeAreaGO.transform.SetParent(canvasGO.transform, false);

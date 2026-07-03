@@ -426,10 +426,27 @@ providers already cover mobile — everything below is mobile-only work not yet 
   device's real notch/home-indicator geometry. Game is also now locked landscape-only in Player Settings
   (`allowedAutorotateToPortrait`/`PortraitUpsideDown` = 0, both landscape directions stay enabled) since the
   game is only ever played in landscape — confirmed with the user.
-  - Canvas Scaler pass for phone aspect ratios beyond safe-area (e.g. camera framing/zoom tuning specifically
-    for landscape phone aspect vs. desktop 16:9/ultrawide) is still open — not addressed this pass, no
-    concrete issue observed yet since the game's camera already behaves reasonably at typical landscape
-    ratios in testing.
+  - **Done (2026-07-03) — Canvas Scaler match-mode fix for landscape phone aspect ratios.** Checked
+    `CameraController.cs` first: its projectile-framing zoom math already divides by `_cam.aspect`, so it
+    correctly adapts to any aspect ratio — no camera code bug. The real issue was `Canvas` (`SampleScene`,
+    the gameplay HUD) had `CanvasScaler.matchWidthOrHeight = 0` (pure width match). For a landscape-only game,
+    width varies far more across real devices (16:9 up to 21:9+) than height, so width-matching means the HUD
+    (tray, timer, currency badge) scales up/down with device WIDTH instead of staying a consistent size
+    relative to the actually-fixed vertical budget — on a wide phone the bottom tray would eat a
+    disproportionately large vertical fraction of the screen, cramping gameplay view, worse as aspect gets
+    wider (backwards from what's desirable). Changed to `matchWidthOrHeight = 1` (match height) so the HUD's
+    vertical footprint stays constant regardless of device width; extra width just reveals more world/background,
+    which is fine for a Worms-style game. `CurrencyHUD.cs` (own runtime-built Canvas, previously left at the
+    unset default of 0) got the same fix for consistency. The menu-side modal panels (`LobbyPanelUI`,
+    `QuestsPanelUI`, `ShopPanelUI`, etc.) were left at their existing `0.5f` — they're fixed-size
+    center-anchored dialogs, not edge-anchored HUD chrome, so match-mode only affects overall panel size, not
+    functional squeezing; no bug there.
+    - **Verified with a before/after screenshot comparison** at a real landscape phone resolution
+      (2532×1170, iPhone 12's actual landscape pixel dimensions): before the fix the bottom skill tray icons
+      rendered visibly larger (~22% oversized, matching the math: width-match scale factor 2532/1920=1.32 vs.
+      height-match 1170/1080=1.08); after the fix they render at the correct reference-accurate size. No
+      clipping/overlap was visible in either version at this specific aspect, but the fix removes the
+      growing-with-width risk for wider aspects than this test covered.
 - **Done — IAP infrastructure (placeholder product catalog).** Installed `com.unity.purchasing` (5.4.0, new
   v5 `StoreController` API, not the deprecated `IStoreListener`/`IDetailedStoreListener` surface). Added
   `Assets/Scripts/Economy/IAP/GemPackDefinition.cs` (5 consumable packs: 100/550/1200/2500/6000 Gem) and
