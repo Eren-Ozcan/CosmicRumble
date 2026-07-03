@@ -68,8 +68,16 @@ public class CurrencyHUD : MonoBehaviour
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
 
+        var safeAreaGO = new GameObject("SafeAreaRoot", typeof(RectTransform));
+        safeAreaGO.transform.SetParent(canvasGO.transform, false);
+        var safeAreaRt = (RectTransform)safeAreaGO.transform;
+        safeAreaRt.anchorMin = Vector2.zero;
+        safeAreaRt.anchorMax = Vector2.one;
+        safeAreaRt.offsetMin = safeAreaRt.offsetMax = Vector2.zero;
+        safeAreaGO.AddComponent<SafeArea>();
+
         var bgGO = new GameObject("Background");
-        bgGO.transform.SetParent(canvasGO.transform, false);
+        bgGO.transform.SetParent(safeAreaGO.transform, false);
         var bgImg = bgGO.AddComponent<Image>();
         bgImg.color = BgColor;
         bgImg.raycastTarget = false;
