@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEngine;
+using CosmicRumble.Cloud;
 
 namespace CosmicRumble.Economy
 {
@@ -113,8 +114,11 @@ namespace CosmicRumble.Economy
         }
 
         // ─── Save/Load ────────────────────────────────────────────────────────
-        private void Save() =>
+        private void Save()
+        {
             File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
+            CloudSaveManager.Instance?.QueuePush("streak", SavePath);
+        }
 
         private void Load()
         {

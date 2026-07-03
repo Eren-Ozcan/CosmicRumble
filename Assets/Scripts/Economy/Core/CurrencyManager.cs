@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using UnityEngine;
+using CosmicRumble.Cloud;
 
 namespace CosmicRumble.Economy
 {
@@ -74,8 +75,11 @@ namespace CosmicRumble.Economy
             OnCurrencyChanged?.Invoke(type, value);
         }
 
-        private void Save() =>
+        private void Save()
+        {
             File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
+            CloudSaveManager.Instance?.QueuePush("currency", SavePath);
+        }
 
         private void Load()
         {

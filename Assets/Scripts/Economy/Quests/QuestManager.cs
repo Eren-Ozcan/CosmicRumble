@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using CosmicRumble.Achievements;
+using CosmicRumble.Cloud;
 
 namespace CosmicRumble.Economy
 {
@@ -309,8 +310,11 @@ namespace CosmicRumble.Economy
             return now.Year == prev.Year && now.Month == prev.Month;
         }
 
-        private void Save() =>
+        private void Save()
+        {
             File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
+            CloudSaveManager.Instance?.QueuePush("quests", SavePath);
+        }
 
         private void Load()
         {

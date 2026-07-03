@@ -175,14 +175,79 @@ Done — Move Left / Move Right / Jump plus the 9 ability hotkeys are considered
 rebinding work planned.
 
 ## Save / sync — cross-platform online backend
-Currently all persistence (`currency.json`, `progress.json`, `unlocks.json`, `achievements_*.json`,
-`users.json`) is local JSON in `Application.persistentDataPath`. No cloud save/sync yet.
+**Code side is done for 7 of the 8 persistence files; blocked on linking a Unity Cloud Project (needs the
+developer's own Unity ID login, can't be done by an assistant).**
 
-**Stated goal:** Steam release first (max 8 players/room), each player's progress saved server-side; a mobile
-version of the *same project* follows later, sharing the *same* online system/backend — only the storefront
-differs. That constraint rules out any storefront-locked save API (Steam Cloud alone, Google Play Saved Games
-alone, Game Center alone) as the primary store — those only make sense as an *additional*, platform-specific
-convenience layer, mirroring how the achievement providers already sit on top of `LocalAchievementProvider`.
+- Installed `com.unity.services.core`, `com.unity.services.authentication`, `com.unity.services.cloudsave`.
+- Added `Assets/Scripts/Cloud/CloudSaveManager.cs` (namespace `CosmicRumble.Cloud`): initializes UGS, signs in
+  anonymously, and syncs `currency.json`, `progress.json`, `unlocks.json`, `quests.json`, `chests.json`,
+  `streak.json`, `costumes.json` to Cloud Save under matching keys (`currency`, `progress`, etc.).
+  - **`achievements_<username>.json` and `users.json`/`profiles/` are deliberately NOT synced.** The local
+    username system (`AuthManager`) is separate from UGS Authentication's player identity, and syncing a
+    per-username-named file to a per-UGS-identity cloud slot isn't safe until that relationship is decided
+    (does UGS Auth replace local guest accounts entirely, or link to them? — a bigger question than "add cloud
+    save", left for a dedicated pass).
+  - `MainMenuUI.Awake()` was changed from a synchronous `EnsureSingletons()` call to a coroutine
+    (`BootstrapSequence`): core singletons (`GameConfig`, `AuthManager`, `AudioManager`, `CloudSaveManager`)
+    first, then `CloudSaveManager.InitializeAndPull()` (pulls all 7 keys from the cloud and overwrites the
+    matching local files, so the *other* progress managers' own `Awake()`-time `Load()` reads already-synced
+    data — ordering matters here), capped at a 4s timeout so a slow/unreachable network can never hang the
+    menu, then the 7 progress managers + achievements are created as before.
+  - Each of the 7 managers' `Save()` now also calls `CloudSaveManager.Instance?.QueuePush("<key>", SavePath)`
+    (fire-and-forget) right after writing the local file, mirroring the `AchievementEvents`/`AudioManager`
+    wiring pattern already used elsewhere in this codebase.
+  - **Verified in the Unity Editor (play-tested):** with no Unity Cloud Project linked, `UnityServices.InitializeAsync()`
+    fails fast (caught internally), `CloudSaveManager.IsReady` correctly reports `false`, every push/pull call
+    becomes a safe no-op, and the game runs exactly as before — this is a strictly additive layer, not a
+    breaking change, whether or not cloud is ever configured.
+
+**What's left — requires the developer, not code:**
+1. Sign in with a Unity ID in the Editor: **Edit → Project Settings → Services** (or the cloud icon in the
+   toolbar) → sign in → create or select an organization → create a new Unity Cloud project (or link this
+   Unity project to an existing one) → note the **Project ID**.
+2. In the Unity Cloud Dashboard (`cloud.unity.com`), open that project → **Authentication** service → enable
+   it (Anonymous sign-in is on by default, no extra config needed to match this code). → **Cloud Save**
+   service → enable it. Both have no-payment-method-required free tiers (per the research above).
+3. Back in the Editor, once Project Settings → Services shows the project as linked, just enter Play mode —
+   `CloudSaveManager` will pick it up automatically, no code changes needed. Ask to have it re-verified once
+   linked and I'll play-test an actual push/pull round-trip (write local progress → confirm it appears in the
+   Unity Cloud Dashboard's Cloud Save data browser → clear local files → confirm they're restored from cloud).
+
+**Stated goal (updated 2026-07-03):** Development happens Steam-first, but the actual release order is
+inverted — mobile (Android + iOS) ships first, Steam release is uncertain and may happen later or never.
+Single Unity project either way (no forking into separate Steam/mobile project copies — see reasoning below),
+same as the existing platform-conditional pattern used by the achievement providers (`STEAMWORKS_INSTALLED`/
+`GPGS_INSTALLED` define symbols, `LocalAchievementProvider` as the always-on source of truth).
+
+**Stated goal (updated 2026-07-03):** Development happens Steam-first, but the actual release order is
+inverted — mobile (Android + iOS) ships first, Steam release is uncertain and may happen later or never.
+Single Unity project either way (no forking into separate Steam/mobile project copies — see reasoning below),
+same as the existing platform-conditional pattern used by the achievement providers (`STEAMWORKS_INSTALLED`/
+`GPGS_INSTALLED` define symbols, `LocalAchievementProvider` as the always-on source of truth).
+
+**Why one project, not two:** Unity natively builds one project to multiple platforms via Build Settings
+platform switching — no engine-level reason to fork. Forking means duplicating every future bugfix/feature
+into two codebases forever. The sequencing uncertainty (mobile ships first, Steam maybe never) is itself an
+argument *for* one project: if a forked "Steam version" never ships, that's wasted duplication for nothing.
+The only case forking would make sense is if Steam and mobile became genuinely different games (different
+economy/core loop) — nothing here suggests that; `TurnManager`, abilities, and `CurrencyManager` are shared
+core across both.
+
+**Backend choice holds regardless of Steam's fate:** UGS Relay + Lobby is needed for mobile multiplayer on its
+own merits — that requirement doesn't come from wanting a shared Steam+mobile backend, it comes from needing
+*any* multiplayer transport at all, and the mobile matchmaking pool (Android+iOS combined) needs Relay/Lobby
+whether or not Steam ever exists. So even in the "Steam never ships" branch, UGS is still correct: Cloud
+Save/Auth ride along on the same vendor at zero extra integration cost. Firebase would only be worth switching
+to if the multiplayer transport decision changed away from NGO+Relay — it hasn't. Storefront-agnostic
+auth-linking (Steam ticket + Google/Apple sign-in → one player ID) is a nice bonus if Steam does eventually
+ship, not the driving reason to pick UGS.
+
+**Practical implication:** don't invest further effort in Steam-specific polish (e.g. `SteamAchievementProvider`
+activation, Steamworks App ID registration) until a Steam release is actually greenlit — it's already isolated
+behind a define symbol at near-zero ongoing cost, so there's no rush. Conversely, start Apple/Google developer
+account enrollment (identity verification, any required registrations) and IAP/monetization model decisions
+now, in parallel with feature work — those have long, code-independent lead times and directly affect
+`CurrencyManager` economy balance, so deciding late means redesigning the economy twice.
 
 **Researched options for the shared backend:**
 - **Unity Gaming Services — Authentication + Cloud Save + Relay + Lobby (recommended).** One SDK, works
@@ -208,15 +273,13 @@ convenience layer, mirroring how the achievement providers already sit on top of
   storefront-agnostic property as the others. Worth revisiting if UGS costs become unpredictable at scale, but
   more setup/maintenance burden upfront than the managed options.
 
-**Recommendation:** start with Unity Gaming Services (Authentication + Cloud Save + Relay + Lobby) for both the
-Steam launch and the later mobile build — one backend, one integration, no storefront lock-in — and keep
-Steamworks/Play Games/Game Center strictly for their store-specific extras (achievements, overlay, rich
-presence) exactly as the achievement provider layer already does. Revisit Nakama only if UGS billing becomes a
-real concern post-launch.
+Revisit Nakama only if UGS billing becomes a real concern post-launch.
 
-## Mobile-specific gaps (Steam ships first; these only matter once mobile work starts)
-Audited the codebase against a mobile release. Backend (UGS) and the achievement providers above already cover
-mobile — everything below is mobile-only work not yet started, not started by priority, just recorded:
+## Mobile gaps — priority work (mobile ships first, not Steam)
+Previously filed as "only matters once mobile work starts" on the assumption Steam ships first — that
+assumption was wrong given the actual release order (see "Save / sync" above). This is now near-term priority
+work, not deferred backlog. Audited the codebase against a mobile release; backend (UGS) and the achievement
+providers already cover mobile — everything below is mobile-only work not yet started:
 
 - **Input is 100% mouse/keyboard, no touch layer.** Every ability (`Pistol`, `Shotgun`, `Rpg`, `HandGrenade`,
   `BlackHoleSkill`, etc.) and `PlayerController2D` read `Input.mousePosition`/`Input.GetMouseButton` directly —

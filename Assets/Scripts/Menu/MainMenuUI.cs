@@ -1,8 +1,10 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
 using CosmicRumble.Achievements;
+using CosmicRumble.Cloud;
 
 /// <summary>
 /// MenuScene'e boş bir GameObject ekle, bu scripti yapıştır — bitti.
@@ -79,22 +81,41 @@ public class MainMenuUI : MonoBehaviour
 
     void Awake()
     {
-        EnsureSingletons();
-        BuildUI();
-        ShowPanel(_mainPanel);
+        StartCoroutine(BootstrapSequence());
     }
 
     // ════════════════════════════════════════════════════════════════════════
     //  SINGLETONS
     // ════════════════════════════════════════════════════════════════════════
 
-    void EnsureSingletons()
+    /// <summary>
+    /// Sıra önemli: CloudSaveManager ve buluttan çekme işlemi, progress manager'ları
+    /// (CurrencyManager vb.) oluşturulmadan ÖNCE tamamlanmalı — aksi halde o manager'ların
+    /// kendi Awake/Load'u henüz senkronlanmamış (eski) yerel dosyayı okur.
+    /// </summary>
+    IEnumerator BootstrapSequence()
     {
-        if (GameConfig.Instance   == null) new GameObject("GameConfig").AddComponent<GameConfig>();
-        if (SceneFader.Instance   == null) new GameObject("SceneFader").AddComponent<SceneFader>();
-        if (AuthManager.Instance  == null) new GameObject("AuthManager").AddComponent<AuthManager>();
-        if (AudioManager.Instance == null) new GameObject("AudioManager").AddComponent<AudioManager>();
+        EnsureCoreSingletons();
 
+        if (CloudSaveManager.Instance != null)
+            yield return CloudSaveManager.Instance.InitializeAndPull();
+
+        EnsureProgressSingletons();
+        BuildUI();
+        ShowPanel(_mainPanel);
+    }
+
+    void EnsureCoreSingletons()
+    {
+        if (GameConfig.Instance      == null) new GameObject("GameConfig").AddComponent<GameConfig>();
+        if (SceneFader.Instance      == null) new GameObject("SceneFader").AddComponent<SceneFader>();
+        if (AuthManager.Instance     == null) new GameObject("AuthManager").AddComponent<AuthManager>();
+        if (AudioManager.Instance    == null) new GameObject("AudioManager").AddComponent<AudioManager>();
+        if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
+    }
+
+    void EnsureProgressSingletons()
+    {
         // Economy/achievement backend — CostumeManager kasıtlı olarak dahil edilmedi (bkz. TODO.md).
         if (CurrencyManager.Instance    == null) new GameObject("CurrencyManager").AddComponent<CurrencyManager>();
         if (PlayerLevelManager.Instance == null) new GameObject("PlayerLevelManager").AddComponent<PlayerLevelManager>();

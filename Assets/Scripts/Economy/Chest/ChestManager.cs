@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using CosmicRumble.Cloud;
 namespace CosmicRumble.Economy
 {
     public class ChestManager : MonoBehaviour
@@ -177,8 +178,11 @@ namespace CosmicRumble.Economy
         }
 
         // ─── Save/Load ────────────────────────────────────────────────────────
-        private void Save() =>
+        private void Save()
+        {
             File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
+            CloudSaveManager.Instance?.QueuePush("chests", SavePath);
+        }
 
         private void Load()
         {
