@@ -58,16 +58,14 @@ public class BlackHoleSkill : AbilityBase
 
     protected override void OnFireUpdate()
     {
-        Vector2 mouseWorld = Camera.main != null
-            ? (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition)
-            : Vector2.zero;
+        Vector2 mouseWorld = Camera.main != null ? PointerWorldPosition : Vector2.zero;
 
-        if (Input.GetMouseButtonDown(0))
+        if (PointerDown)
         {
             isDragging = true;
             dragStart = mouseWorld;
         }
-        else if (isDragging && Input.GetMouseButton(0))
+        else if (isDragging && PointerHeld)
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
@@ -75,7 +73,7 @@ public class BlackHoleSkill : AbilityBase
             float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
             trajectory?.Show(initial, power01);
         }
-        else if (isDragging && Input.GetMouseButtonUp(0))
+        else if (isDragging && PointerUp)
         {
             bool canFire = charAbilities == null || charAbilities.UseBlackHole();
             if (canFire)
@@ -100,9 +98,7 @@ public class BlackHoleSkill : AbilityBase
             return;
         }
 
-        Vector2 mouseWorld = Camera.main != null
-            ? (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition)
-            : dragStart;
+        Vector2 mouseWorld = Camera.main != null ? PointerWorldPosition : dragStart;
 
         Vector2 pull = dragStart - mouseWorld;
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);

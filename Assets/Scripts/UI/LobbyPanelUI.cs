@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// Lobi paneli — harita seçimi, oyun modu.
+/// Lobi paneli — harita seçimi, bot sayısı (test amaçlı), oyun modu.
 /// Kendi Canvas'ını programatik oluşturur.
 /// MenuScene'e boş bir GameObject ekleyip scripti yapıştır.
 /// </summary>
@@ -26,6 +26,9 @@ public class LobbyPanelUI : MonoBehaviour
 
     // ── Runtime referanslar ───────────────────────────────────────────────
     GameObject      _root;
+    int             _botCount = 0;
+    TextMeshProUGUI _botCountText;
+    TextMeshProUGUI _botPreviewText;
     TextMeshProUGUI _startBtnLabel;
     Button          _startBtn;
 
@@ -121,6 +124,24 @@ public class LobbyPanelUI : MonoBehaviour
 
         MakeText(card, "playerName", playerName, 16,
             new Vector2(0.5f, 0.78f), new Vector2(280, 26), SuccessColor);
+
+        // Bot count selector — test amaçlı, kontrol edilebilir bot ekler
+        MakeText(card, "bot_lbl", "Bot Count (Test)", 15,
+            new Vector2(0.5f, 0.64f), new Vector2(280, 24), TextSecondary);
+
+        // [-] [0] [+]
+        MakeSmallButton(card, "btn_botMinus", "−",
+            new Vector2(0.25f, 0.53f), new Vector2(44, 40), OnBotMinus);
+
+        _botCountText = MakeText(card, "bot_val", _botCount.ToString(), 22,
+            new Vector2(0.5f, 0.53f), new Vector2(60, 40), Color.white);
+
+        MakeSmallButton(card, "btn_botPlus", "+",
+            new Vector2(0.75f, 0.53f), new Vector2(44, 40), OnBotPlus);
+
+        // Preview
+        _botPreviewText = MakeText(card, "bot_preview", GetBotPreviewText(), 12,
+            new Vector2(0.5f, 0.43f), new Vector2(280, 24), TextSecondary);
     }
 
     void BuildRightColumn()
@@ -166,6 +187,29 @@ public class LobbyPanelUI : MonoBehaviour
     //  CALLBACKS
     // ════════════════════════════════════════════════════════════════════
 
+    void OnBotMinus()
+    {
+        _botCount = Mathf.Max(0, _botCount - 1);
+        RefreshBotUI();
+    }
+
+    void OnBotPlus()
+    {
+        _botCount = Mathf.Min(3, _botCount + 1);
+        RefreshBotUI();
+    }
+
+    void RefreshBotUI()
+    {
+        if (_botCountText)   _botCountText.text   = _botCount.ToString();
+        if (_botPreviewText) _botPreviewText.text  = GetBotPreviewText();
+    }
+
+    string GetBotPreviewText() =>
+        _botCount == 0
+            ? "Total: 1 player (bot yok)"
+            : $"Total: {_botCount + 1} players (1 human + {_botCount} test bot, hepsi kontrol edilebilir)";
+
     void RefreshStartButton()
     {
         if (_startBtnLabel == null) return;
@@ -185,6 +229,7 @@ public class LobbyPanelUI : MonoBehaviour
         }
 
         // LobbyData doldur
+        LobbyData.BotCount = _botCount;
         LobbyData.MapName  = "CosmicArena";
         LobbyData.GameMode = "Deathmatch";
 
@@ -288,5 +333,31 @@ public class LobbyPanelUI : MonoBehaviour
         trt.offsetMin = trt.offsetMax = Vector2.zero;
 
         return go;
+    }
+
+    static void MakeSmallButton(GameObject parent, string name, string label,
+        Vector2 anchor, Vector2 size, UnityEngine.Events.UnityAction callback)
+    {
+        var go  = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = PrimaryBtn;
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(callback);
+        var rt  = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.sizeDelta = size;
+        rt.anchoredPosition = Vector2.zero;
+
+        var txtGO = new GameObject("Lbl"); txtGO.transform.SetParent(go.transform, false);
+        var txt   = txtGO.AddComponent<TextMeshProUGUI>();
+        txt.text      = label;
+        txt.fontSize  = 22;
+        txt.color     = Color.white;
+        txt.alignment = TextAlignmentOptions.Center;
+        var trt = txt.rectTransform;
+        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+        trt.offsetMin = trt.offsetMax = Vector2.zero;
     }
 }

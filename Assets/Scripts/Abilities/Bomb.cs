@@ -32,14 +32,14 @@ public class Bomb : AbilityBase
 
     protected override void OnFireUpdate()
     {
-        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 mouseWorld = PointerWorldPosition;
 
-        if (Input.GetMouseButtonDown(0))
+        if (PointerDown)
         {
             isDragging = true;
             dragStart = mouseWorld;
         }
-        else if (isDragging && Input.GetMouseButton(0))
+        else if (isDragging && PointerHeld)
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
@@ -47,7 +47,7 @@ public class Bomb : AbilityBase
             float power01 = (maxDragDistance <= 0f) ? 0f : clamped / maxDragDistance;
             trajectory?.Show(initial, power01);
         }
-        else if (isDragging && Input.GetMouseButtonUp(0))
+        else if (isDragging && PointerUp)
         {
             Fire();
             cooldownTimer = cooldownTime;
@@ -62,7 +62,7 @@ public class Bomb : AbilityBase
     {
         if (projectilePrefab == null || firePoint == null) return;
 
-        Vector2 pull = dragStart - (Vector2)Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 pull = dragStart - PointerWorldPosition;
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 

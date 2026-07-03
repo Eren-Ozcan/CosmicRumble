@@ -55,22 +55,22 @@ public class BatHammerSkill : AbilityBase
 
     protected override void OnFireUpdate()
     {
-        Vector2 mouseWorld = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Vector2 mouseWorld = PointerWorldPosition;
 
-        if (Input.GetMouseButtonDown(0))
+        if (PointerDown)
         {
             isDragging = true;
             dragStart = mouseWorld;
             ShowCone();
             UpdateConePreview((Vector2)transform.position + Vector2.right);
         }
-        else if (isDragging && Input.GetMouseButton(0))
+        else if (isDragging && PointerHeld)
         {
             Vector2 pull = dragStart - mouseWorld;
             Vector2 aimDir = pull.sqrMagnitude > 0.0001f ? pull.normalized : Vector2.right;
             UpdateConePreview((Vector2)transform.position + aimDir);
         }
-        else if (isDragging && Input.GetMouseButtonUp(0))
+        else if (isDragging && PointerUp)
         {
             Vector2 pull = dragStart - mouseWorld;
             float clamped = Mathf.Min(pull.magnitude, maxDragDistance);

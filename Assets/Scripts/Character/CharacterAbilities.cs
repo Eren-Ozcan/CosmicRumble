@@ -5,6 +5,7 @@ public interface IAbilitySelectable
 {
     int SlotIndex { get; }
     void SetSelected(bool selected);
+    void Confirm();
     void Cancel();
 }
 
@@ -211,6 +212,15 @@ public class CharacterAbilities : MonoBehaviour
             target.SetSelected(true);
             UIManager.Instance?.HighlightSelected(idx);
         }
+    }
+
+    /// <summary>
+    /// Klavyesiz (dokunmatik/UI) onay: seçili slotu Enter tuşuyla aynı şekilde onaylar.
+    /// </summary>
+    public void ConfirmSkill(int idx)
+    {
+        if (idx < 0 || idx >= abilitySlots.Length) return;
+        abilitySlots[idx]?.Confirm();
     }
 
     public void DeselectAll()

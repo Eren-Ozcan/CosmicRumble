@@ -4,6 +4,7 @@
 /// </summary>
 public static class LobbyData
 {
+    public static int    BotCount = 0;
     public static string MapName  = "CosmicArena";
     public static string GameMode = "Deathmatch";
 }

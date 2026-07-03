@@ -170,6 +170,32 @@ pools total: `steam` and `mobile` (Android+iOS combined), not three separate sil
 - Still a large, separate future effort: full client/server refactor of `TurnManager`, ability sync, and
   per-ability RPCs for projectile spawning.
 
+## Test-only local bots
+Restored 2026-07-03 — a previous commit (`0f3316f`, 2026-07-02) deliberately removed this exact system;
+brought back at the user's request specifically for local testing convenience, not as a shipped feature.
+
+- `LobbyData.BotCount` (int, default `0`), `BotSpawner.cs` (recreated, slimmed to just spawn — the
+  surface/position math it used to own now lives in `Utilities/SpawnPositioning.cs` and is shared with
+  `GameInitializer`/`SpawnDebugger`, so it wasn't duplicated back in), `GameInitializer` spawns
+  `1 + BotCount` characters and registers all of them with `TurnManager`, `LobbyPanelUI` has the
+  Bot Count `[-]`/`[+]` selector back (capped at 3, matches the old cap).
+- **Deliberate difference from the old (removed) version:** bots are NOT inert dummies this time — the old
+  code disabled `PlayerController2D` on spawned bots (`ctrl.enabled = false`). This version leaves every
+  component enabled, so a bot is mechanically identical to the human player. Since `AbilityBase`/movement
+  already gate all input on `GravityBody.isActive` (only the character whose turn it is responds to
+  anything), this makes bots fully hot-seat-controllable by the same local tester once `TurnManager` makes
+  them active — verified in Play mode with `BotCount=2`: `Bot_1`/`Bot_2` spawned correctly, both had
+  `PlayerController2D.enabled=true` and all 8 abilities enabled, and `GravityBody.isActive` correctly
+  flipped to the active turn's character. No AI logic exists or is planned here; this is purely "let one
+  tester drive both sides of a match locally."
+  - **Bug caught in review before commit, fixed:** the old code also tagged spawned bots `"Bot"` instead of
+    leaving the prefab's own `"Player"` tag. Grepped the whole project — the only place that tag is read is
+    `BatHammerSkill.cs:121` (`if (onlyAffectTaggedPlayers && !hit.CompareTag("Player")) continue;`), which
+    would have made bots silently immune to the bat/hammer melee weapon while still being fully hittable by
+    every projectile weapon (those filter by `attachedRigidbody` presence, not tag) — an inconsistency that
+    directly undermines "bots are equivalent test opponents." `BotSpawner.SpawnBots()` no longer overwrites
+    the tag, so bots keep `"Player"` inherited from the prefab.
+
 ## Controls
 Done — Move Left / Move Right / Jump plus the 9 ability hotkeys are considered sufficient as-is. No further
 rebinding work planned.
@@ -338,17 +364,54 @@ assumption was wrong given the actual release order (see "Save / sync" above). T
 work, not deferred backlog. Audited the codebase against a mobile release; backend (UGS) and the achievement
 providers already cover mobile — everything below is mobile-only work not yet started:
 
-- **Input is 100% mouse/keyboard, no touch layer.** Every ability (`Pistol`, `Shotgun`, `Rpg`, `HandGrenade`,
-  `BlackHoleSkill`, etc.) and `PlayerController2D` read `Input.mousePosition`/`Input.GetMouseButton` directly —
-  no `EnhancedTouch`, no `Application.platform` branching. Drag-to-aim is conceptually touch-friendly but the
-  code is hard-wired to mouse. Since `com.unity.inputsystem` is already installed, the fix is to route aiming
-  through the new Input System's unified `Pointer`/`Touch` abstraction instead of legacy `Input.*`, so one code
-  path serves both mouse and touch — not a parallel mobile-only input system.
-- **Ability selection is 100% keyboard, with no UI fallback wired up.** `AbilityBase.OnFireUpdate` selects via
-  `Input.GetKeyDown(ActivationKey)` (keys 1–9, 0). The good news: `SetSelected(bool)` is already a public method
-  on every ability (`AbilityBase.cs`), so a UI button just needs to call it — but no button currently does.
-  `ToggleSkillPanel.cs` only toggles panel visibility, it doesn't trigger abilities. On mobile there is currently
-  no way to select an ability at all without a keyboard.
+- **Done — aiming/firing now shares one pointer code path for mouse and touch.** Added `PointerWorldPosition`/
+  `PointerDown`/`PointerHeld`/`PointerUp` to `AbilityBase.cs` (`Assets/Scripts/Abilities/AbilityBase.cs`), backed
+  by `UnityEngine.InputSystem.Pointer.current` (falls back to legacy `Input.mousePosition` only if no pointer
+  device has produced input yet). `Pointer.current` auto-tracks whichever pointer device was last used — Mouse
+  on desktop, the primary touch on a touchscreen — so the exact same drag-to-aim code drives both with zero
+  `Application.platform` branching. Migrated all 8 live drag-to-aim abilities (`Pistol`, `Shotgun`, `Rpg`,
+  `HandGrenade`, `Bomb`, `BlackHoleSkill`, `Teleport`, `BatHammerSkill`) off raw `Input.mousePosition`/
+  `Input.GetMouseButton*`. `activeInputHandler` was already `2` ("Both") in Project Settings, so no Player
+  Settings change was needed.
+  - **Left alone, confirmed dead:** `AbilityController.cs` and `ObjectSpawnSkill.cs`
+    (`Assets/Scripts/Abilities/`) still read raw mouse input, but neither is referenced by any other script,
+    scene, or prefab (grepped the whole project) — leftover from the pre-`AbilityBase` architecture, superseded
+    by the `WeaponBase`→`AbilityBase` refactor. Not migrated since they don't run.
+  - **Verified in-editor** via Unity Editor MCP: compiled clean, entered Play mode, simulated taps by invoking
+    `Button.onClick.Invoke()` directly on a skill icon — confirmed select (tap 1) → `isSelected=true,
+    awaitingConfirmation=true`, confirm (tap 2) → `awaitingConfirmation=false, fireAllowed=true`, and tray
+    collapse → cancels the live selection. No console errors.
+- **Done — ability selection now has a touch/mouse UI path, not just keyboard.** `IAbilitySelectable` gained
+  `Confirm()` (mirrors the existing Enter-key confirm step — `AbilityBase.Confirm()` sets `fireAllowed=true`,
+  `awaitingConfirmation=false`, same as the keyboard path, which now just calls `Confirm()` too instead of
+  duplicating the logic). `CharacterAbilities.ConfirmSkill(idx)` exposes that without a keyboard.
+  `UIManager.OnSkillIconTapped(idx)` is the single entry point a UI `Button.onClick` calls: first tap on a slot
+  selects it (same as pressing its number key), a second tap on the *same already-selected* slot confirms it
+  (same as pressing Enter) — no separate "confirm" button needed, and tapping a different slot mid-confirmation
+  switches straight to it, same as the keyboard already allowed. All 10 `SkillIcon{1-10}` GameObjects in
+  `Canvas/SkillPanel/SkilssContainer` (`Assets/Scenes/SampleScene.unity`) got a `Button` component wired to it
+  (`targetGraphic` = the icon's own `Image`). The scene's `EventSystem` already used
+  `InputSystemUIInputModule` with `pointerBehavior: "Single Mouse Or Pen But Multi Touch And Track"` — i.e. uGUI
+  buttons already responded to touch with zero extra code once wired.
+  - **`ToggleSkillPanel.cs` rewritten into a real expand/collapse tray** (previously dead: `Update()` was
+    empty and the component was disabled in the scene). Added `Toggle()`/`IsOpen`, a new always-visible
+    `SkillTrayToggleButton` (bottom-right corner, sibling of the tray so it stays visible when the tray is
+    closed) collapses/expands `SkillPanel`. Collapsing calls the new `UIManager.CancelSelection()` (→
+    `currentAb.DeselectAll()`) — closing the tray reads as "put the weapon away," matching the
+    TurnManager-confirmation-gated action rule rather than leaving a silently-armed weapon behind an invisible
+    panel.
+  - **Tooling gotcha hit this session:** the Coplay MCP `add_persistent_listener` tool is unreliable in this
+    project — it failed to find methods taking an `int` parameter even when reflection confirmed they existed
+    (`Type.GetMethod` found them fine), and separately threw a hard exception
+    (`System.ExecutionEngineException: Illegal byte sequence`) wiring a zero-arg method, traced to
+    `Assembly.GetCodeBase()` choking on the non-ASCII `ü` in this project's Windows path
+    (`...Masaüstü\projects\CosmicRumble`). Worked around entirely by writing small one-off Editor scripts run
+    via `execute_script` that call `UnityEditor.Events.UnityEventTools.Add{Int,Void}PersistentListener`
+    directly — 100% reliable, same net result. Also hit: `save_scene` with just a name does a "Save As" into
+    `Assets/` root instead of saving the currently-open scene in place (silently changes the scene's own
+    `.path`) — had to fix via `EditorSceneManager.SaveScene(scene, "Assets/Scenes/SampleScene.unity")` to
+    restore the correct path and discard the stray duplicate. Don't use either MCP tool blindly again in this
+    project; prefer `execute_script` for scene/event wiring.
 - **No safe-area handling.** `SafeArea`/`safeArea` doesn't appear anywhere in the project. On notched/punch-hole
   phones, HUD elements (health bar, turn timer, ability buttons) can be clipped by or overlap the system UI.
   Needs a SafeArea component plus a Canvas Scaler pass for phone aspect ratios (current UI is presumably only

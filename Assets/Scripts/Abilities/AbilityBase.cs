@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Tüm silah/ability'ler için ortak boilerplate.
@@ -7,6 +8,25 @@ using UnityEngine;
 /// </summary>
 public abstract class AbilityBase : MonoBehaviour, IAbilitySelectable, ICooldownResettable
 {
+    // ── Nişan/ateş için mouse+touch ortak pointer erişimi ────────
+    // Pointer.current, son kullanılan pointer cihazına (Mouse, Touchscreen'in
+    // primary touch'ı, Pen) otomatik işaret eder — masaüstünde mouse, mobilde
+    // parmak, tek kod yolu. press: mouse'ta sol tık, touch'ta ekrana dokunma.
+    protected static Vector2 PointerWorldPosition
+    {
+        get
+        {
+            Vector2 screenPos = Pointer.current != null
+                ? Pointer.current.position.ReadValue()
+                : (Vector2)Input.mousePosition;
+            return Camera.main.ScreenToWorldPoint(screenPos);
+        }
+    }
+
+    protected static bool PointerDown => Pointer.current != null && Pointer.current.press.wasPressedThisFrame;
+    protected static bool PointerHeld => Pointer.current != null && Pointer.current.press.isPressed;
+    protected static bool PointerUp => Pointer.current != null && Pointer.current.press.wasReleasedThisFrame;
+
     // ── Ortak field'lar ──────────────────────────────────────────
     protected float cooldownTimer;
     protected bool awaitingConfirmation;
@@ -36,6 +56,19 @@ public abstract class AbilityBase : MonoBehaviour, IAbilitySelectable, ICooldown
         awaitingConfirmation = false;
         fireAllowed = false;
         CancelAim();
+    }
+
+    /// <summary>
+    /// Enter tuşuyla aynı onay adımı — UI/dokunmatik tık tarafından da çağrılabilir
+    /// (bkz. CharacterAbilities.ConfirmSkill), klavyeye özel değildir.
+    /// </summary>
+    public virtual void Confirm()
+    {
+        if (!isSelected || !awaitingConfirmation) return;
+        fireAllowed = true;
+        awaitingConfirmation = false;
+        UIManager.Instance?.ConfirmSkill(SlotIndex);
+        TurnManager.NotifyWeaponConfirmed();
     }
 
     // ── ICooldownResettable ──────────────────────────────────────
@@ -97,10 +130,7 @@ public abstract class AbilityBase : MonoBehaviour, IAbilitySelectable, ICooldown
         {
             if (Input.GetKeyDown(KeyCode.Return))
             {
-                fireAllowed = true;
-                awaitingConfirmation = false;
-                UIManager.Instance?.ConfirmSkill(SlotIndex);
-                TurnManager.NotifyWeaponConfirmed();
+                Confirm();
             }
             else if (Input.GetKeyDown(KeyCode.Escape))
             {

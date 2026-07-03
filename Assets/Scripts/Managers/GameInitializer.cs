@@ -3,11 +3,12 @@ using UnityEngine;
 
 /// <summary>
 /// GameScene yüklenince çalışır.
-/// GravitySource'ları bulur, Raycast ile insan oyuncunun spawn
-/// pozisyonunu hesaplar, TurnManager'a kaydeder.
+/// GravitySource'ları bulur, Raycast ile insan oyuncunun (+ test botlarının)
+/// spawn pozisyonunu hesaplar, TurnManager'a kaydeder.
 ///
 /// Inspector atamaları:
 ///   Human Prefab : Assets/Art/Sprites/Prefabs/Player.prefab
+///   Bot Spawner  : BotSpawner component'ı olan herhangi bir GO (opsiyonel)
 ///
 /// [DefaultExecutionOrder(-100)] → TurnManager.Start()'tan önce çalışır.
 /// </summary>
@@ -19,6 +20,7 @@ public class GameInitializer : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] GameObject _humanPrefab;
+    [SerializeField] BotSpawner _botSpawner;
 
     void Start()
     {
@@ -29,7 +31,15 @@ public class GameInitializer : MonoBehaviour
             Debug.LogWarning("[GameInitializer] Sahnede hiç GravitySource bulunamadı!");
             #endif
 
-        int totalPlayers = 1; // sadece insan oyuncu
+        // ── 1. Bot sayısını LobbyData'dan al (test amaçlı, varsayılan 0) ──
+        int botCount = 0;
+        if (_botSpawner != null)
+        {
+            _botSpawner.botCount = LobbyData.BotCount;
+            botCount = _botSpawner.botCount;
+        }
+
+        int totalPlayers = 1 + botCount; // 1 insan + N test bot'u
 
         // ── 2. Tüm spawn slotlarını hesapla ──────────────────────────────
         var slots = SpawnPositioning.CalculateSpawnPositions(totalPlayers, sortedPlanets);
@@ -79,6 +89,20 @@ public class GameInitializer : MonoBehaviour
                 #if UNITY_EDITOR
                 Debug.LogWarning("[GameInitializer] humanPrefab atanmamış — sahnedeki oyuncu kullanıldı.");
                 #endif
+            }
+        }
+
+        // ── 4. Test botlarını spawn et (slot 1..n) ───────────────────────
+        if (_botSpawner != null)
+        {
+            var spawnedBots = _botSpawner.SpawnBots(slots, humanSlotIndex: 0);
+            foreach (var botGO in spawnedBots)
+            {
+                if (botGO == null) continue;
+                AddNameTag(botGO, botGO.name);
+                AddHealthBar(botGO);
+                var gb = botGO.GetComponent<GravityBody>();
+                if (gb != null) allPlayers.Add(gb);
             }
         }
 

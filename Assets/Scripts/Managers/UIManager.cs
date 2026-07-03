@@ -206,6 +206,28 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Dokunmatik/mouse ortak giriş noktası: skill ikonuna Button.onClick üzerinden bağlanır.
+    /// İlk tık seçer (klavyede sayı tuşuna basmakla aynı), o slot zaten seçiliyken ikinci tık
+    /// onaylar (klavyede Enter ile aynı) — ayrı bir "onay" butonuna gerek kalmadan tek ikonla
+    /// select+confirm akışı sağlar. Farklı bir slota tıklamak klavyedeki gibi doğrudan ona geçer.
+    /// </summary>
+    public void OnSkillIconTapped(int idx)
+    {
+        if (currentAb == null) return;
+
+        if (selectedIndex == idx)
+            currentAb.ConfirmSkill(idx);
+        else
+            currentAb.SelectSkill(idx);
+    }
+
+    /// <summary>Aktif seçimi iptal eder — tray kapatıldığında (silahı elden bırakma) çağrılır.</summary>
+    public void CancelSelection()
+    {
+        currentAb?.DeselectAll();
+    }
+
     /// <summary>Tüm highlight’ları kaldırır; stoğa göre renge döner.</summary>
     public void ClearAllSkillSelections()
     {
