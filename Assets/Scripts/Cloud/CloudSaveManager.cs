@@ -13,9 +13,9 @@ namespace CosmicRumble.Cloud
     /// <summary>
     /// UGS Authentication + Cloud Save sarmalayıcısı. Kullanıcı adına bağlı olmayan yerel "oyuncu
     /// ilerlemesi" JSON dosyalarını (currency.json, progress.json, vb. — bkz. SyncedFiles) Cloud
-    /// Save'e senkronize eder. `achievements_&lt;username&gt;.json` kasıtlı olarak kapsam dışı: yerel
-    /// kullanıcı adı ile UGS oyuncu kimliği arasındaki ilişki netleşmeden (ayrı bir karar, bkz.
-    /// TODO.md) güvenle senkronlanamaz.
+    /// Save'e senkronize eder. `achievements_&lt;username&gt;.json` (veya misafir için
+    /// `achievements_guest.json`) da senkronlanır — dosya adı sabit olmadığı için (kullanıcı adına
+    /// göre değişiyor) SyncedFiles sözlüğünün dışında, AchievementsKey üzerinden ayrıca ele alınır.
     ///
     /// Unity Cloud Project bağlı değilse veya ağ yoksa her işlem sessizce no-op olur — oyun her
     /// zaman local-only da tam çalışmaya devam eder; bulut senkronu saf bir ek katman.
@@ -28,7 +28,7 @@ namespace CosmicRumble.Cloud
 
         private bool _unavailable;
 
-        // Cloud Save anahtarı -> yerel dosya adı.
+        // Cloud Save anahtarı -> yerel dosya adı (sabit isimli dosyalar).
         private static readonly Dictionary<string, string> SyncedFiles = new Dictionary<string, string>
         {
             { "currency", "currency.json" },
@@ -39,6 +39,15 @@ namespace CosmicRumble.Cloud
             { "streak",   "streak.json"   },
             { "costumes", "costumes.json" },
         };
+
+        private const string AchievementsKey = "achievements";
+
+        // achievements_<username>.json / achievements_guest.json — AchievementManager.SavePath ile
+        // birebir aynı mantık, kullanıcı adına göre dosya adı değiştiği için sabit sözlükte tutulamaz.
+        private static string CurrentAchievementsFileName =>
+            AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest
+                ? $"achievements_{AuthManager.Instance.CurrentUsername}.json"
+                : "achievements_guest.json";
 
         private void Awake()
         {
@@ -91,12 +100,17 @@ namespace CosmicRumble.Cloud
                     if (!AuthenticationService.Instance.IsSignedIn)
                         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
-                    var keys = new HashSet<string>(SyncedFiles.Keys);
+                    var keys = new HashSet<string>(SyncedFiles.Keys) { AchievementsKey };
                     var remote = await CloudSaveService.Instance.Data.Player.LoadAsync(keys);
 
                     foreach (var kvp in remote)
                     {
-                        if (!SyncedFiles.TryGetValue(kvp.Key, out var fileName)) continue;
+                        string fileName;
+                        if (kvp.Key == AchievementsKey)
+                            fileName = CurrentAchievementsFileName;
+                        else if (!SyncedFiles.TryGetValue(kvp.Key, out fileName))
+                            continue;
+
                         string localPath = Path.Combine(Application.persistentDataPath, fileName);
                         File.WriteAllText(localPath, kvp.Value.Value.GetAsString());
                     }

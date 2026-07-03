@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using CosmicRumble.Economy;
+using CosmicRumble.Cloud;
 
 namespace CosmicRumble.Achievements
 {
@@ -167,8 +168,11 @@ namespace CosmicRumble.Achievements
             return entry;
         }
 
-        private void Save() =>
+        private void Save()
+        {
             File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
+            CloudSaveManager.Instance?.QueuePush("achievements", SavePath);
+        }
 
         private void Load()
         {

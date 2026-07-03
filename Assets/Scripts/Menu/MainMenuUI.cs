@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
+using CosmicRumble.Economy.IAP;
 using CosmicRumble.Achievements;
 using CosmicRumble.Cloud;
 
@@ -21,6 +22,7 @@ public class MainMenuUI : MonoBehaviour
     static readonly Color AccPurple    = new Color(0.48f, 0.20f, 0.85f, 1.00f);
     static readonly Color AccPurpleHov = new Color(0.60f, 0.32f, 1.00f, 1.00f);
     static readonly Color AccGold      = new Color(1.00f, 0.80f, 0.20f, 1.00f);
+    static readonly Color AccGoldHov   = new Color(1.00f, 0.88f, 0.40f, 1.00f);
     static readonly Color AccGreen     = new Color(0.12f, 0.68f, 0.22f, 1.00f);
     static readonly Color AccGreenHov  = new Color(0.18f, 0.82f, 0.30f, 1.00f);
     static readonly Color AccRed       = new Color(0.60f, 0.12f, 0.12f, 1.00f);
@@ -123,8 +125,19 @@ public class MainMenuUI : MonoBehaviour
         if (QuestManager.Instance       == null) new GameObject("QuestManager").AddComponent<QuestManager>();
         if (ChestManager.Instance       == null) new GameObject("ChestManager").AddComponent<ChestManager>();
         if (LoginStreakManager.Instance == null) new GameObject("LoginStreakManager").AddComponent<LoginStreakManager>();
-        if (AchievementManager.Instance == null) new GameObject("AchievementManager").AddComponent<AchievementManager>();
+        if (AchievementManager.Instance == null)
+        {
+            new GameObject("AchievementManager").AddComponent<AchievementManager>();
+            // Awake() alone loads the guest file by default -- after a Login-triggered scene
+            // reload this recreates AchievementManager fresh, so it must be told the *current*
+            // identity explicitly here, same as AuthManager.Login()/Register() already do on the
+            // instance that's about to be destroyed.
+            var auth = AuthManager.Instance;
+            string username = (auth != null && auth.IsLoggedIn && !auth.IsGuest) ? auth.CurrentUsername : null;
+            AchievementManager.Instance.LoadForUser(username);
+        }
         if (AchievementTracker.Instance == null) new GameObject("AchievementTracker").AddComponent<AchievementTracker>();
+        if (IAPManager.Instance          == null) new GameObject("IAPManager").AddComponent<IAPManager>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -243,7 +256,7 @@ public class MainMenuUI : MonoBehaviour
         var backdropRt  = backdropImg.rectTransform;
         backdropRt.anchorMin        = new Vector2(0.5f, 0.5f);
         backdropRt.anchorMax        = new Vector2(0.5f, 0.5f);
-        backdropRt.sizeDelta        = new Vector2(340, 408);
+        backdropRt.sizeDelta        = new Vector2(340, 476);
         backdropRt.anchoredPosition = new Vector2(0, -74);
 
         // Side accent bar
@@ -263,8 +276,9 @@ public class MainMenuUI : MonoBehaviour
         MakeBtn(_mainPanel, "btn_play",          "▶  PLAY",           topY - BTN_GAP * 0, AccBlue,   AccBlueHov,   () => { Click(); LobbyPanelUI.Instance?.Show(); });
         MakeBtn(_mainPanel, "btn_achievements",  "★  ACHIEVEMENTS",   topY - BTN_GAP * 1, AccPurple, AccPurpleHov, () => { Click(); AchievementsPanelUI.Instance?.Show(); });
         MakeBtn(_mainPanel, "btn_quests",        "◆  QUESTS",         topY - BTN_GAP * 2, AccGreen,  AccGreenHov,  () => { Click(); QuestsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 3, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
-        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 4, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
+        MakeBtn(_mainPanel, "btn_shop",          "$  SHOP",           topY - BTN_GAP * 3, AccGold,   AccGoldHov,   () => { Click(); ShopPanelUI.Instance?.Show(); });
+        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 4, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
+        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 5, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
     }
 
     // ────────────────────────────────────────────────────────────────────────

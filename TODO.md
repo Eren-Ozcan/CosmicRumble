@@ -278,10 +278,22 @@ local system — this is what makes progress actually portable across devices/re
   solid, requiring a manual restart. Safe pattern: fire-and-forget an `async void` wrapper that does a real
   `await`, log the outcome, and check back via the console log in a separate, later call — never poll a
   blocking call in the same script.
-- **Left open, not done:** `achievements_<username>.json` still isn't synced to Cloud Save (see the
-  `CloudSaveManager` note above). Now that usernames are real, globally-unique, cross-device UGS identities
-  (not just an arbitrary local string), this would be safer to revisit than before — but it's still a
-  separate task, not done as part of this pass.
+- **Done (2026-07-03) — `achievements_<username>.json` now syncs to Cloud Save.** `CloudSaveManager` gained a
+  dedicated `"achievements"` key handled separately from the fixed-filename `SyncedFiles` dict (its local
+  filename varies by username, so it can't live in that dict) — `CurrentAchievementsFileName` computes
+  `achievements_<username>.json` or `achievements_guest.json` from `AuthManager.Instance` at pull time, same
+  logic `AchievementManager.SavePath` already used. `AchievementManager.Save()` now also calls
+  `CloudSaveManager.Instance?.QueuePush("achievements", SavePath)`, mirroring the other 7 files.
+  - **Bug found and fixed while wiring this up:** `MainMenuUI.EnsureProgressSingletons()` created a fresh
+    `AchievementManager` after a Login-triggered scene reload but never called `LoadForUser()` on it — its
+    `Awake()` defaults `_currentUsername` to `null`, so it silently loaded `achievements_guest.json` even for
+    a logged-in user (existing achievement progress just wasn't visible/tracked against the right file, not
+    lost). Fixed: `EnsureProgressSingletons()` now calls `LoadForUser(...)` immediately after creating it,
+    reading the real identity from `AuthManager.Instance`.
+  - **Verified against the real live UGS backend:** called `AchievementManager.UpdateProgress("ROKETCI", 1)`
+    in Play mode, confirmed `Save()` → `QueuePush` fired with no exceptions, then independently read the
+    `"achievements"` key straight from `CloudSaveService.Instance.Data.Player.LoadAsync` — the cloud copy
+    showed `ROKETCI` at `currentProgress: 1`, matching exactly, full round-trip proven not assumed.
 
 **How the developer set it up (for reference / repeating on another machine):**
 1. Sign in with a Unity ID in the Editor: **Edit → Project Settings → Services** (or the cloud icon in the
@@ -295,12 +307,6 @@ local system — this is what makes progress actually portable across devices/re
    `CloudSaveManager` will pick it up automatically, no code changes needed. Ask to have it re-verified once
    linked and I'll play-test an actual push/pull round-trip (write local progress → confirm it appears in the
    Unity Cloud Dashboard's Cloud Save data browser → clear local files → confirm they're restored from cloud).
-
-**Stated goal (updated 2026-07-03):** Development happens Steam-first, but the actual release order is
-inverted — mobile (Android + iOS) ships first, Steam release is uncertain and may happen later or never.
-Single Unity project either way (no forking into separate Steam/mobile project copies — see reasoning below),
-same as the existing platform-conditional pattern used by the achievement providers (`STEAMWORKS_INSTALLED`/
-`GPGS_INSTALLED` define symbols, `LocalAchievementProvider` as the always-on source of truth).
 
 **Stated goal (updated 2026-07-03):** Development happens Steam-first, but the actual release order is
 inverted — mobile (Android + iOS) ships first, Steam release is uncertain and may happen later or never.
@@ -412,14 +418,43 @@ providers already cover mobile — everything below is mobile-only work not yet 
     `.path`) — had to fix via `EditorSceneManager.SaveScene(scene, "Assets/Scenes/SampleScene.unity")` to
     restore the correct path and discard the stray duplicate. Don't use either MCP tool blindly again in this
     project; prefer `execute_script` for scene/event wiring.
-- **No safe-area handling.** `SafeArea`/`safeArea` doesn't appear anywhere in the project. On notched/punch-hole
-  phones, HUD elements (health bar, turn timer, ability buttons) can be clipped by or overlap the system UI.
-  Needs a SafeArea component plus a Canvas Scaler pass for phone aspect ratios (current UI is presumably only
-  tuned for Steam's desktop 16:9/ultrawide).
-- **No IAP.** `CurrencyManager` (`Assets/Scripts/Economy/Core/CurrencyManager.cs`) only earns Gold/Gem/XP —
-  no `Unity.Purchasing`/`IStoreListener` anywhere in the project. Gem is currently earn-only. If gem is meant to
-  be purchasable with real money on mobile, this needs the Unity IAP package plus matching product definitions
-  in Play Console and App Store Connect.
+- **Done — safe-area handling.** `Assets/Scripts/UI/SafeArea.cs` (standard `Screen.safeArea`-driven
+  RectTransform shrink, orientation-agnostic) + a `SafeAreaRoot` wrapper under the main Canvas in
+  `SampleScene.unity` protecting `SkillPanel`, `SkillTrayToggleButton`, `TurnTimerCircle`, and `CurrencyHUD`'s
+  own runtime-built Canvas. Verified visually against a real notched device profile (iPhone 12 via Unity's
+  Device Simulator) — HUD/timer and the skill tray no longer sit flush against the screen edges, matching the
+  device's real notch/home-indicator geometry. Game is also now locked landscape-only in Player Settings
+  (`allowedAutorotateToPortrait`/`PortraitUpsideDown` = 0, both landscape directions stay enabled) since the
+  game is only ever played in landscape — confirmed with the user.
+  - Canvas Scaler pass for phone aspect ratios beyond safe-area (e.g. camera framing/zoom tuning specifically
+    for landscape phone aspect vs. desktop 16:9/ultrawide) is still open — not addressed this pass, no
+    concrete issue observed yet since the game's camera already behaves reasonably at typical landscape
+    ratios in testing.
+- **Done — IAP infrastructure (placeholder product catalog).** Installed `com.unity.purchasing` (5.4.0, new
+  v5 `StoreController` API, not the deprecated `IStoreListener`/`IDetailedStoreListener` surface). Added
+  `Assets/Scripts/Economy/IAP/GemPackDefinition.cs` (5 consumable packs: 100/550/1200/2500/6000 Gem) and
+  `IAPManager.cs` (connects, fetches products, purchases, confirms, awards Gem via `CurrencyManager.Add`),
+  plus `Assets/Scripts/UI/ShopPanelUI.cs` (a "SHOP" button on the main menu opens it, lists all 5 packs with
+  live localized price from the store and a BUY button per row).
+  - **Product IDs (`gem_pack_100`, `gem_pack_550`, etc.) are placeholders** — they don't correspond to a real
+    SKU yet. Once Play Console / App Store Connect products are created, their IDs must match these exactly
+    (or the IDs in `GemPacks` updated to match whatever was actually registered there) — no other code change
+    needed, `IAPManager` fetches by whatever `productId` strings are in the array.
+  - **Verified in Play mode:** with no store configured, Unity IAP automatically falls back to FakeStore —
+    all 5 products fetched successfully, `ShopPanelUI` correctly displayed live prices ($0.01, FakeStore's
+    default placeholder) for every pack, confirmed visually via screenshot.
+  - **Not verified: a full purchase completing end-to-end in the Editor.** `BuyGemPack()` calls
+    `PurchaseProduct()` correctly and the store's `ConnectionState` does reach `Connected`, but
+    `OnPurchasePending` never fires against FakeStore in this environment — traced to a documented,
+    Unity-acknowledged bug where FakeStore's UI is unresponsive when the new Input System is active (this
+    project uses `com.unity.inputsystem`), not a defect in this code. Tried the documented workaround
+    (`IAP_FAKE_STORE_DEVELOPER_USER` scripting define for FakeStore "developer" no-UI mode) — made things
+    worse (`Connect()` itself stopped completing), so it was reverted; `ProjectSettings.asset` scripting
+    define symbols are back to empty, matching before this session. Real purchase-completion testing needs
+    an actual Android/iOS build against a real (or sandboxed) store — appropriate anyway, since FakeStore was
+    only ever going to validate the wiring, not real purchase behavior.
+  - Gem package pricing/tiers were chosen as reasonable placeholders (not a business decision) — revisit
+    before shipping.
 - **Store-side setup (account/config work, not code):** Play Console (min API level, Data Safety form, Play
   Games Services resource XML), App Store Connect (App Privacy nutrition label, ATT prompt if ads/analytics are
   added, TestFlight), age rating, privacy policy URL.
