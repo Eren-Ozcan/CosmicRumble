@@ -25,10 +25,12 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     static readonly Color CodeColor    = new Color(1.00f,  0.80f,  0.20f,  1f);
 
     GameObject      _panelRoot;
+    GameObject      _cancelBtn;
     TextMeshProUGUI _hostStatusText;
     TextMeshProUGUI _joinStatusText;
     TMP_InputField  _codeInput;
     bool            _waitingForOpponent;
+    bool            _connectionActive;   // Host/Join tıklandıktan sonra, LeaveSessionAsync'e kadar true
 
     void Awake()
     {
@@ -54,6 +56,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         _hostStatusText.text = "";
         _joinStatusText.text = "";
         _codeInput.text      = "";
+        _cancelBtn.SetActive(false);
     }
 
     public void Hide() => _panelRoot.SetActive(false);
@@ -65,16 +68,19 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     async void OnHostClicked()
     {
         _hostStatusText.text = "Oturum oluşturuluyor...";
+        _connectionActive = true;
         string code = await NetworkBootstrap.Instance.HostSessionAsync();
 
         if (string.IsNullOrEmpty(code))
         {
             _hostStatusText.text = "Oluşturulamadı, tekrar dene.";
+            _connectionActive = false;
             return;
         }
 
         _hostStatusText.text = $"Kod: {code}\nRakip bekleniyor...";
         _waitingForOpponent  = true;
+        _cancelBtn.SetActive(true);
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
@@ -88,8 +94,10 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         }
 
         _joinStatusText.text = "Bağlanılıyor...";
+        _connectionActive = true;
         bool ok = await NetworkBootstrap.Instance.JoinSessionAsync(code);
         _joinStatusText.text = ok ? "Bağlandı, host başlatmasını bekleniyor..." : "Bağlanamadı, kodu kontrol et.";
+        if (!ok) _connectionActive = false;
     }
 
     void OnClientConnected(ulong clientId)
@@ -105,7 +113,34 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
     }
 
-    void OnBackClicked() => Hide();
+    // Maç başladıktan sonraki bağlantı kopmaları artık burada değil,
+    // NetworkBootstrap'ın kalıcı (DontDestroyOnLoad) durum banner'ı + reconnect döngüsü
+    // tarafından ele alınıyor (bkz. NetworkBootstrap.cs) — bu panel MenuScene'e özel olduğu
+    // için Game sahnesine geçildikten sonra zaten var olamıyordu, gerçek bir mid-match
+    // kopuşu hiçbir zaman burada yakalanamazdı.
+
+    async void OnCancelClicked()
+    {
+        _hostStatusText.text = "İptal ediliyor...";
+        await CancelConnectionAsync();
+        _hostStatusText.text = "";
+        _cancelBtn.SetActive(false);
+    }
+
+    async System.Threading.Tasks.Task CancelConnectionAsync()
+    {
+        if (NetworkManager.Singleton != null)
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        _waitingForOpponent = false;
+        _connectionActive = false;
+        await NetworkBootstrap.Instance.LeaveSessionAsync();
+    }
+
+    async void OnBackClicked()
+    {
+        if (_connectionActive) await CancelConnectionAsync();
+        Hide();
+    }
 
     // ════════════════════════════════════════════════════════════════════
     //  UI BUILD
@@ -138,7 +173,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         MakeSmallButton(_panelRoot, "btn_back", "← BACK",
             new Vector2(0.5f, 0.10f), new Vector2(160, 46), OnBackClicked);
 
-        _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
+        _panelRoot.AddComponent<EscapeListener>().OnEscape = OnBackClicked;
         _panelRoot.SetActive(false);
     }
 
@@ -152,6 +187,10 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
         _hostStatusText = MakeText(card, "status", "", 16,
             new Vector2(0.5f, 0.45f), new Vector2(380, 160), CodeColor);
+
+        _cancelBtn = MakeSmallButton(card, "btn_cancel", "İPTAL ET",
+            new Vector2(0.5f, 0.15f), new Vector2(200, 44), OnCancelClicked);
+        _cancelBtn.SetActive(false);
     }
 
     void BuildJoinCard()
@@ -255,7 +294,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         return input;
     }
 
-    static void MakeSmallButton(GameObject parent, string name, string label,
+    static GameObject MakeSmallButton(GameObject parent, string name, string label,
         Vector2 anchor, Vector2 size, UnityEngine.Events.UnityAction callback)
     {
         var go  = new GameObject(name);
@@ -289,5 +328,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
+
+        return go;
     }
 }

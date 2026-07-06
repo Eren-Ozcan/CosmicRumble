@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -5,7 +6,7 @@ using CosmicRumble.Achievements;
 public class BlackHoleSkill : AbilityBase
 {
     [Header("Onay & Cooldown")]
-    public KeyCode activationKey = KeyCode.Alpha8;
+    public KeyCode activationKey = KeyCode.Alpha9;
     public float cooldownTime = 8f;
 
     // Slot 8 corresponds to keyboard '9'
@@ -104,6 +105,18 @@ public class BlackHoleSkill : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = (clamped > 0f) ? pull.normalized * clamped * powerMultiplier : Vector2.zero;
 
+        // Networked modda ateşleme isteği server'a taşınır (server gerçek Instantiate'ı yapıp
+        // NetworkObject.Spawn ile tüm client'lara yayar) — offline hotseat'te (IsSpawned=false)
+        // eski doğrudan yerel yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         AchievementEvents.FireAbilityUsed("skill_blackhole");
         AudioManager.Instance?.PlaySfx("skill_blackhole_activate");
 
@@ -112,13 +125,14 @@ public class BlackHoleSkill : AbilityBase
         var proj = go.GetComponent<BlackHoleProjectile>();
         if (proj != null)
         {
-            proj.Init(initial, gameObject, ignoreOwnerDuration);
+            if (IsSpawned) go.GetComponent<NetworkObject>().Spawn();
+            proj.Init(initialVelocity, gameObject, ignoreOwnerDuration);
         }
         else
         {
             var rb = go.GetComponent<Rigidbody2D>();
             if (rb != null)
-                rb.AddForce(initial, ForceMode2D.Impulse);
+                rb.AddForce(initialVelocity, ForceMode2D.Impulse);
 #if UNITY_EDITOR
             else
                 Debug.LogWarning("[BlackHoleSkill] Projectile has no Rigidbody2D; applied no impulse.");

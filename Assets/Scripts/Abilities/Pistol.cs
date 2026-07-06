@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -97,14 +98,20 @@ public class Pistol : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda ateşleme isteği server'a taşınır (server gerçek Instantiate'ı yapıp
+        // NetworkObject.Spawn ile tüm client'lara yayar) — offline hotseat'te (IsSpawned=false)
+        // eski doğrudan yerel yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
-
-        // Eski patlamalı Projectile varsa sök, KineticProjectile kullan
-        var oldProj = bulletGO.GetComponent<Projectile>();
-        if (oldProj) Destroy(oldProj);
-
         var kin = bulletGO.GetComponent<KineticProjectile>();
-        if (!kin) kin = bulletGO.AddComponent<KineticProjectile>();
 
         kin.maxRange = kMaxRange;
         kin.fullDamagePortion = kFullDamagePortion;
@@ -119,11 +126,13 @@ public class Pistol : AbilityBase
         kin.alignToVelocity = true;
         kin.anchorAtSurface = true;
 
+        if (IsSpawned) bulletGO.GetComponent<NetworkObject>().Spawn();
+
         TurnManager.Instance?.RegisterShot();
         TurnManager.NotifyProjectileLaunched();
         AchievementEvents.FireWeaponUsed("weapon_pistol");
         AudioManager.Instance?.PlaySfx("weapon_pistol_fire");
-        kin.Init(initial, gameObject, ignoreOwnerDuration);
+        kin.Init(initialVelocity, gameObject, ignoreOwnerDuration);
     }
 
     protected override void CancelAim()

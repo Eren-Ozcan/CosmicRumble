@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -90,6 +91,17 @@ public class RPG : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda ateşleme isteği server'a taşınır — offline hotseat'te eski doğrudan
+        // yerel yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         AchievementEvents.FireWeaponUsed("weapon_rpg");
         AudioManager.Instance?.PlaySfx("weapon_rpg_fire");
 
@@ -101,12 +113,15 @@ public class RPG : AbilityBase
             proj.explosionForce = explosionForce;
             proj.maxDamage = maxDamage;
             proj.timeToLive = projectileTTL;
-            proj.Init(initial, gameObject, ignoreOwnerDuration);
+
+            if (IsSpawned) bulletGO.GetComponent<NetworkObject>().Spawn();
+
+            proj.Init(initialVelocity, gameObject, ignoreOwnerDuration);
         }
         else
         {
             var rb = bulletGO.GetComponent<Rigidbody2D>();
-            rb?.AddForce(initial, ForceMode2D.Impulse);
+            rb?.AddForce(initialVelocity, ForceMode2D.Impulse);
         }
     }
 

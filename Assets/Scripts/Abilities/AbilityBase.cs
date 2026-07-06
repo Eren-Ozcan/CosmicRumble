@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -5,8 +6,13 @@ using UnityEngine.InputSystem;
 /// Tüm silah/ability'ler için ortak boilerplate.
 /// Cooldown, onay akışı, wasActive takibi ve TrajectoryDots yönetimini sağlar.
 /// Alt sınıflar: SlotIndex, ActivationKey, CooldownTime ve OnFireUpdate() tanımlamalı.
+///
+/// NetworkBehaviour: Player prefabı zaten bir NetworkObject taşıdığı için ability'ler de
+/// (GravityBody/TurnManager ile aynı emsal) networked hale gelebiliyor — [ServerRpc] ile ateşleme
+/// isteğini server'a taşıyan alt sınıflar (bkz. Pistol.cs) için gerekli. IsSpawned=false olan
+/// offline hotseat'te davranış etkilenmez.
 /// </summary>
-public abstract class AbilityBase : MonoBehaviour, IAbilitySelectable, ICooldownResettable
+public abstract class AbilityBase : NetworkBehaviour, IAbilitySelectable, ICooldownResettable
 {
     // ── Nişan/ateş için mouse+touch ortak pointer erişimi ────────
     // Pointer.current, son kullanılan pointer cihazına (Mouse, Touchscreen'in

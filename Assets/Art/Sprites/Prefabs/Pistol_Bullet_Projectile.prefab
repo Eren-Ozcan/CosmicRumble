@@ -52,8 +52,57 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5886856562664729342, guid: dd6f4f878f79a3d4e80bb925e15530fa, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 479944923228645718, guid: dd6f4f878f79a3d4e80bb925e15530fa, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7281764082317035703}
   m_SourcePrefab: {fileID: 100100000, guid: dd6f4f878f79a3d4e80bb925e15530fa, type: 3}
+--- !u!1 &3892696180545929677 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 479944923228645718, guid: dd6f4f878f79a3d4e80bb925e15530fa, type: 3}
+  m_PrefabInstance: {fileID: 3507382513477511323}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7281764082317035703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3892696180545929677}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24ad336a0767e4940a9e86ffc672dcf6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  owner: {fileID: 0}
+  ignoreOwnerTime: 0.5
+  gravityScale: 0
+  maxRange: 12
+  maxDamage: 8
+  fullDamagePortion: 0.3
+  minDamage: 0
+  destroyOnPlanetHit: 1
+  applyPlanetDamage: 1
+  planetDamageRadius: 0.6
+  planetDamageForce: 2
+  planetDamageMultiplier: 1
+  useElongatedPlanetDamage: 1
+  ovalLength: 6
+  ovalWidth: 3
+  ovalStamps: 7
+  alignToVelocity: 1
+  anchorAtSurface: 1
+  useTrigger: 1
+  planetChunkLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  drain2xInsideChunk: 1
+  chunkDrainMultiplier: 2
+  planetLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  stopOnDamageable: 1

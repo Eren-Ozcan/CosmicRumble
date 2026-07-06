@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -78,10 +80,20 @@ public class BatHammerSkill : AbilityBase
             Vector2 aimDir = pull.sqrMagnitude > 0.0001f ? pull.normalized : Vector2.right;
             float power01 = (maxDragDistance > 0f) ? (clamped / maxDragDistance) : 0f;
 
-            int affected = PerformKnockback(aimDir, power01);
+            // Koni içinde hedef var mı? — bu, cooldown/ses/başarım "sadece isabet varsa tüketilsin"
+            // kuralı için hâlâ SAHİBİNİN makinesinde (yerel) karar veriliyor; sıra tabanlı oyunda
+            // sadece aktif karakter hareket ettiğinden hedeflerin konumu bu turda sabit — yerel ve
+            // server'ın az sonra kendi tespitiyle bulacağı sonuç pratikte hep aynı.
+            var targets = DetectTargets(aimDir);
 
-            if (affected > 0)
+            if (targets.Count > 0)
             {
+                // Networked modda gerçek kuvvet uygulaması server'a taşınır (server kendi tespitini
+                // tazeden yapar ve her hedefin gerçek sahibine GravityBody.ApplyForce ile ulaşır) —
+                // offline hotseat'te eski doğrudan yerel yol aynen çalışır.
+                if (IsSpawned) SwingServerRpc(aimDir, power01);
+                else ApplyKnockback(targets, power01);
+
                 cooldownTimer = cooldownTime;
                 charAbilities?.OnAbilityConsumed();
                 AchievementEvents.FireAbilityUsed("skill_bathammer");
@@ -100,6 +112,13 @@ public class BatHammerSkill : AbilityBase
         }
     }
 
+    [ServerRpc]
+    private void SwingServerRpc(Vector2 aimDir, float power01)
+    {
+        var targets = DetectTargets(aimDir);
+        ApplyKnockback(targets, power01);
+    }
+
     protected override void CancelAim()
     {
         EndDrag();
@@ -107,10 +126,19 @@ public class BatHammerSkill : AbilityBase
     }
 
     // ----------------- KNOCKBACK (koni alanı) -----------------
-    private int PerformKnockback(Vector2 aimDir, float power01)
+    // Tespit (fizik sorgusu, yan etkisiz) ve uygulama (gerçek kuvvet) ayrıldı — sunucu, client'ın
+    // "isabet var mı" kararını tekrar hesaplayıp asıl kuvveti kendisi uygulayabilsin diye
+    // (bkz. SwingServerRpc).
+    private struct KnockbackTarget
     {
-        int affected = 0;
-        float finalForce = knockbackForce * Mathf.Clamp01(power01);
+        public GravityBody gravityBody;
+        public Rigidbody2D rb;
+        public Vector2 toTarget;
+    }
+
+    private List<KnockbackTarget> DetectTargets(Vector2 aimDir)
+    {
+        var result = new List<KnockbackTarget>();
         float halfRad = 0.5f * coneAngleDeg * Mathf.Deg2Rad;
         float cosHalf = Mathf.Cos(halfRad);
 
@@ -127,10 +155,35 @@ public class BatHammerSkill : AbilityBase
             Vector2 toTarget = ((Vector2)hit.transform.position - (Vector2)transform.position).normalized;
             if (Vector2.Dot(aimDir, toTarget) < cosHalf) continue; // koni dışında
 
-            rb.AddForce(toTarget * finalForce, ForceMode2D.Impulse);
+            result.Add(new KnockbackTarget
+            {
+                gravityBody = rb.GetComponent<GravityBody>(),
+                rb = rb,
+                toTarget = toTarget
+            });
+        }
+
+        return result;
+    }
+
+    private int ApplyKnockback(List<KnockbackTarget> targets, float power01)
+    {
+        float finalForce = knockbackForce * Mathf.Clamp01(power01);
+        int affected = 0;
+
+        foreach (var t in targets)
+        {
+            Vector2 force = t.toTarget * finalForce;
+
+            // GravityBody.ApplyForce, sahibi bu makine değilse (networked modda bu her zaman
+            // server'dır) doğru sahibin makinesine yönlendirir — offline'da veya sahip bizsek
+            // doğrudan uygulanır.
+            if (t.gravityBody != null) t.gravityBody.ApplyForce(force, ForceMode2D.Impulse);
+            else t.rb.AddForce(force, ForceMode2D.Impulse);
+
             affected++;
 #if UNITY_EDITOR
-            Debug.Log($"[BatHammer] Knockback ({finalForce:F2}) -> {hit.name}");
+            Debug.Log($"[BatHammer] Knockback ({finalForce:F2}) -> {t.rb.name}");
 #endif
         }
 

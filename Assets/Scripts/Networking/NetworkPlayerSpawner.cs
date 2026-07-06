@@ -16,11 +16,27 @@ namespace CosmicRumble.Networking
     ///
     /// Inspector ataması: Player Prefab (aynı prefab, artık kökünde NetworkObject de var).
     /// SampleScene'e boş bir GameObject ekleyip scripti yapıştır.
+    ///
+    /// Maç başladıktan sonraki bağlantı kopmaları da burada ele alınır: Player.prefab'ın
+    /// NetworkObject'i artık DontDestroyWithOwner=true, yani sahibi kopunca karakter YOK
+    /// EDİLMİYOR — "sahipsiz" (orphaned) olarak işaretlenip reconnectTimeout süresi boyunca
+    /// bekletiliyor. O süre içinde biri yeniden bağlanırsa (aynı katılım koduyla) karakterin
+    /// sahipliği yeni clientId'ye devrediliyor — yeni bir karakter spawn edilmiyor. Süre dolarsa
+    /// karakter despawn edilir, TurnManager'ın mevcut characters.Count&lt;2 kontrolü maçı doğal
+    /// şekilde bitirir. Host'un kendisinin kopması (host migration) kapsam dışı — o durumda
+    /// oturumun tamamı zaten sona erer.
     /// </summary>
     [DefaultExecutionOrder(150)]
     public class NetworkPlayerSpawner : MonoBehaviour
     {
         [SerializeField] GameObject playerPrefab;
+        [Tooltip("Bir oyuncu kopunca karakterinin sahipsiz bekletileceği azami süre (saniye) — bu süre içinde aynı katılım koduyla geri dönülürse karakter geri kazanılır.")]
+        public float reconnectTimeout = 90f;
+
+        readonly Dictionary<ulong, NetworkObject> _playerObjects = new Dictionary<ulong, NetworkObject>();
+        readonly Dictionary<ulong, NetworkObject> _orphaned = new Dictionary<ulong, NetworkObject>();
+        readonly Dictionary<ulong, float> _orphanedSince = new Dictionary<ulong, float>();
+        bool _matchStarted;
 
         void Start()
         {
@@ -29,6 +45,45 @@ namespace CosmicRumble.Networking
             if (!nm.IsServer) return;                  // sadece server spawn eder
 
             SpawnAllConnectedClients(nm);
+            _matchStarted = true;
+
+            nm.OnClientConnectedCallback += OnClientConnectedAfterMatchStart;
+            nm.OnClientDisconnectCallback += OnClientDisconnectedMidMatch;
+        }
+
+        void OnDestroy()
+        {
+            var nm = NetworkManager.Singleton;
+            if (nm != null)
+            {
+                nm.OnClientConnectedCallback -= OnClientConnectedAfterMatchStart;
+                nm.OnClientDisconnectCallback -= OnClientDisconnectedMidMatch;
+            }
+        }
+
+        void Update()
+        {
+            if (_orphaned.Count == 0) return;
+
+            List<ulong> expired = null;
+            foreach (var kvp in _orphanedSince)
+            {
+                if (Time.time - kvp.Value > reconnectTimeout)
+                    (expired ??= new List<ulong>()).Add(kvp.Key);
+            }
+            if (expired == null) return;
+
+            foreach (var clientId in expired)
+            {
+                if (_orphaned.TryGetValue(clientId, out var obj) && obj != null)
+                {
+                    Debug.Log($"[NET] Reconnect window expired for former clientId={clientId} ({obj.name}) — despawning.");
+                    NetworkBootstrap.Instance?.ShowStatus("Rakip geri dönmedi, maç sona eriyor...");
+                    obj.Despawn(true);
+                }
+                _orphaned.Remove(clientId);
+                _orphanedSince.Remove(clientId);
+            }
         }
 
         void SpawnAllConnectedClients(NetworkManager nm)
@@ -63,6 +118,7 @@ namespace CosmicRumble.Networking
                     continue;
                 }
                 netObj.SpawnAsPlayerObject(clientId);
+                _playerObjects[clientId] = netObj;
 
                 var gb = go.GetComponent<GravityBody>();
                 if (gb != null) allPlayers.Add(gb);
@@ -72,6 +128,56 @@ namespace CosmicRumble.Networking
 
             TurnManager.Instance?.RegisterPlayers(allPlayers);
             TurnManager.Instance?.BeginMatch();
+        }
+
+        /// <summary>
+        /// Maç başladıktan sonra gelen HER yeni bağlantı bir reconnect adayıdır (ilk 2 oyuncu
+        /// zaten SpawnAllConnectedClients ile spawn edildi, bu callback yalnızca ondan SONRA
+        /// abone olunuyor).
+        /// </summary>
+        void OnClientConnectedAfterMatchStart(ulong clientId)
+        {
+            if (_playerObjects.ContainsKey(clientId)) return; // beklenmedik ama güvenlik
+
+            if (_orphaned.Count == 0)
+            {
+                Debug.LogWarning($"[NET] clientId={clientId} bağlandı ama geri alınacak sahipsiz karakter yok (2 oyuncu zaten dolu ya da hiç kopma yok).");
+                return;
+            }
+
+            ulong orphanKey = 0;
+            NetworkObject orphanObj = null;
+            foreach (var kvp in _orphaned) { orphanKey = kvp.Key; orphanObj = kvp.Value; break; }
+
+            _orphaned.Remove(orphanKey);
+            _orphanedSince.Remove(orphanKey);
+
+            if (orphanObj == null) return; // bu arada despawn olmuş olabilir
+
+            orphanObj.ChangeOwnership(clientId);
+            _playerObjects[clientId] = orphanObj;
+
+            Debug.Log($"[NET] Reconnect: clientId={clientId} {orphanObj.name} karakterini geri kazandı (eski clientId={orphanKey}).");
+            NetworkBootstrap.Instance?.HideStatus();
+        }
+
+        void OnClientDisconnectedMidMatch(ulong clientId)
+        {
+            if (!_playerObjects.TryGetValue(clientId, out var netObj)) return;
+            _playerObjects.Remove(clientId);
+            if (netObj == null) return; // zaten yok olmuş
+
+            _orphaned[clientId] = netObj;
+            _orphanedSince[clientId] = Time.time;
+
+            Debug.Log($"[NET] clientId={clientId} koptu — {netObj.name} sahipsiz bırakıldı, {reconnectTimeout}s içinde geri dönülebilir.");
+            NetworkBootstrap.Instance?.ShowStatus("Rakip bağlantısı koptu, yeniden bağlanması bekleniyor...");
+
+            // NGO'nun disconnect'i sadece transport bağlantısını koparır -- UGS Session/Lobby'nin
+            // kendi üyelik kaydı ayrı bir katman ve otomatik silinmiyor. Bunu açıkça temizlemezsek
+            // aynı kimlikle bir rejoin denemesi "already a member of the lobby" hatasıyla
+            // sürekli başarısız olur (canlı testte doğrulandı).
+            _ = NetworkBootstrap.Instance?.RemoveDisconnectedPeerAsync();
         }
     }
 }

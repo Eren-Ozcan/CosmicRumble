@@ -5,6 +5,8 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 
 namespace CosmicRumble.Networking
 {
@@ -12,6 +14,12 @@ namespace CosmicRumble.Networking
     /// Unity Multiplayer Services (Session API, Relay üzerinden) + Netcode for GameObjects
     /// köprüsü. UGS init/sign-in'i CloudSaveManager'ın kurduğu aynı oturumu kullanır, tekrar
     /// başlatmaz. Gerçek satın alma/host/join akışı OnlineLobbyPanelUI'dan çağrılır.
+    ///
+    /// Ayrıca kalıcı (DontDestroyOnLoad, sahne geçişlerinde hayatta kalan) küçük bir durum
+    /// banner'ı taşır — OnlineLobbyPanelUI'nin kendi "bağlantı kesildi" ekranı sadece MenuScene'de
+    /// yaşadığı için maç sahnesine (SampleScene) geçildikten sonra asla tetiklenemiyordu; bu
+    /// banner o boşluğu kapatır ve hem client'ın kendi yeniden-bağlanma denemesini hem de
+    /// NetworkPlayerSpawner'ın "rakip koptu, bekleniyor" mesajını göstermek için kullanılır.
     /// </summary>
     public class NetworkBootstrap : MonoBehaviour
     {
@@ -20,11 +28,28 @@ namespace CosmicRumble.Networking
         public string LastJoinCode { get; private set; }
         public bool IsBusy { get; private set; }
 
+        [Header("Reconnect (client-tarafı, kendi bağlantımız koparsa)")]
+        [Tooltip("Beklenmedik kopuşta kaç kez yeniden katılma denenecek. Host taraflı " +
+                 "NetworkPlayerSpawner artık disconnect anında RemoveDisconnectedPeerAsync ile " +
+                 "UGS Session/Lobby üyeliğini de temizliyor, bu yüzden rejoin genelde saniyeler " +
+                 "içinde başarılı olur -- yine de ağ gecikmesi/geçici hatalar için makul bir pay bırakıldı.")]
+        public int reconnectAttempts = 6;
+        [Tooltip("Denemeler arası bekleme (saniye)")]
+        public float reconnectDelaySeconds = 5f;
+
+        private ISession _session;
+        private bool _wasClient;          // JoinSessionAsync ile bağlandık mı (host değil)
+        private bool _intentionalLeave;   // LeaveSessionAsync bilinçli çağrıldıysa true
+
+        GameObject      _statusRoot;
+        TextMeshProUGUI _statusText;
+
         void Awake()
         {
             if (Instance != null) { Destroy(gameObject); return; }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            BuildStatusUI();
         }
 
         async Task EnsureUgsReadyAsync()
@@ -46,8 +71,10 @@ namespace CosmicRumble.Networking
 
                 var options = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork();
                 var session = await MultiplayerService.Instance.CreateSessionAsync(options);
+                _session = session;
 
                 LastJoinCode = session.Code;
+                _wasClient = false;
                 Debug.Log($"[NET] Hosted session, code={LastJoinCode}, IsHost={NetworkManager.Singleton.IsHost}");
                 return LastJoinCode;
             }
@@ -71,7 +98,14 @@ namespace CosmicRumble.Networking
                 await EnsureUgsReadyAsync();
 
                 var session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, new JoinSessionOptions());
+                _session = session;
+                LastJoinCode = code;
+                _wasClient = true;
+                _intentionalLeave = false;
                 Debug.Log($"[NET] Joined session code={code}, IsClient={NetworkManager.Singleton.IsClient}");
+
+                NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
+                NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
                 return true;
             }
             catch (Exception e)
@@ -83,6 +117,158 @@ namespace CosmicRumble.Networking
             {
                 IsBusy = false;
             }
+        }
+
+        /// <summary>
+        /// Aktif oturumdan ayrılır (host veya client fark etmez) ve NetworkManager'ı kapatır.
+        /// Bağlantı denemesi sırasında (BACK/İptal) veya maç bittiğinde temiz bir şekilde çağrılır.
+        /// </summary>
+        public async Task LeaveSessionAsync()
+        {
+            _intentionalLeave = true;
+            try
+            {
+                if (_session != null)
+                {
+                    await _session.LeaveAsync();
+                    _session = null;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[NET] LeaveSessionAsync: session leave failed (continuing shutdown anyway): {e}");
+            }
+            finally
+            {
+                if (NetworkManager.Singleton != null)
+                {
+                    NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
+                    if (NetworkManager.Singleton.IsListening)
+                        NetworkManager.Singleton.Shutdown();
+                }
+                LastJoinCode = null;
+                HideStatus();
+            }
+        }
+
+        /// <summary>
+        /// Host-only: bir client mid-match beklenmedik şekilde koptuğunda UGS Session/Lobby
+        /// seviyesindeki üyeliğini de temizler. NGO'nun kendi disconnect'i sadece transport
+        /// bağlantısını koparır — Session/Lobby'nin kendi üyelik kaydı ayrı bir katman ve
+        /// otomatik zaman aşımıyla silinmiyor (canlı testte 250s+ beklemeye rağmen hâlâ
+        /// "player is already a member of the lobby" hatası alınıyordu) — bu yüzden aynı kimlikle
+        /// gerçek bir rejoin'in çalışabilmesi için host'un bunu açıkça yapması gerekiyor.
+        /// </summary>
+        public async Task RemoveDisconnectedPeerAsync()
+        {
+            try
+            {
+                if (_session == null) return;
+                var host = _session.AsHost();
+                string myId = AuthenticationService.Instance.PlayerId;
+
+                foreach (var p in host.Players)
+                {
+                    if (p.Id == myId) continue;
+                    await host.RemovePlayerAsync(p.Id);
+                    Debug.Log($"[NET] RemoveDisconnectedPeerAsync: removed stale session player {p.Id}");
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[NET] RemoveDisconnectedPeerAsync failed: {e}");
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //  RECONNECT (sadece client tarafı — host'un kendisi kopunca oturumun
+        //  tamamı zaten sona erer, host migration kapsam dışı)
+        // ════════════════════════════════════════════════════════════════════
+
+        async void OnUnexpectedDisconnect(ulong clientId)
+        {
+            if (!_wasClient) return;                 // biz host'tuk, bu bizim işimiz değil
+            if (_intentionalLeave) return;            // kendi isteğimizle ayrıldık
+            if (clientId != NetworkManager.Singleton.LocalClientId) return; // başkasının kopuşu
+
+            string codeToRetry = LastJoinCode;
+            if (string.IsNullOrEmpty(codeToRetry))
+            {
+                Debug.LogWarning("[NET] Unexpected disconnect but no LastJoinCode to retry with.");
+                return;
+            }
+
+            for (int attempt = 1; attempt <= reconnectAttempts; attempt++)
+            {
+                ShowStatus($"Bağlantı koptu, yeniden bağlanılıyor... (deneme {attempt}/{reconnectAttempts})");
+                Debug.Log($"[NET] Reconnect attempt {attempt}/{reconnectAttempts} with code={codeToRetry}");
+                await Task.Delay(TimeSpan.FromSeconds(reconnectDelaySeconds));
+
+                if (_intentionalLeave) return; // bu sırada kullanıcı kendi çıktıysa vazgeç
+
+                bool ok = await JoinSessionAsync(codeToRetry);
+                if (ok)
+                {
+                    Debug.Log("[NET] Reconnect succeeded.");
+                    HideStatus();
+                    return;
+                }
+            }
+
+            Debug.LogWarning("[NET] Reconnect failed after all attempts, giving up.");
+            ShowStatus("Bağlantı tamamen kesildi.");
+            await Task.Delay(TimeSpan.FromSeconds(2f));
+            HideStatus();
+            UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.Menu);
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //  KALICI DURUM BANNER'I (sahne geçişlerinde hayatta kalır)
+        // ════════════════════════════════════════════════════════════════════
+
+        public void ShowStatus(string message)
+        {
+            _statusText.text = message;
+            _statusRoot.SetActive(true);
+        }
+
+        public void HideStatus() => _statusRoot.SetActive(false);
+
+        void BuildStatusUI()
+        {
+            var canvasGO = new GameObject("ConnectionStatusCanvas");
+            canvasGO.transform.SetParent(transform, false);
+            var canvas = canvasGO.AddComponent<Canvas>();
+            canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 100; // her şeyin üstünde
+            var scaler = canvasGO.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight  = 0.5f;
+            canvasGO.AddComponent<GraphicRaycaster>();
+
+            _statusRoot = new GameObject("StatusBanner");
+            _statusRoot.transform.SetParent(canvasGO.transform, false);
+            var bg = _statusRoot.AddComponent<Image>();
+            bg.color = new Color(0, 0, 0, 0.85f);
+            var bgRt = bg.rectTransform;
+            bgRt.anchorMin = new Vector2(0.5f, 0.92f);
+            bgRt.anchorMax = new Vector2(0.5f, 0.92f);
+            bgRt.sizeDelta = new Vector2(900, 70);
+
+            var textGO = new GameObject("Text");
+            textGO.transform.SetParent(_statusRoot.transform, false);
+            _statusText = textGO.AddComponent<TextMeshProUGUI>();
+            _statusText.fontSize  = 24;
+            _statusText.color     = new Color(1f, 0.8f, 0.2f);
+            _statusText.alignment = TextAlignmentOptions.Center;
+            var trt = _statusText.rectTransform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = trt.offsetMax = Vector2.zero;
+
+            _statusRoot.SetActive(false);
         }
     }
 }

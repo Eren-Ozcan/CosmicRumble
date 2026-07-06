@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -91,6 +92,17 @@ public class HandGrenade : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda ateşleme isteği server'a taşınır — offline hotseat'te eski doğrudan
+        // yerel yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         AchievementEvents.FireWeaponUsed("weapon_grenade");
         AudioManager.Instance?.PlaySfx("weapon_grenade_throw");
 
@@ -103,12 +115,15 @@ public class HandGrenade : AbilityBase
             grenade.maxDamage = maxDamage;
             grenade.delayBeforeExplosion = delayBeforeExplosion;
             grenade.gravityForceMultiplier = gravityForceMultiplier;
-            grenade.Init(initial, gameObject, ignoreOwnerDuration);
+
+            if (IsSpawned) bulletGO.GetComponent<NetworkObject>().Spawn();
+
+            grenade.Init(initialVelocity, gameObject, ignoreOwnerDuration);
         }
         else
         {
             var rb = bulletGO.GetComponent<Rigidbody2D>();
-            rb?.AddForce(initial, ForceMode2D.Impulse);
+            rb?.AddForce(initialVelocity, ForceMode2D.Impulse);
         }
     }
 

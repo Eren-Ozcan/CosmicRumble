@@ -83,10 +83,26 @@ public class BlackHoleZone : MonoBehaviour
             foreach (var c in _hits)
             {
                 var rb = c.attachedRigidbody;
-                if (rb == null || rb.bodyType != RigidbodyType2D.Dynamic) continue;
+                if (rb == null) continue;
 
+                // GravityBody.ApplyForce, sahibi bu makine değilse (networked modda bu zone sadece
+                // server'da çalışır) doğru sahibin makinesine ClientRpc ile yönlendirir — doğrudan
+                // rb.AddForce çağrısı, hedef server'da kinematic (non-owner) ise sessizce no-op
+                // olurdu, offline'da veya sahip bizsek (host kendi karakterini etkiliyorsa) hâlâ
+                // doğrudan uygulanır.
+                var gravityBody = c.attachedRigidbody.GetComponent<GravityBody>();
                 Vector2 dir = (center - rb.position).normalized;
-                rb.AddForce(dir * pullForce, ForceMode2D.Force);
+                Vector2 force = dir * pullForce;
+
+                if (gravityBody != null)
+                {
+                    gravityBody.ApplyForce(force, ForceMode2D.Force);
+                }
+                else
+                {
+                    if (rb.bodyType != RigidbodyType2D.Dynamic) continue;
+                    rb.AddForce(force, ForceMode2D.Force);
+                }
             }
         }
     }

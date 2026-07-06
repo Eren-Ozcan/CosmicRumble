@@ -18,10 +18,11 @@ public class SuperJumpSkill : AbilityBase
         gravityBody.onSuperJumpConsumed += ClearSuperJumpFilter;
     }
 
-    private void OnDestroy()
+    public override void OnDestroy()
     {
         if (gravityBody != null)
             gravityBody.onSuperJumpConsumed -= ClearSuperJumpFilter;
+        base.OnDestroy();
     }
 
     private void ClearSuperJumpFilter()

@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -96,6 +97,17 @@ public class Shotgun : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 baseInitial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda tüm volley tek bir RPC ile server'a taşınır (server pellet döngüsünü
+        // kendisi çalıştırır) — offline hotseat'te eski doğrudan yerel yol aynen çalışır.
+        if (IsSpawned) FirePelletsServerRpc(baseInitial);
+        else SpawnAllPellets(baseInitial);
+    }
+
+    [ServerRpc]
+    private void FirePelletsServerRpc(Vector2 baseInitial) => SpawnAllPellets(baseInitial);
+
+    private void SpawnAllPellets(Vector2 baseInitial)
+    {
         float half = totalSpreadAngle * 0.5f;
 
         TurnManager.Instance?.RegisterShot();
@@ -109,12 +121,7 @@ public class Shotgun : AbilityBase
             Vector2 initial = (Quaternion.AngleAxis(ang, Vector3.forward) * baseInitial);
 
             var go = Instantiate(pelletPrefab, firePoint.position, firePoint.rotation);
-
-            var oldProj = go.GetComponent<Projectile>();
-            if (oldProj) Destroy(oldProj);
-
             var kin = go.GetComponent<KineticProjectile>();
-            if (!kin) kin = go.AddComponent<KineticProjectile>();
 
             kin.maxRange = pelletMaxRange;
             kin.fullDamagePortion = fullDamagePortion;
@@ -132,6 +139,8 @@ public class Shotgun : AbilityBase
             kin.ovalStamps = ovalStamps;
             kin.alignToVelocity = alignToVelocity;
             kin.anchorAtSurface = anchorAtSurface;
+
+            if (IsSpawned) go.GetComponent<NetworkObject>().Spawn();
 
             TurnManager.NotifyProjectileLaunched();
             kin.Init(initial, gameObject, ignoreOwnerDuration);

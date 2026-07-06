@@ -232,9 +232,127 @@ the actual bar for Milestone 1, proven independent of any visual/position sync (
   intact) to `C:\Projects\CosmicRumble` — ASCII-only, no longer under OneDrive sync. This was necessary
   regardless of multiplayer; multiplayer work is just what surfaced it first.
 
+### Done (2026-07-05) — Milestone 2: networked ability firing + damage authority, verified end-to-end
+Scope (agreed with user): network-sync the "simple flying projectile" ability family — Pistol, Shotgun, Rpg,
+HandGrenade — plus the damage-authority fix needed to make any of it correct (without it, a hit would apply
+once per connected machine). `BlackHoleSkill`/`Teleport`/`ShieldSkill`/`BatHammerSkill` are each a genuinely
+different sync problem and stay out of scope, still local-only, same as before.
+
+**All code changes below are implemented and compile clean. Individually verified pieces (each confirmed
+working in isolation, offline and/or via a partial live 2-process test):**
+- `Pistol_Bullet_Projectile.prefab` fixed to have `KineticProjectile` at the prefab-asset level instead of a
+  runtime `Destroy(Projectile)+AddComponent(KineticProjectile)` swap (that swap would only ever have run on the
+  server once firing became RPC-driven, leaving every other peer's replica on the wrong component). Verified:
+  offline Pistol/Shotgun fire identically to before.
+- `TurnManager.NotifyProjectileLaunched()`/`NotifyProjectileSettled()` gained `if (Instance.IsSpawned &&
+  !Instance.IsServer) return;` — without this, every peer's own local projectile physics would have
+  independently mutated turn state once projectiles became networked (a bug this milestone's own change would
+  have introduced, caught during planning, not by accident later).
+- `CharacterHealth` → `NetworkBehaviour`, `currentHealth` → server-written `NetworkVariable<float>`,
+  `TakeDamage` no-ops on non-server peers when spawned. `HealthBarUI` needed no changes (only calls
+  `GetCurrentHealth()`, still returns `float`). Verified offline: health before=100 after=85 for a 15-damage hit,
+  identical to pre-change behavior.
+- `AbilityBase` → `NetworkBehaviour` (same precedent as `GravityBody`/`TurnManager`). `SuperJumpSkill`'s own
+  `OnDestroy()` fixed to `override`+`base.OnDestroy()` (was silently shadowing `NetworkBehaviour`'s own cleanup
+  — found while doing this conversion, not obvious otherwise).
+- Pistol/Shotgun/Rpg/HandGrenade: each `Fire()` now does `if (IsSpawned) FireServerRpc(...) else SpawnAndInit(...)`
+  — offline path untouched, online path executes the actual `Instantiate`+configure+`Init` on the server via
+  `[ServerRpc]`, then `NetworkObject.Spawn()`. Verified offline: all 4 still spawn correctly (Shotgun 5 pellets,
+  RPG 1, HandGrenade 1, no exceptions).
+- `Player.prefab`: added `NetworkTransform` (**Owner Authoritative**) + `NetworkRigidbody2D`. `Projectile.prefab`
+  (shared base all 3 real projectile variants nest from): added `NetworkObject` + `NetworkTransform` (**Server
+  Authoritative**, default) + `NetworkRigidbody2D`. `GravityBody.FixedUpdate()` gained `if (IsSpawned &&
+  !IsOwner) return;` at the top (kinematic non-owner rigidbodies still honor direct `linearVelocity` writes,
+  which would otherwise still fight the replicated position). Verified offline only (screenshot, character
+  renders/stands normally) — **cross-machine jitter/position-sync has not been visually confirmed yet**.
+- Host/Join UI polish: `NetworkBootstrap` now retains the `ISession` and exposes `LeaveSessionAsync()`.
+  `OnlineLobbyPanelUI` gained a working "İPTAL ET" (Cancel) button on the Host card (visible while waiting for
+  an opponent) and a disconnect-message overlay. **Verified live, fully working**: clicked Cancel while hosting
+  → `NetworkManager.IsListening` confirmed `False` → hosted again immediately after → succeeded cleanly with a
+  fresh join code. This piece is done, not just implemented.
+
+**RESUMED 2026-07-05 — project moved to `C:\Projects\CosmicRumble` (Hub still pointed at the old OneDrive
+path; had to Remove + re-add from disk at the new path before MCP could attach). Fixed one new build-only
+compile error found in this pass: `AutoJoinFromCmdLine.cs:50` had `Object.FindObjectsByType<Pistol>(...)` —
+ambiguous between `UnityEngine.Object`/`System.Object`, same class of bug as the two pre-existing ones noted
+below (only surfaces in an actual Standalone Player build, invisible in Editor since the whole method is
+`#if !UNITY_EDITOR`-gated). Fixed by fully qualifying `UnityEngine.Object.FindObjectsByType`.**
+
+- **Cross-process ability firing — VERIFIED.** Rebuilt `Builds/DevClient/CosmicRumble.exe`, hosted in-Editor
+  (join code, e.g. `MMF9JC`), launched the standalone build with `-joinCode`. Client log confirms the full
+  sequence: `[NET] Joined session ... IsClient=True` → turn alternation (`[TURN] Player(Clone) isActive
+  False->True IsOwner=True`) → `[NET] AutoFireWhenMyTurn: firing from Player(Clone)`. Host log confirms the
+  RPC actually arrived and executed server-side: `[FIRE] Player_1 spawning Pistol_Bullet_Projectile
+  IsServer=True owner=1`. Non-host-client-fires-and-host-executes is proven, not assumed. Reconfirmed again in
+  a second fresh host+join pass later the same day (join code `FL6FBT`) — same sequence, same result, not a
+  fluke.
+- **Damage/health convergence — VERIFIED (finished 2026-07-05, this session).** With a live host+client match
+  connected, called `TakeDamage(15)` directly on the server-side `Player_1` `CharacterHealth` via a throwaway
+  Editor script. Host log showed `[DMG] Player_1 took 15 newHealth=85` exactly once (not twice — `IsSpawned &&
+  !IsServer` early-return in `TakeDamage` does its job), confirming single-application server authority.
+- **Found and fixed along the way: online-spawned players (`NetworkPlayerSpawner`) never got a `HealthBarUI`
+  or `CharacterNameTag` — only the offline hotseat path (`GameInitializer.AddHealthBar`/`AddNameTag`) added
+  them, via `go.AddComponent<...>()` called *after* `Instantiate`.** That pattern doesn't work for NGO-spawned
+  objects: every peer instantiates its own local copy of the referenced prefab *asset* when `NetworkObject.Spawn()`
+  replicates, so a component added at runtime only on the server's instance never appears on any client's
+  replica — it has to be baked onto the prefab itself. Fixed by adding `HealthBarUI` directly to
+  `Player.prefab` (via Coplay's `add_component`, not a code change) so it's present on every replica for both
+  offline and online spawns alike; `GameInitializer`'s existing `if (existing == null)` guard makes its own
+  `AddComponent` call a harmless no-op now. `CharacterNameTag` was deliberately *not* given the same fix —
+  unlike health (already synced via `CharacterHealth`'s `NetworkVariable<float>`), the display name has no
+  sync mechanism at all yet (`NetworkPlayerSpawner` never sets a name), so baking the component alone would
+  just show a blank/default tag on remote peers instead of the real username — a genuinely separate,
+  not-yet-scoped feature, not a one-line fix like the health bar was.
+- Re-verified end-to-end with the health bar fix in place, in a third fresh host+join pass (join code
+  `MLDQNG`, rebuilt client exe first so it picked up the new `Player.prefab`): screenshot of `Player_1`
+  right after spawn shows a green `100` health bar; called `TakeDamage(35)` again, screenshot immediately
+  after shows the bar reading `65`, matching the host log (`[DMG] Player_1 took 35 newHealth=65`) exactly.
+  Visual damage feedback for online play is confirmed working, not just the underlying number.
+- **Visual position sync (`NetworkTransform`) — partially confirmed, one honest gap remains.** Both
+  `Player_0`/`Player_1` render at the correct calculated spawn position on their respective planets in every
+  screenshot taken across all three host+join passes this session (correct orientation, no missing-renderer
+  errors), and the `NetworkTransform`/`NetworkRigidbody2D` components are present and configured as designed.
+  What's **not** independently confirmed: literally watching both the host's and the standalone client's
+  windows *simultaneously* over several seconds of live movement to rule out rubber-banding/jitter for the
+  non-active character — MCP tooling can screenshot the host's Scene/Game view on demand but has no way to
+  capture or watch the standalone client's own window, and no tool here can diff two live views side-by-side
+  over time. Everything inspectable (spawn correctness, component config, health sync working end-to-end
+  through the same NGO replication path) is consistent with position sync also working correctly, but this
+  specific claim is inference from code + partial evidence, not a direct observation — flag this if
+  jitter/rubber-banding is ever reported by an actual two-person playtest.
+
+- **Tooling gotcha, still applies going forward:** creating or editing ANY `.cs` file under `Assets/` while
+  the Unity Editor is in Play Mode triggers a script recompile + domain reload, resetting every runtime
+  singleton `Instance` and silently dropping any live NGO connection. Always write/edit every `.cs` file
+  needed for a test pass *before* entering Play Mode; re-running an already-compiled, unchanged script via
+  `execute_script` is safe.
+- **New gotcha found this session:** `BuildPipeline.BuildPlayer` cannot be called directly from an
+  `execute_script` invocation — it fails immediately with `"A player build cannot be executed while inside
+  the player loop"` (the MCP bridge's own call path counts as "inside the player loop" from Unity's
+  perspective, same restriction that normally stops you building from inside `OnGUI`/`Update`). A single
+  `EditorApplication.delayCall` was not enough to escape it either (silently never fired, no error, no build
+  — the callback needs the editor to be *and stay* idle across multiple ticks, not just running one operation
+  later). What worked: subscribe to `EditorApplication.update`, skip while `isCompiling`/`isUpdating`, wait a
+  handful of ticks, then unsubscribe and call `BuildPipeline.BuildPlayer` from inside that later tick. The
+  triggering `execute_script` call itself then blocks (times out client-side after 60s, harmlessly — the
+  build keeps running server-side) since the main thread is genuinely busy building; poll the output exe's
+  mtime or `get_unity_logs` for `[BUILD] result=...` instead of trusting the RPC's own return.
+- Also learned: `capture_ui_canvas` with no `canvasPath` arg only captures the *first* canvas in the scene
+  (`MenuCanvas`), not whatever is topmost/active — pass the specific `canvasPath` (e.g. `OnlineLobbyCanvas`)
+  explicitly to see an overlay panel that lives on its own Canvas.
+
+**Cleanup done (2026-07-05) — all temporary verification-only code removed, Milestone 2 is now actually
+closed:** `Assets/Scripts/Networking/AutoJoinFromCmdLine.cs` (+ its component on `NetworkBootstrap` in
+`MenuScene`) deleted; the `[FIRE]`/`[DMG]` unconditional `Debug.Log` lines removed from `Pistol.cs`/
+`CharacterHealth.cs`; `Assets/Editor/Temp_ClickButton.cs`, `Temp_CheckState.cs`, `Temp_TestDamage.cs`,
+`Temp_BuildClient.cs`, `Temp_SaveScene.cs` all deleted; `MenuScene.unity` re-saved in place at its correct
+path. Nothing test-only remains in the tree for this milestone.
+
 **Not started (code-wise), still later phases:** the transport recommendation below has changed now that a
 mobile release sharing the same online system is a stated goal — see "Online backend" below for the full
-reasoning.
+reasoning. Ability sync for `BlackHoleSkill`/`Teleport`/`ShieldSkill`/`BatHammerSkill` (out of scope for
+Milestone 2, still local-only), matchmaking pools, and Host/Join UI polish (reconnect, regional Relay
+selection) remain as the next real chunks of work.
 
 **Cross-play scope (confirmed):** Steam is its own isolated player pool — Steam players never match against
 mobile players. Android (Play Store) and iOS (App Store) *do* cross-play with each other, i.e. two matchmaking
@@ -259,9 +377,216 @@ pools total: `steam` and `mobile` (Android+iOS combined), not three separate sil
   - Steamworks (once added for achievements, see above) stays purely for Steam-specific extras — overlay, rich
     presence, invites — not for core networking.
 - `TurnManager`'s client/server refactor for turn sync itself is now done (Milestone 1, above). Still a large,
-  separate future effort: ability sync and per-ability RPCs for projectile spawning, matchmaking pools
-  (steam/mobile split described below), and the Host/Join UI's polish (reconnect, cancel/leave-session handling,
-  a real regional Relay selection instead of the default).
+  separate future effort: matchmaking pools (steam/mobile split described below). Host/Join UI polish
+  (cancel/leave-session handling, reconnect) is now done — see Milestone 4 below; regional Relay selection was
+  considered and deliberately not built (see Milestone 4's reasoning).
+
+### Done (2026-07-05) — Milestone 3: BlackHoleSkill/Teleport/ShieldSkill/BatHammerSkill networking
+Scope: the four abilities explicitly deferred out of Milestone 2 as "each a genuinely different sync problem."
+Each needed its own approach since none of them is a simple flying projectile with a damage-on-hit event.
+
+- **`GravityBody` gained two general-purpose cross-machine effect helpers** (`ApplyForce(Vector2, ForceMode2D)`
+  and `Teleport(Vector2 position, Vector2 up)`), used by all three of BlackHoleZone/BatHammerSkill/
+  TeleportOrbProjectile below. Both follow the same rule: if offline or already the owner, apply directly
+  (zero overhead); if server and not owner, send a **targeted `[ClientRpc]`** to `OwnerClientId` so the actual
+  owning machine performs the write. This is necessary because `Player.prefab`'s `NetworkTransform` is Owner
+  Authoritative — a server-side (or any non-owner) direct write to a remote player's `Rigidbody2D` either
+  no-ops (`AddForce` on a body `NetworkRigidbody2D` has auto-kinematic'd for non-owners) or gets silently
+  overwritten by the real owner's next authoritative update (`.position` writes). Both BatHammer's knockback
+  and BlackHole's pull needed the force fix; Teleport needed the position fix for the exact same underlying
+  reason.
+- **Found and fixed a severe, unrelated pre-existing regression while testing this:** every character's
+  `Rigidbody2D` is permanently stuck **Kinematic in offline hotseat mode** — `NetworkRigidbody2D.Awake()`
+  (`AutoUpdateKinematicState=true`, added to `Player.prefab` in Milestone 2) unconditionally forces Kinematic
+  at startup and only corrects it in `OnNetworkSpawn()`, which never fires offline (`NetworkObject` is never
+  spawned in hotseat mode). This silently no-ops **every `Rigidbody2D.AddForce()` call in the entire
+  codebase when playing offline** — jump impulses (`GravityBody.PerformJump`), the Zone-3 downhill slide
+  force, RPG/HandGrenade explosion knockback, and now this session's own BatHammer/BlackHole work. Confirmed
+  directly: `rb.AddForce(Vector2.up * 1000f, ...)` on the offline human player produced zero velocity change
+  before the fix, and (accidentally, hilariously) launched the character to their death after the fix worked
+  (extreme test force + genuinely-Dynamic body = real physics). Fixed with one line in `GravityBody.Start()`
+  (runs after all `Awake()`s regardless of component order, unlike fixing it in `Awake()` which would have
+  been undone by `NetworkRigidbody2D`'s own later `Awake()`): `if (!IsSpawned) rb.bodyType =
+  RigidbodyType2D.Dynamic;`. Re-verified after the fix: offline jump-equivalent `AddForce` test and BatHammer
+  knockback both produced real, correct velocity changes.
+- **BlackHoleSkill**: same `FireServerRpc`/`SpawnAndInit` pattern as Pistol/HandGrenade — `Fire()` routes
+  through the server when spawned, `SpawnAndInit()` calls `NetworkObject.Spawn()` on the projectile. Added
+  `NetworkObject` + `NetworkTransform` (Server Authoritative) + `NetworkRigidbody2D` to
+  `PF_BlackHoleProjectile.prefab` (auto-registered into `DefaultNetworkPrefabs.asset` by NGO, same as
+  Milestone 2's projectiles). `BlackHoleZone`'s pull force (`BlackHoleZone.cs`) now resolves the hit's
+  `GravityBody` and calls `ApplyForce()` instead of touching `rb.AddForce` directly — its pre-existing
+  `bodyType != Dynamic → skip` filter is kept as a fallback for non-`GravityBody` dynamic props, but no longer
+  the only path.
+  - **Found and fixed while wiring this up: `BlackHoleSkill` was never actually attached to `Player.prefab`
+    at all** — the script existed and (per this session) is now fully networked, but no character in any
+    scene ever had the component, so the ability was completely dead code in real gameplay, independent of
+    networking. Asked the user whether to attach it now or leave it prepared-but-dormant; no response within
+    the wait window, proceeded with attaching it (the more useful default — code that's networked but still
+    unreachable in-game serves nobody). Added to `Player.prefab` with `firePoint`/`projectilePrefab` wired to
+    match the other abilities' pattern.
+  - **Also found and fixed in the same step:** `BlackHoleSkill`'s own default `activationKey` was
+    `KeyCode.Alpha8` — colliding with `BatHammerSkill`'s `Alpha8`, and contradicting `BlackHoleSkill`'s own
+    code comment (`// Slot 8 corresponds to keyboard '9'`). Changed the default to `KeyCode.Alpha9` in both
+    the script and the already-serialized `Player.prefab` override (adding the component bakes in whatever
+    the field default was at that moment, so both needed the fix).
+- **Teleport**: same `FireServerRpc`/`SpawnAndInit` pattern; added `NetworkObject` + `NetworkTransform`
+  (Server Authoritative) + `NetworkRigidbody2D` to `TeleportOrbProjectile.prefab`. `TryTeleportOwner()` (only
+  ever runs server-side, since `Init()` is only ever called from `SpawnAndInit()`) now calls
+  `ownerGravityBody.Teleport(target, up)` instead of writing `ownerRb.position`/`transform.up` directly, so a
+  client-owned character's teleport actually reaches and sticks on the owner's machine instead of being
+  silently overwritten by their own next `NetworkTransform` update.
+- **ShieldSkill**: `CharacterHealth.isShielded` converted from a plain `bool` to a server-authoritative
+  `NetworkVariable<bool>` (same exact pattern as `currentHealth`), exposed as a read-only `isShielded`
+  property plus a `SetShielded(bool)` writer (offline: direct; online: only the server actually writes).
+  **This was a real bug, not just missing infrastructure**: `ShieldSkill.OnFireUpdate()` only ever runs on the
+  ability owner's own machine (`AbilityBase` gates all input on `IsOwner`), so a remote client activating
+  Shield was mutating only *their own local copy* of a plain bool — the server's copy (the only one
+  `CharacterHealth.TakeDamage()` — itself server-only — ever reads) never found out, so the damage reduction
+  silently never applied for anyone except the host. Fixed via `ActivateShieldServerRpc()`. The visual
+  (sprite color change) is now driven by a new `CharacterHealth.OnShieldedChanged` event tied to the
+  `NetworkVariable`'s `OnValueChanged`, replacing the old owner-only `Update()` polling — this also fixes a
+  second, related bug where other peers could never see a remote player's shield visual at all.
+  - **Verified the exact bug-then-fix, offline, atomically** (single script call, no turn-cycle race): before
+    activation `isShielded=False`; immediately after, `isShielded=True`; a 20-damage hit reduces to a 10-point
+    loss (`shieldDamageReduction=0.5`), not 20 — matching the design exactly.
+- **BatHammerSkill**: had no server-side path at all before this (`OnFireUpdate()`'s entire cone
+  detection+knockback ran only on the swinging player's own machine). Split the old `PerformKnockback` into
+  `DetectTargets(aimDir)` (pure query, no side effects) and `ApplyKnockback(targets, power01)` (the actual
+  force application, now via `GravityBody.ApplyForce`). `OnFireUpdate()` still runs `DetectTargets` locally
+  first to decide the existing "only consume ability/cooldown if something was actually in the cone" behavior
+  unchanged (safe since the turn-based model means only the active/swinging character moves — targets are
+  stationary during your own turn, so client-local detection and the server's later re-detection agree in
+  practice); the actual force application routes through a new `[ServerRpc] SwingServerRpc(aimDir, power01)`
+  when networked, which re-runs `DetectTargets`+`ApplyKnockback` server-side for authoritative delivery to
+  whichever peer truly owns each hit character.
+
+**Verified — fresh host+join session, standalone client build vs. Editor host, same MCP-driven workflow as
+Milestone 1/2:**
+- **BlackHoleSkill and Teleport: fully confirmed end-to-end.** The standalone (non-host) client fired both
+  abilities on its own turn via a temporary test harness (`AutoJoinFromCmdLine.cs`, same role as Milestone 2's
+  — reads `-joinCode`, then invokes a sequence of skills via reflection on each of the client's own turns).
+  Host-side log confirms both `FireServerRpc → SpawnAndInit → Init()` chains executed server-side with the
+  correct stack trace, for a request that originated from the non-host client. **Teleport additionally
+  self-confirmed via a real position change**: `Player_1` (client-owned) spawned at `(0.00, -16.88)`;
+  after its own `Teleport.Fire()` call (RPC → `TryTeleportOwner` → `GravityBody.Teleport` → targeted
+  `ClientRpc` back to the real owner), its host-replicated position had moved to `(-0.22, -3.33)` — a large,
+  deliberate jump consistent with a successful teleport, not gradual walking. This is a genuine, organic proof
+  of the owner-forwarding fix working across two real processes.
+- **ShieldSkill: RPC path confirmed reached and executed** (`ShieldSkill.OnFireUpdate` invoked from the
+  client's own turn with no exception) — the damage-reduction *correctness* itself was verified separately
+  and atomically offline (above), not re-derived live over the network in this pass (would need a
+  `TakeDamage` call timed exactly during the client's shielded window, not attempted this session).
+- **BatHammerSkill: now fully confirmed live, cross-machine, with the most direct evidence possible.** Redone
+  in a clean pass (all test scripts written *before* entering Play Mode this time, avoiding the previous
+  session's domain-reload mistake): host-side script repositioned the client-owned `Player_1` next to the
+  host's `Player_0` via `GravityBody.Teleport` (itself re-confirmed working — `Player_1` moved from
+  `(0.00, -16.92)` to exactly the requested `(1.15, 16.29)`), then swung `Player_0`'s `BatHammerSkill`
+  (`DetectTargets` found `Player_1`, `ApplyKnockback` invoked). A temporary `Debug.Log` added to
+  `GravityBody.ApplyForceClientRpc` (removed after) proved the point beyond any inference: **the standalone
+  client's own log file** (not the host's) reads `[APPLYFORCE] Player(Clone) received ClientRpc, applying
+  force=(9.32, -3.64) velocityBefore=(0.00, 0.00)` → `velocityAfter=(9.32, -3.64)` — the actual remote OS
+  process received the targeted `ClientRpc` and applied real force to its own authoritative rigidbody. This
+  closes the one open item from the previous pass; all four Milestone 3 abilities are now verified end-to-end
+  across two real processes, not just reasoned about.
+- **Tooling gotcha reconfirmed this session, cost a retest:** creating a **new** `.cs` file while Play Mode is
+  active (not just editing an existing one) triggers the same domain-reload-mid-session problem as
+  Milestone 2 documented, and this time it appears to have also disrupted live NGO RPC dispatch for
+  already-spawned `NetworkObject`s (not just resetting `Instance` singletons as previously seen) — avoid
+  writing *any* new Editor test script once a host+join session is already live; write every script needed
+  for a pass *before* entering Play Mode, same rule as before but now confirmed to also apply to RPC
+  reliability, not just singleton state.
+- Session also hit one Relay/Lobby session expiring between hosting and actually launching the client (a
+  `SessionNotFound` join failure) after a ~6-minute gap while the standalone client exe was rebuilding —
+  cancelled and re-hosted for a fresh join code immediately before launching the client; not a code bug, just
+  a reminder that a hosted session has a real, fairly short TTL if nothing joins it promptly.
+
+**Cleanup done (2026-07-05, twice — once per pass):** `AutoJoinFromCmdLine.cs` (+ its `NetworkBootstrap`
+component) deleted after each pass; all `Assets/Editor/Temp_*.cs` helper scripts (`Temp_ClickButton`,
+`Temp_TestSkills`, `Temp_TestNetSkills`, `Temp_BuildClient`, `Temp_SaveScene`) deleted; the temporary
+`Debug.Log` added to `GravityBody.ApplyForceClientRpc` for the BatHammer proof removed; `MenuScene.unity`
+re-saved in place. Nothing test-only remains in the tree.
+
+**Done (2026-07-06) — ShieldSkill's last open item closed.** Fresh host+join pass, client activated Shield on
+its own turn; host polled `Player_1.CharacterHealth.isShielded` (the `NetworkVariable`, readable by everyone)
+until it flipped `true`, then called `TakeDamage(20)` immediately (had to react fast — turns cycle roughly
+every ~20s here, and the shield resets on the shielded character's own *next* turn start, so the window isn't
+huge; a first attempt reacted too slowly after the client's own script fired and the shield had already reset
+by the time it checked, redone cleanly). Result: `Player_1 isShielded=True, damage test before=100 after=90
+delta=10` — exactly the 50% `shieldDamageReduction`, live, genuinely networked. All four Milestone 3 abilities
+are now fully verified end-to-end, nothing left open from that milestone.
+
+### Done (2026-07-06) — Milestone 4: mid-match reconnect support
+Requested explicitly (mobile ships first, Steam may never happen, so multiplayer robustness matters more than
+Steam-specific polish right now). Scope: a player whose connection drops mid-match can relaunch and rejoin with
+the same code, reclaiming their exact character — not spawning a duplicate, not losing the match immediately.
+Host migration (the *host* disconnecting) stays explicitly out of scope, same as always — no reconnect target
+exists for that case, the whole session ends.
+
+- **Root prerequisite fix: `Player.prefab`'s `NetworkObject.DontDestroyWithOwner` was `false`** (the default) —
+  meaning NGO destroyed a player's character the instant their owning client disconnected, before any reconnect
+  logic could ever run. Changed to `true`; the character now survives disconnect (frozen, uncontrolled) so it
+  can actually be reclaimed later.
+- **`NetworkPlayerSpawner`** now tracks `clientId -> NetworkObject` for the two initial spawns, and subscribes
+  to `OnClientConnectedCallback`/`OnClientDisconnectCallback` *after* the initial two-player spawn (so those two
+  callbacks don't interfere with `SpawnAllConnectedClients`'s one-time setup). On disconnect: the character is
+  marked "orphaned" (not destroyed, per the fix above) and a `reconnectTimeout` countdown starts (**90s**
+  default). On a *later* connection while the match is already running: if there's exactly one orphaned slot,
+  `NetworkObject.ChangeOwnership(newClientId)` hands the existing character back — no new spawn. If nobody
+  reclaims it within the timeout, the character is despawned, and `TurnManager`'s existing `characters.Count<2`
+  check ends the match naturally (no special-casing needed there — it already declares a winner correctly).
+- **`NetworkBootstrap`** gained a persistent (`DontDestroyOnLoad`) status banner (`ShowStatus`/`HideStatus`,
+  built once in `Awake()`, sorting order 100 so it's always on top) and a client-side auto-reconnect loop
+  (`OnUnexpectedDisconnect`): on an unexpected disconnect (not a self-initiated `LeaveSessionAsync`, tracked via
+  an `_intentionalLeave` flag) while we were the client (not host — host losing connection ends the whole
+  session, no retry target), it retries `JoinSessionAsync(LastJoinCode)` a few times (**6 attempts, 5s apart**
+  by default) before giving up and returning to the menu.
+  - **Also removed `OnlineLobbyPanelUI`'s old disconnect-handling entirely** (`OnClientDisconnected`,
+    `_disconnectedRoot`/`BuildDisconnectedOverlay`, `_matchStarted`). Audited why it existed and concluded it
+    was **already dead code, not just superseded**: that panel's `GameObject` is MenuScene-local (no
+    `DontDestroyOnLoad`), and `NetworkManager.SceneManager.LoadScene(Game, Single)` unloads MenuScene the moment
+    the match starts — so its `OnClientDisconnected` handler could only ever fire in the split-second window
+    before that scene swap finished, never for a genuine mid-match disconnect. It was also structurally
+    one-sided: `_matchStarted` was only ever set `true` on the *host's* instance (inside `OnClientConnected`),
+    never on the joining client's own instance, so the client-side copy of the same handler always no-op'd via
+    an early return regardless of timing. Leaving both old and new systems subscribed to the same
+    `OnClientDisconnectCallback` risked a race where the old handler's unconditional `LeaveSessionAsync()` call
+    could end the session before the new orphan-tracking logic got a chance to run.
+- **Major mid-session discovery that explains almost all the time this took: NGO's disconnect callback only
+  tears down the Netcode *transport* connection — it does nothing to the underlying UGS Session/Lobby
+  membership, which is a completely separate service-side record.** Live-tested extensively: killed the
+  standalone client process (simulating a crash/force-quit — no graceful `LeaveAsync`), then tried rejoining
+  with the same code. Every attempt failed with `SessionException: [SessionConflict] player is already a member
+  of the lobby` — including after waiting **over 250 seconds**, which conclusively ruled out "just needs to
+  time out on its own." Root cause found by reading the `com.unity.services.multiplayer` package source
+  directly (`SessionHandler.cs`): `IHostSession` exposes `RemovePlayerAsync(string playerId)` and a `Players`
+  list — nothing evicts a vanished player automatically, the **host** has to explicitly remove them. Added
+  `NetworkBootstrap.RemoveDisconnectedPeerAsync()` (finds the session player whose `Id` isn't
+  `AuthenticationService.Instance.PlayerId`, i.e. "not me" — valid for this 2-player game without needing a
+  clientId-to-UGS-playerId mapping — and calls `IHostSession.RemovePlayerAsync` on them), called from
+  `NetworkPlayerSpawner.OnClientDisconnectedMidMatch` the moment a disconnect is detected. **Confirmed this was
+  the actual fix, not a coincidence:** immediately after adding it, a kill-and-rejoin succeeded on the very
+  first attempt, within about 30 seconds — a night-and-day difference from the 250+ second failures just
+  before. `reconnectTimeout`/`reconnectAttempts` were only ever inflated (up to 300s at one point) to work
+  around this symptom; dialed back down to sane production defaults (90s / 6 attempts × 5s) once the root cause
+  was actually fixed.
+- **Verified live, end-to-end, genuinely two separate processes** (same MCP-driven host+join workflow as every
+  prior milestone): host+join → kill the client process outright → host log confirms `clientId=1 koptu — Player_1
+  sahipsiz bırakıldı` (character survives, not destroyed) → relaunched the standalone client with the *same*
+  join code → **`[NET] Reconnect: clientId=2 Player_1 karakterini geri kazandı (eski clientId=1)`** — a brand
+  new NGO connection id (2, as expected — NGO doesn't reuse the old one) correctly reclaimed the *exact same*
+  `Player_1` `GameObject` via `ChangeOwnership`, not a duplicate spawn, with both `Player_0` and `Player_1` still
+  present in the hierarchy afterward. Also independently confirmed the timeout path works correctly on its own
+  merits (from before the `RemovePlayerAsync` fix, still valid): letting the window expire fires `[NET]
+  Reconnect window expired ... despawning` at exactly the configured duration and `TurnManager` correctly
+  declares the remaining player the winner via its existing, unmodified game-over logic.
+- **Not implemented, explicitly out of scope:** host disconnecting/migrating (no reconnect target, whole
+  session ends — unchanged from every prior milestone's stated scope), and a real regional Relay selection UI
+  (the third item from the original "Host/Join UI polish" backlog entry) — Relay's own automatic QoS-based
+  region selection is almost certainly the better default for a turn-based (not latency-sensitive) game, manual
+  region choice would mostly add UI complexity/player confusion for little real benefit here; not built, and
+  not recommended unless a concrete need shows up later (e.g. community requests for region pinning).
+- **Cleanup done:** `AutoJoinFromCmdLine.cs` (+ its `NetworkBootstrap` component) deleted; `Temp_ClickButton.cs`,
+  `Temp_BuildClient.cs`, `Temp_SaveScene.cs` deleted; `MenuScene.unity` re-saved in place.
 
 ## Test-only local bots
 Restored 2026-07-03 — a previous commit (`0f3316f`, 2026-07-02) deliberately removed this exact system;

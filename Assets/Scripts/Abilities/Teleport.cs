@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -108,6 +109,17 @@ public class Teleport : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda ateşleme isteği server'a taşınır — offline hotseat'te eski doğrudan
+        // yerel yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         AchievementEvents.FireAbilityUsed("skill_teleport");
         AudioManager.Instance?.PlaySfx("skill_teleport");
 
@@ -117,13 +129,14 @@ public class Teleport : AbilityBase
         if (orb != null)
         {
             orb.delayBeforeTeleport = teleportDelay;
-            orb.Init(initial, gameObject, ignoreOwnerDuration);
+            if (IsSpawned) go.GetComponent<NetworkObject>().Spawn();
+            orb.Init(initialVelocity, gameObject, ignoreOwnerDuration);
         }
         else
         {
             // Fallback
             var rb = go.GetComponent<Rigidbody2D>();
-            if (rb != null) rb.AddForce(initial, ForceMode2D.Impulse);
+            if (rb != null) rb.AddForce(initialVelocity, ForceMode2D.Impulse);
         }
     }
 

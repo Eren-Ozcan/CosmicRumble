@@ -743,6 +743,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f1861307af65c6c4582beeb15180ce5b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  reconnectAttempts: 3
+  reconnectDelaySeconds: 2
 --- !u!4 &1815067798
 Transform:
   m_ObjectHideFlags: 0

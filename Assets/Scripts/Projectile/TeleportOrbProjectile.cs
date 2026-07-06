@@ -136,18 +136,22 @@ public class TeleportOrbProjectile : MonoBehaviour
         // Eğer hedefte çakışma varsa, küçük adımlarla dışarı it
         target = ResolveOverlap(target, outward);
 
-        // 3) Sahibi ışınla
-        if (owner != null && owner.TryGetComponent<Rigidbody2D>(out var ownerRb))
+        // 3) Sahibi ışınla — GravityBody.Teleport üzerinden: bu metod (TryTeleportOwner) sadece
+        // server'da çalışır (Init'i tetikleyen SpawnAndInit de sadece server'da çalışıyor), ve
+        // owner'ın NetworkTransform'u Owner Authoritative olduğu için server'ın ownerRb.position'a
+        // doğrudan yazması, gerçek sahibinin bir sonraki authoritative güncellemesiyle ezilirdi.
+        // GravityBody.Teleport, sahibi biz değilsek gerçek sahibin makinesine ClientRpc ile
+        // yönlendirir; offline'da veya sahip bizsek (host kendi karakterini ışınlıyorsa) doğrudan uygular.
+        if (owner != null && owner.TryGetComponent<GravityBody>(out var ownerGravityBody))
+        {
+            Vector2 up = hasGravity ? outward : (Vector2)owner.transform.up;
+            ownerGravityBody.Teleport(target, up);
+        }
+        else if (owner != null && owner.TryGetComponent<Rigidbody2D>(out var ownerRb))
         {
             ownerRb.position = target;
             ownerRb.linearVelocity = Vector2.zero;
-
-            // Karakteri yüzeye dik hizala (varsa)
-            if (hasGravity)
-            {
-                // Transform.up'ı yüzey normaline (outward) eşitle
-                owner.transform.up = outward;
-            }
+            if (hasGravity) owner.transform.up = outward;
         }
 
         if (teleportFxPrefab) SpawnFx(teleportFxPrefab, target);

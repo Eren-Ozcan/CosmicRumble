@@ -45,6 +45,7 @@ public class TurnManager : NetworkBehaviour
     public static void NotifyProjectileLaunched()
     {
         if (Instance == null) return;
+        if (Instance.IsSpawned && !Instance.IsServer) return;
         Instance._activeProjectiles++;
 
         // Ateş eden karakteri dondur — turn switch'e kadar hareket edemez
@@ -64,6 +65,7 @@ public class TurnManager : NetworkBehaviour
     public static void NotifyProjectileSettled()
     {
         if (Instance == null) return;
+        if (Instance.IsSpawned && !Instance.IsServer) return;
         Instance._activeProjectiles = Mathf.Max(0, Instance._activeProjectiles - 1);
         if (Instance._activeProjectiles > 0) return;   // hâlâ havada mermi var
 

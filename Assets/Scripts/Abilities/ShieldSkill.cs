@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -16,8 +17,6 @@ public class ShieldSkill : AbilityBase
     public override KeyCode ActivationKey => activationKey;
     public override float CooldownTime => cooldownTime;
 
-    private bool shieldActiveVisual;
-
     protected override void Awake()
     {
         base.Awake();
@@ -26,6 +25,28 @@ public class ShieldSkill : AbilityBase
             characterHealth = GetComponent<CharacterHealth>();
         if (spriteRenderer == null)
             spriteRenderer = GetComponent<SpriteRenderer>();
+    }
+
+    private void OnEnable()
+    {
+        if (characterHealth != null)
+            characterHealth.OnShieldedChanged += OnShieldedChanged;
+    }
+
+    private void OnDisable()
+    {
+        if (characterHealth != null)
+            characterHealth.OnShieldedChanged -= OnShieldedChanged;
+    }
+
+    // characterHealth.isShielded artık server-authoritative NetworkVariable ile taşınıyor —
+    // bu event her peer'da (sahibi olsun olmasın) tetiklenir, o yüzden görsel artık
+    // owner-only Update() polling yerine doğrudan bu event'e bağlı. Offline'da da SetShielded
+    // event'i manuel tetiklediği için aynı kod yolu çalışır.
+    private void OnShieldedChanged(bool shielded)
+    {
+        if (spriteRenderer != null)
+            spriteRenderer.color = shielded ? new Color(0.5f, 0.5f, 1f) : Color.white;
     }
 
     public override void SetSelected(bool selected)
@@ -43,26 +64,16 @@ public class ShieldSkill : AbilityBase
         UIManager.Instance?.HideConfirmPrompt();
     }
 
-    protected override void Update()
-    {
-        // Kalkan görseli senkronizasyonu — her frame kontrol et
-        if (shieldActiveVisual && characterHealth != null && !characterHealth.isShielded)
-        {
-            spriteRenderer.color = Color.white;
-            shieldActiveVisual = false;
-        }
-
-        base.Update();
-    }
-
     protected override void OnFireUpdate()
     {
         bool canUse = charAbilities == null || charAbilities.UseShield();
         if (canUse)
         {
-            characterHealth.isShielded = true;
-            spriteRenderer.color = new Color(0.5f, 0.5f, 1f);
-            shieldActiveVisual = true;
+            // Networked modda aktivasyon server'a taşınır (TakeDamage zaten sadece server'da
+            // isShielded'ı okuyor) — offline hotseat'te eski doğrudan yol aynen çalışır.
+            if (IsSpawned) ActivateShieldServerRpc();
+            else characterHealth.SetShielded(true);
+
             cooldownTimer = cooldownTime;
             charAbilities?.OnAbilityConsumed();
             AchievementEvents.FireAbilityUsed("skill_shield");
@@ -72,4 +83,7 @@ public class ShieldSkill : AbilityBase
         isSelected = false;
         fireAllowed = false;
     }
+
+    [ServerRpc]
+    private void ActivateShieldServerRpc() => characterHealth.SetShielded(true);
 }

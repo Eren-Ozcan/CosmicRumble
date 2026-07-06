@@ -84,6 +84,19 @@ public class GravityBody : NetworkBehaviour
         _planetMask = LayerMask.GetMask("Planet");
     }
 
+    private void Start()
+    {
+        // NetworkRigidbody2D.Awake() (AutoUpdateKinematicState=true) her zaman Kinematic'e zorlar ve
+        // bunu sadece OnNetworkSpawn()/UpdateOwnershipAuthority() düzeltir — offline hotseat'te
+        // NetworkObject hiç spawn edilmediği için bu düzeltme hiç çalışmaz, karakter kalıcı olarak
+        // Kinematic kalır ve rb.AddForce() (zıplama, patlama kuvveti, knockback — kod tabanındaki her
+        // AddForce çağrısı) sessizce no-op'a döner. Start() tüm Awake()'lerden sonra çalıştığı için
+        // (component sırasından bağımsız) burada güvenle düzeltilebilir; networked modda (IsSpawned
+        // sonradan true olacak) hiçbir şey yapmadan çıkar, OnNetworkSpawn kendi mantığını uygular.
+        if (!IsSpawned)
+            rb.bodyType = RigidbodyType2D.Dynamic;
+    }
+
     public override void OnNetworkSpawn()
     {
         isActive.OnValueChanged += (oldValue, newValue) =>
@@ -146,6 +159,12 @@ public class GravityBody : NetworkBehaviour
 
     private void FixedUpdate()
     {
+        // Networked modda non-owner peer'larda Rigidbody2D NetworkRigidbody2D tarafından kinematik
+        // yapılır (dış kuvvetleri zaten yok sayar), ama doğrudan linearVelocity ataması hâlâ
+        // etkili olurdu — bu satır olmadan aşağıdaki zone-tabanlı hız ayarları NetworkTransform'un
+        // replike ettiği pozisyonla çakışırdı. Offline hotseat'te (IsSpawned=false) devre dışı.
+        if (IsSpawned && !IsOwner) return;
+
         // ── 1. Yerçekimi yönü ve baskın kaynak ────────────────────────────────
         // Null kaynakları temizle
         for (int i = activeSources.Count - 1; i >= 0; i--)
@@ -369,6 +388,68 @@ public class GravityBody : NetworkBehaviour
 
         var ch = GetComponent<CharacterHealth>();
         if (ch != null)
-            ch.isShielded = false;
+            ch.SetShielded(false);
+    }
+
+    // ── Cross-machine effect helpers ───────────────────────────────────────
+    // BlackHoleZone'un çekimi, BatHammerSkill'in knockback'i ve TeleportOrbProjectile'ın
+    // ışınlaması hep bu karakterin Rigidbody2D'sine doğrudan yazıyordu — offline'da (tek process)
+    // sorunsuz çalışır, ama networked modda bu etkiler sadece server'da tetiklenir (bkz. ilgili
+    // ServerRpc'ler) ve Player.prefab'ın NetworkTransform'u Owner Authoritative: server'ın (veya
+    // herhangi bir non-owner peer'ın) bu karakterin Rigidbody2D'sine yaptığı doğrudan yazı ya hiç
+    // etki etmez (AddForce, NetworkRigidbody2D'nin non-owner'da otomatik kinematic yaptığı body'de
+    // no-op'tur) ya da gerçek sahibin bir sonraki authoritative güncellemesiyle ezilir (position).
+    // Çözüm: sahibi DEĞİLSEK ama server isek, gerçek sahibin makinesine hedefli bir ClientRpc ile
+    // "bunu sen uygula" de — offline'da veya zaten sahibiysek (örn. host kendi karakterini
+    // etkiliyorsa) doğrudan uygulanır, ekstra round-trip yok.
+    public void ApplyForce(Vector2 force, ForceMode2D mode)
+    {
+        if (!IsSpawned || IsOwner)
+        {
+            rb.AddForce(force, mode);
+            return;
+        }
+        if (IsServer)
+        {
+            var rpcParams = new ClientRpcParams
+            { Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } } };
+            ApplyForceClientRpc(force, mode, rpcParams);
+        }
+    }
+
+    [ClientRpc]
+    private void ApplyForceClientRpc(Vector2 force, ForceMode2D mode, ClientRpcParams rpcParams = default)
+    {
+        if (!IsOwner) return; // güvenlik: hedefli RPC zaten sadece sahibine gider
+        rb.AddForce(force, mode);
+    }
+
+    public void Teleport(Vector2 position, Vector2 up)
+    {
+        if (!IsSpawned || IsOwner)
+        {
+            ApplyTeleportLocal(position, up);
+            return;
+        }
+        if (IsServer)
+        {
+            var rpcParams = new ClientRpcParams
+            { Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } } };
+            TeleportClientRpc(position, up, rpcParams);
+        }
+    }
+
+    [ClientRpc]
+    private void TeleportClientRpc(Vector2 position, Vector2 up, ClientRpcParams rpcParams = default)
+    {
+        if (!IsOwner) return;
+        ApplyTeleportLocal(position, up);
+    }
+
+    private void ApplyTeleportLocal(Vector2 position, Vector2 up)
+    {
+        rb.position = position;
+        rb.linearVelocity = Vector2.zero;
+        transform.up = up;
     }
 }
