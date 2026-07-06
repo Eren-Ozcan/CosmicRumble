@@ -135,11 +135,30 @@ no console errors).
     corresponding `AchievementDefinition.id` exactly.
   - **Google Play** uses the real Play Games Services v2 API (`PlayGamesPlatform.Activate()`,
     `Social.ReportProgress`), gated behind `GPGS_INSTALLED` for the same reason (Google ships this plugin as a
-    `.unitypackage`, not a clean UPM package). To activate: download the latest release from
-    `github.com/playgameservices/play-games-plugin-for-unity`, import it (Assets → Import Package → Custom
-    Package), run Window → Google Play Games → Setup → Android Setup with the resource XML from Play Console →
-    Play Games Services Configuration, then add `GPGS_INSTALLED` under Player Settings → Scripting Define
-    Symbols (Android).
+    `.unitypackage`, not a clean UPM package).
+    - **Done (2026-07-06) — plugin installed, code-side half of the setup is complete.** Downloaded
+      `GooglePlayGamesPlugin-2.1.0.unitypackage` directly from the repo's own `current-build/` folder
+      (`github.com/playgameservices/play-games-plugin-for-unity`, the exact source already named here) and
+      imported it via `AssetDatabase.ImportPackage(path, false)` — added `Assets/GooglePlayGames/` (the plugin
+      itself, 59 `.cs` files), `Assets/ExternalDependencyManager/` (Google's EDM4U dependency resolver, a
+      prerequisite the package brings in on its own), and `Assets/Plugins/Android/GooglePlayGamesManifest.androidlib/`.
+      Added `GPGS_INSTALLED` under Player Settings → Scripting Define Symbols (**Android** specifically, via
+      `PlayerSettings.SetScriptingDefineSymbols(NamedBuildTarget.Android, ...)` — confirmed persisted in
+      `ProjectSettings/ProjectSettings.asset`). Compiles clean, no errors.
+    - **Not done, and can't be done without the user's own Play Console account:** no app is registered in Play
+      Console yet, so there are no real achievements or a real resource XML to configure. Remaining steps,
+      all requiring the user's own Google Play Developer account:
+      1. Register the app in Play Console (package name, Play Games Services enabled for it).
+      2. Create each achievement there — **Play Console generates its own opaque achievement ID** for each one
+         (e.g. `CgkI27iow...`), not a human-readable string like Steam's Admin API names. This means
+         `GooglePlayAchievementProvider.UnlockAchievement(id)`/`UpdateProgress(id, ...)` — which currently just
+         forwards whatever `AchievementDefinition.id` string is passed straight to `Social.ReportProgress` —
+         will need a lookup mapping from our internal ids (`"ROKETCI"`, etc.) to Play Console's real opaque IDs
+         once those exist; not implemented since there's nothing to map to yet. A small `Dictionary<string,
+         string>` in the provider is the obvious shape once the real IDs are known.
+      3. Run **Window → Google Play Games → Setup → Android Setup** in the Editor with the resource XML
+         downloaded from Play Console → Play Games Services → Configuration, once step 1/2 exist.
+      Everything else (the plugin, the define, the API calls) is ready and waiting on those three steps.
 
 ## Multiplayer
 
@@ -580,11 +599,16 @@ exists for that case, the whole session ends.
   Reconnect window expired ... despawning` at exactly the configured duration and `TurnManager` correctly
   declares the remaining player the winner via its existing, unmodified game-over logic.
 - **Not implemented, explicitly out of scope:** host disconnecting/migrating (no reconnect target, whole
-  session ends — unchanged from every prior milestone's stated scope), and a real regional Relay selection UI
-  (the third item from the original "Host/Join UI polish" backlog entry) — Relay's own automatic QoS-based
-  region selection is almost certainly the better default for a turn-based (not latency-sensitive) game, manual
-  region choice would mostly add UI complexity/player confusion for little real benefit here; not built, and
-  not recommended unless a concrete need shows up later (e.g. community requests for region pinning).
+  session ends — unchanged from every prior milestone's stated scope), and a manual regional Relay selection
+  **UI** (the third item from the original "Host/Join UI polish" backlog entry) — deliberately not built, no UI
+  complexity/player confusion added for little real benefit in a turn-based (not latency-sensitive) game.
+  - **Clarified 2026-07-06, re-checked against the SDK source directly (not just inferred):** this does NOT mean
+    "no region selection happens." `NetworkBootstrap.HostSessionAsync` calls `.WithRelayNetwork()` with no
+    `region` argument — per `SessionOptionsExtensions.WithRelayNetwork`'s own doc comment in
+    `com.unity.services.multiplayer`: *"the region is optional; the default behavior is to perform quality of
+    service (QoS) measurements and pick the lowest latency region."* So automatic QoS-based region selection is
+    already active today, for free, with zero extra code — what's absent is only a manual override UI letting a
+    player force a specific region, which is the part judged not worth building.
 - **Cleanup done:** `AutoJoinFromCmdLine.cs` (+ its `NetworkBootstrap` component) deleted; `Temp_ClickButton.cs`,
   `Temp_BuildClient.cs`, `Temp_SaveScene.cs` deleted; `MenuScene.unity` re-saved in place.
 
