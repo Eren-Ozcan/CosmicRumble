@@ -373,9 +373,11 @@ reasoning. Ability sync for `BlackHoleSkill`/`Teleport`/`ShieldSkill`/`BatHammer
 Milestone 2, still local-only), matchmaking pools, and Host/Join UI polish (reconnect, regional Relay
 selection) remain as the next real chunks of work.
 
-**Cross-play scope (confirmed):** Steam is its own isolated player pool — Steam players never match against
-mobile players. Android (Play Store) and iOS (App Store) *do* cross-play with each other, i.e. two matchmaking
-pools total: `steam` and `mobile` (Android+iOS combined), not three separate silos.
+**Cross-play scope — reversed 2026-07-06, see Milestone 5 below.** This section originally said Steam would be
+its own isolated pool, never matching mobile players. The user explicitly overturned that: Steam and mobile
+players are now meant to match each other freely (Steam's release is uncertain anyway) — Quick Match (Milestone
+5) implements **one single unified pool**, no platform split. The `crossplayGroup`/indexed-lobby-field design
+described just below was never built and is now explicitly not planned unless this decision changes again.
 
 - Netcode layer stays **Unity Netcode for GameObjects (NGO)** — this part of the earlier recommendation still
   holds regardless of transport, since `TurnManager`'s single-actor-per-turn model maps cleanly onto a
@@ -395,10 +397,10 @@ pools total: `steam` and `mobile` (Android+iOS combined), not three separate sil
     for region/mode/etc. since that cap is hard.
   - Steamworks (once added for achievements, see above) stays purely for Steam-specific extras — overlay, rich
     presence, invites — not for core networking.
-- `TurnManager`'s client/server refactor for turn sync itself is now done (Milestone 1, above). Still a large,
-  separate future effort: matchmaking pools (steam/mobile split described below). Host/Join UI polish
-  (cancel/leave-session handling, reconnect) is now done — see Milestone 4 below; regional Relay selection was
-  considered and deliberately not built (see Milestone 4's reasoning).
+- `TurnManager`'s client/server refactor for turn sync itself is now done (Milestone 1, above). Host/Join UI
+  polish (cancel/leave-session handling, reconnect) is done — see Milestone 4 below; regional Relay selection
+  was considered and deliberately not built, it's already automatic (see Milestone 4's reasoning). Matchmaking
+  itself (Quick Match, single unified pool, no Steam/mobile split) is done — see Milestone 5 below.
 
 ### Done (2026-07-05) — Milestone 3: BlackHoleSkill/Teleport/ShieldSkill/BatHammerSkill networking
 Scope: the four abilities explicitly deferred out of Milestone 2 as "each a genuinely different sync problem."
@@ -610,6 +612,47 @@ exists for that case, the whole session ends.
     already active today, for free, with zero extra code — what's absent is only a manual override UI letting a
     player force a specific region, which is the part judged not worth building.
 - **Cleanup done:** `AutoJoinFromCmdLine.cs` (+ its `NetworkBootstrap` component) deleted; `Temp_ClickButton.cs`,
+  `Temp_BuildClient.cs`, `Temp_SaveScene.cs` deleted; `MenuScene.unity` re-saved in place.
+
+### Done (2026-07-06) — Milestone 5: Quick Match (automatic matchmaking, no code needed)
+Requested explicitly ("quick match zaten kesinlikle olmalı oyunun ana olayı zaten bu" — quick match is the
+core of the game and had to exist). Superseded the originally-planned "matchmaking pools (Steam/mobile split)"
+backlog item — investigating it surfaced that the game had **no matchmaking at all** yet (only manual
+host/join-by-code), so "split into pools" wasn't actually buildable before the pool-less version existed.
+**Also, the user explicitly reversed the earlier stated pool-separation policy**: Steam and mobile players are
+now allowed to match with each other (Steam's own status is uncertain anyway) — so this is deliberately **one
+single unified matchmaking pool**, not split by platform. If platform separation is ever wanted later, it's a
+`FilterOption` added to `QuickJoinOptions.Filters` plus a `crossplayGroup` session property — not built, since
+it isn't wanted right now.
+
+- **`NetworkBootstrap.QuickMatchAsync()`** — one call to the SDK's own built-in
+  `MultiplayerService.Instance.MatchmakeSessionAsync(QuickJoinOptions, SessionOptions)`. No custom lobby-browsing
+  code needed: `QuickJoinOptions.CreateSession = true` means it searches the public pool for a waiting session
+  and joins it if one exists, or — if none does — creates its own new public session and becomes host,
+  entirely within the one SDK call. `NetworkBootstrap.IsHostAfterQuickMatch` (just checks
+  `NetworkManager.Singleton.IsHost` after the call resolves) tells the caller which of the two happened.
+- **`HostSessionAsync()`** (the existing manual friend-code flow) now sets `IsPrivate = true` on its
+  `SessionOptions` — this is what keeps a "host a private game for a specific friend" session out of the public
+  Quick Match pool; without it, a stranger's Quick Match could stumble into and join a session someone meant to
+  share only via a private code.
+- **`OnlineLobbyPanelUI`** gained a new, prominently-placed `QuickMatchCard` (top-center, above the existing
+  Host/Join cards which shrank and moved down to become the secondary "or invite a friend by code" section,
+  matching how the user described Quick Match as the primary/main flow). `OnQuickMatchClicked()` calls
+  `QuickMatchAsync()`; if the result is "we became host" (no one was waiting), it reuses the exact same
+  `_waitingForOpponent`/`OnClientConnected`/cancel plumbing the Host flow already had — no duplicated logic, this
+  is genuinely the same wait-for-second-player state regardless of how the session was created. If the result is
+  "we joined someone else's session" (the common case once any player pool exists), the host's own
+  `OnClientConnected` already triggers the scene load, exactly like the existing Join-by-code flow.
+- **Verified live, end-to-end, genuinely two separate processes, no code ever typed anywhere:** clicked "OYNA"
+  in the Editor with no one else in the pool — host log confirmed `[NET] QuickMatch succeeded, becameHost=True,
+  code=BDCL8B` (created its own public session, waiting). Launched the standalone client with a temporary
+  `AutoQuickMatchFromCmdLine.cs` test harness (calls `QuickMatchAsync()` on startup, no join code passed in at
+  all) — its log confirmed `[NET] QuickMatch succeeded, becameHost=False, code=BDCL8B`, i.e. it found and joined
+  the *exact same* session purely through the public pool, with the two processes never having exchanged a code.
+  Match then proceeded normally: `[NET] Spawned player for clientId=0`/`clientId=1` both fired, confirmed via
+  `Player_0`/`Player_1` both present in the running scene. This is the actual bar for "quick match works" — not
+  just that the API call succeeds, but that two independent, code-less processes actually found each other.
+- **Cleanup done:** `AutoQuickMatchFromCmdLine.cs` (+ its `NetworkBootstrap` component) deleted; `Temp_ClickButton.cs`,
   `Temp_BuildClient.cs`, `Temp_SaveScene.cs` deleted; `MenuScene.unity` re-saved in place.
 
 ## Test-only local bots

@@ -61,7 +61,12 @@ namespace CosmicRumble.Networking
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
         }
 
-        /// <summary>Bir Relay oturumu oluşturur, host olarak başlar. Başarılıysa katılım kodunu döner.</summary>
+        /// <summary>
+        /// Bir Relay oturumu oluşturur, host olarak başlar. Başarılıysa katılım kodunu döner.
+        /// Belirli bir arkadaşı davet etmek içindir — <c>IsPrivate = true</c>, yani
+        /// <see cref="QuickMatchAsync"/>'in genel havuzunda hiç görünmez, sadece bu kodu bilen biri
+        /// katılabilir.
+        /// </summary>
         public async Task<string> HostSessionAsync()
         {
             IsBusy = true;
@@ -69,7 +74,7 @@ namespace CosmicRumble.Networking
             {
                 await EnsureUgsReadyAsync();
 
-                var options = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork();
+                var options = new SessionOptions { MaxPlayers = 2, IsPrivate = true }.WithRelayNetwork();
                 var session = await MultiplayerService.Instance.CreateSessionAsync(options);
                 _session = session;
 
@@ -88,6 +93,56 @@ namespace CosmicRumble.Networking
                 IsBusy = false;
             }
         }
+
+        /// <summary>
+        /// Hızlı Eşleşme: genel (public) havuzda bekleyen bir rakip varsa ona katılır; yoksa kendi
+        /// genel oturumunu oluşturup rakip bekler. Tek bir SDK çağrısı (<c>MatchmakeSessionAsync</c>)
+        /// hem "ara" hem "bulamazsan sen oluştur" akışını kapsıyor — ayrı bir lobby-tarama kodu
+        /// yazmaya gerek yok. Steam/mobil ayrımı YOK (bilerek) — tek, birleşik havuz.
+        /// </summary>
+        public async Task<bool> QuickMatchAsync(float timeoutSeconds = 20f)
+        {
+            IsBusy = true;
+            try
+            {
+                await EnsureUgsReadyAsync();
+
+                var sessionOptions = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork();
+                var quickJoinOptions = new QuickJoinOptions
+                {
+                    Timeout       = TimeSpan.FromSeconds(timeoutSeconds),
+                    CreateSession = true // eşleşme bulunamazsa kendi genel oturumumuzu kur
+                };
+
+                var session = await MultiplayerService.Instance.MatchmakeSessionAsync(quickJoinOptions, sessionOptions);
+                _session = session;
+                LastJoinCode = session.Code;
+
+                bool becameHost = NetworkManager.Singleton.IsHost;
+                _wasClient = !becameHost;
+                if (_wasClient)
+                {
+                    _intentionalLeave = false;
+                    NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
+                    NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
+                }
+
+                Debug.Log($"[NET] QuickMatch succeeded, becameHost={becameHost}, code={LastJoinCode}");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[NET] QuickMatchAsync failed: {e}");
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>Quick Match sonucunda biz mi host olduk, yoksa mevcut birine mi katıldık.</summary>
+        public bool IsHostAfterQuickMatch => NetworkManager.Singleton != null && NetworkManager.Singleton.IsHost;
 
         /// <summary>Verilen katılım koduyla mevcut bir oturuma bağlanır (client olarak).</summary>
         public async Task<bool> JoinSessionAsync(string code)

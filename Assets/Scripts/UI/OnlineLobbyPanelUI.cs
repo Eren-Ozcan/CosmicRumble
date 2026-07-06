@@ -26,11 +26,13 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     GameObject      _panelRoot;
     GameObject      _cancelBtn;
+    GameObject      _quickMatchCancelBtn;
     TextMeshProUGUI _hostStatusText;
     TextMeshProUGUI _joinStatusText;
+    TextMeshProUGUI _quickMatchStatusText;
     TMP_InputField  _codeInput;
     bool            _waitingForOpponent;
-    bool            _connectionActive;   // Host/Join tıklandıktan sonra, LeaveSessionAsync'e kadar true
+    bool            _connectionActive;   // Host/Join/QuickMatch tıklandıktan sonra, LeaveSessionAsync'e kadar true
 
     void Awake()
     {
@@ -55,14 +57,57 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         _panelRoot.SetActive(true);
         _hostStatusText.text = "";
         _joinStatusText.text = "";
+        _quickMatchStatusText.text = "";
         _codeInput.text      = "";
         _cancelBtn.SetActive(false);
+        _quickMatchCancelBtn.SetActive(false);
     }
 
     public void Hide() => _panelRoot.SetActive(false);
 
     // ════════════════════════════════════════════════════════════════════
-    //  HOST / JOIN
+    //  HIZLI EŞLEŞME (Quick Match — ana akış)
+    // ════════════════════════════════════════════════════════════════════
+
+    async void OnQuickMatchClicked()
+    {
+        _quickMatchStatusText.text = "Rakip aranıyor...";
+        _connectionActive = true;
+        bool ok = await NetworkBootstrap.Instance.QuickMatchAsync();
+
+        if (!ok)
+        {
+            _quickMatchStatusText.text = "Eşleşme başarısız, tekrar dene.";
+            _connectionActive = false;
+            return;
+        }
+
+        if (NetworkBootstrap.Instance.IsHostAfterQuickMatch)
+        {
+            // Havuzda bekleyen kimse yoktu, kendi genel oturumumuzu kurduk — mevcut Host
+            // akışıyla aynı "rakip bekleniyor" durumuna giriyoruz.
+            _quickMatchStatusText.text = $"Kod: {NetworkBootstrap.Instance.LastJoinCode}\nRakip bekleniyor...";
+            _waitingForOpponent = true;
+            _quickMatchCancelBtn.SetActive(true);
+            NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        }
+        else
+        {
+            // Bekleyen bir oturuma katıldık — host'un sahneyi yüklemesini bekliyoruz.
+            _quickMatchStatusText.text = "Rakip bulundu, başlatılıyor...";
+        }
+    }
+
+    async void OnQuickMatchCancelClicked()
+    {
+        _quickMatchStatusText.text = "İptal ediliyor...";
+        await CancelConnectionAsync();
+        _quickMatchStatusText.text = "";
+        _quickMatchCancelBtn.SetActive(false);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  HOST / JOIN (arkadaşı koduyla davet et — ikincil akış)
     // ════════════════════════════════════════════════════════════════════
 
     async void OnHostClicked()
@@ -165,48 +210,67 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         StretchFull(overlay.rectTransform);
 
         MakeText(_panelRoot, "Title", "ONLINE MULTIPLAYER", 32,
-            new Vector2(0.5f, 0.85f), new Vector2(600, 50), Color.white);
+            new Vector2(0.5f, 0.90f), new Vector2(600, 50), Color.white);
 
+        BuildQuickMatchCard();
+        MakeText(_panelRoot, "orDivider", "— ya da bir arkadaşını davet et —", 16,
+            new Vector2(0.5f, 0.46f), new Vector2(700, 30), TextSec);
         BuildHostCard();
         BuildJoinCard();
 
         MakeSmallButton(_panelRoot, "btn_back", "← BACK",
-            new Vector2(0.5f, 0.10f), new Vector2(160, 46), OnBackClicked);
+            new Vector2(0.5f, 0.06f), new Vector2(160, 46), OnBackClicked);
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnBackClicked;
         _panelRoot.SetActive(false);
     }
 
+    void BuildQuickMatchCard()
+    {
+        var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.68f), new Vector2(520, 220));
+
+        MakeText(card, "hdr", "HIZLI EŞLEŞME", 24, new Vector2(0.5f, 0.86f), new Vector2(460, 36), Color.white);
+        MakeSmallButton(card, "btn_quickmatch", "OYNA",
+            new Vector2(0.5f, 0.62f), new Vector2(280, 58), OnQuickMatchClicked);
+
+        _quickMatchStatusText = MakeText(card, "status", "", 16,
+            new Vector2(0.5f, 0.24f), new Vector2(460, 90), CodeColor);
+
+        _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", "İPTAL ET",
+            new Vector2(0.5f, 0.10f), new Vector2(200, 40), OnQuickMatchCancelClicked);
+        _quickMatchCancelBtn.SetActive(false);
+    }
+
     void BuildHostCard()
     {
-        var card = MakeCard(_panelRoot, "HostCard", new Vector2(0.28f, 0.5f), new Vector2(420, 420));
+        var card = MakeCard(_panelRoot, "HostCard", new Vector2(0.28f, 0.24f), new Vector2(420, 340));
 
-        MakeText(card, "hdr", "HOST", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
+        MakeText(card, "hdr", "HOST", 22, new Vector2(0.5f, 0.88f), new Vector2(360, 34), Color.white);
         MakeSmallButton(card, "btn_host", "HOST OLUŞTUR",
-            new Vector2(0.5f, 0.72f), new Vector2(260, 54), OnHostClicked);
+            new Vector2(0.5f, 0.66f), new Vector2(260, 54), OnHostClicked);
 
         _hostStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.45f), new Vector2(380, 160), CodeColor);
+            new Vector2(0.5f, 0.36f), new Vector2(380, 160), CodeColor);
 
         _cancelBtn = MakeSmallButton(card, "btn_cancel", "İPTAL ET",
-            new Vector2(0.5f, 0.15f), new Vector2(200, 44), OnCancelClicked);
+            new Vector2(0.5f, 0.10f), new Vector2(200, 44), OnCancelClicked);
         _cancelBtn.SetActive(false);
     }
 
     void BuildJoinCard()
     {
-        var card = MakeCard(_panelRoot, "JoinCard", new Vector2(0.72f, 0.5f), new Vector2(420, 420));
+        var card = MakeCard(_panelRoot, "JoinCard", new Vector2(0.72f, 0.24f), new Vector2(420, 340));
 
-        MakeText(card, "hdr", "JOIN", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
+        MakeText(card, "hdr", "JOIN", 22, new Vector2(0.5f, 0.88f), new Vector2(360, 34), Color.white);
 
         _codeInput = MakeInputField(card, "codeInput",
-            new Vector2(0.5f, 0.72f), new Vector2(260, 50));
+            new Vector2(0.5f, 0.66f), new Vector2(260, 50));
 
         MakeSmallButton(card, "btn_join", "KATIL",
-            new Vector2(0.5f, 0.58f), new Vector2(260, 54), OnJoinClicked);
+            new Vector2(0.5f, 0.50f), new Vector2(260, 54), OnJoinClicked);
 
         _joinStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.40f), new Vector2(380, 120), TextSec);
+            new Vector2(0.5f, 0.28f), new Vector2(380, 120), TextSec);
     }
 
     // ════════════════════════════════════════════════════════════════════
