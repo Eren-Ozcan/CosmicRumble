@@ -35,6 +35,13 @@ public class MainMenuUI : MonoBehaviour
     static readonly Color BarBg        = new Color(0.12f, 0.12f, 0.22f, 1.00f);
     static readonly Color Separator    = new Color(0.25f, 0.25f, 0.40f, 0.60f);
 
+    // ── Brawl Stars plaka paleti ────────────────────────────────────────────
+    static readonly Color PlateDark    = new Color(0.165f, 0.175f, 0.215f, 1f); // koyu füme plaka
+    static readonly Color PlateEdge    = new Color(0.085f, 0.09f,  0.115f, 1f); // plakanın alt kenarı
+    static readonly Color BrawlYellow  = new Color(0.99f,  0.79f,  0.10f,  1f); // OYNA/DÜKKAN sarısı
+    static readonly Color YellowEdge   = new Color(0.72f,  0.50f,  0.02f,  1f);
+    static readonly Color NameBlue     = new Color(0.45f,  0.80f,  1.00f,  1f); // oyuncu adı mavisi
+
     const string VERSION = "v0.8.2";
     const int    BTN_W   = 290;
     const int    BTN_H   = 56;
@@ -104,9 +111,27 @@ public class MainMenuUI : MonoBehaviour
         if (CloudSaveManager.Instance != null)
             yield return CloudSaveManager.Instance.InitializeAndPull();
 
+        // Arka planda oturum her zaman kurulur (UGS servisleri + Register'ın misafir ilerlemesini
+        // devralabilmesi için anonim oturum şart) — ama bu bir UI durumu DEĞİL, "Misafir" hiçbir
+        // yerde görünmez (PlayerIdentity üretilmiş takma adı gösterir).
+        if (AuthManager.Instance != null && !AuthManager.Instance.IsLoggedIn)
+        {
+            var guestTask = AuthManager.Instance.LoginAsGuest();
+            while (!guestTask.IsCompleted) yield return null;
+        }
+
         EnsureProgressSingletons();
         BuildUI();
         ShowPanel(_mainPanel);
+
+        // Giriş kapısı: hesabı bağlı OLMAYAN oyuncu açılışta giriş ekranını görür (tek sefer);
+        // giriş/kayıt sonrası doğrudan ana menüdedir ve bir daha görmez. Cihazda kapatılamaz;
+        // Editor'da kapatılabilir (bağlantısız oturum yalnızca test için var — hotseat testleri
+        // her Play Mode girişinde girişe takılmasın).
+        bool named = AuthManager.Instance != null &&
+                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
+        if (!named)
+            LoginPanelUI.Instance?.Show(dismissable: Application.isEditor);
     }
 
     void EnsureCoreSingletons()
@@ -140,6 +165,9 @@ public class MainMenuUI : MonoBehaviour
         }
         if (AchievementTracker.Instance == null) new GameObject("AchievementTracker").AddComponent<AchievementTracker>();
         if (IAPManager.Instance          == null) new GameObject("IAPManager").AddComponent<IAPManager>();
+        if (LeaderboardManager.Instance  == null) new GameObject("LeaderboardManager").AddComponent<LeaderboardManager>();
+        // Panel MenuScene'e bağlı yaşar (DontDestroyOnLoad değil) — her menü dönüşünde yeniden kurulur.
+        if (LeaderboardPanelUI.Instance  == null) new GameObject("LeaderboardPanelUI").AddComponent<LeaderboardPanelUI>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -162,10 +190,12 @@ public class MainMenuUI : MonoBehaviour
         canvasGO.AddComponent<GraphicRaycaster>();
         EnsureEventSystem();
 
-        // ── Background ───────────────────────────────────────────────────────
-        MakeStretch(canvasGO, "Background", BgDeep);
+        // ── Background — canlı mor sahne (Brawl Stars lobi zemini gibi) ─────
+        var bg = MakeStretch(canvasGO, "Background", Color.white);
+        UiKit.Gradient(bg, new Color(0.17f, 0.10f, 0.40f, 1f), new Color(0.34f, 0.10f, 0.33f, 1f));
         BuildStarfield(canvasGO, 90);
         BuildNebulaGlow(canvasGO);
+        BuildPattern(canvasGO, 34);
 
         // ── Title ────────────────────────────────────────────────────────────
         BuildTitle(canvasGO);
@@ -176,9 +206,7 @@ public class MainMenuUI : MonoBehaviour
 
         BuildMainPanel();
         BuildSettingsPanel();
-
-        // ── Footer ───────────────────────────────────────────────────────────
-        BuildFooter(canvasGO);
+        // Footer yok — BS lobisinde alt bilgi çubuğu bulunmaz (sürüm no Ayarlar'a taşındı).
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -192,28 +220,29 @@ public class MainMenuUI : MonoBehaviour
         glowGO.transform.SetParent(parent.transform, false);
         var glowImg = glowGO.AddComponent<Image>();
         glowImg.color = new Color(0.18f, 0.25f, 0.60f, 0.18f);
+        UiKit.Round(glowImg);
         var glowRt  = glowImg.rectTransform;
         glowRt.anchorMin        = new Vector2(0.5f, 1f);
         glowRt.anchorMax        = new Vector2(0.5f, 1f);
         glowRt.pivot            = new Vector2(0.5f, 1f);
-        glowRt.sizeDelta        = new Vector2(780, 145);
-        glowRt.anchoredPosition = new Vector2(0, -22);
+        glowRt.sizeDelta        = new Vector2(470, 88);
+        glowRt.anchoredPosition = new Vector2(0, -12);
 
-        // Main title
+        // Main title — kompakt banner (BS üst-orta gibi), beyaz konturlu altın yazı
         var titleGO  = new GameObject("Title");
         titleGO.transform.SetParent(parent.transform, false);
         var title    = titleGO.AddComponent<TextMeshProUGUI>();
         title.text      = "COSMIC RUMBLE";
-        title.fontSize  = 76;
-        title.fontStyle = FontStyles.Bold;
+        title.fontSize  = 40;
         title.alignment = TextAlignmentOptions.Center;
         title.color     = AccGold;
+        UiKit.BrawlText(title);
         var titleRt = title.rectTransform;
         titleRt.anchorMin        = new Vector2(0.5f, 1f);
         titleRt.anchorMax        = new Vector2(0.5f, 1f);
         titleRt.pivot            = new Vector2(0.5f, 1f);
-        titleRt.sizeDelta        = new Vector2(740, 95);
-        titleRt.anchoredPosition = new Vector2(0, -30);
+        titleRt.sizeDelta        = new Vector2(600, 52);
+        titleRt.anchoredPosition = new Vector2(0, -20);
 
         // Separator line
         var lineGO  = new GameObject("TitleLine");
@@ -224,15 +253,15 @@ public class MainMenuUI : MonoBehaviour
         lineRt.anchorMin        = new Vector2(0.5f, 1f);
         lineRt.anchorMax        = new Vector2(0.5f, 1f);
         lineRt.pivot            = new Vector2(0.5f, 1f);
-        lineRt.sizeDelta        = new Vector2(480, 2);
-        lineRt.anchoredPosition = new Vector2(0, -126);
+        lineRt.sizeDelta        = new Vector2(340, 2);
+        lineRt.anchoredPosition = new Vector2(0, -88);
 
         // Subtitle
         var subGO  = new GameObject("Subtitle");
         subGO.transform.SetParent(parent.transform, false);
         var sub    = subGO.AddComponent<TextMeshProUGUI>();
         sub.text      = "Turn-based planetary warfare";
-        sub.fontSize  = 22;
+        sub.fontSize  = 16;
         sub.fontStyle = FontStyles.Italic;
         sub.alignment = TextAlignmentOptions.Center;
         sub.color     = TextDim;
@@ -240,90 +269,506 @@ public class MainMenuUI : MonoBehaviour
         subRt.anchorMin        = new Vector2(0.5f, 1f);
         subRt.anchorMax        = new Vector2(0.5f, 1f);
         subRt.pivot            = new Vector2(0.5f, 1f);
-        subRt.sizeDelta        = new Vector2(600, 34);
-        subRt.anchoredPosition = new Vector2(0, -136);
+        subRt.sizeDelta        = new Vector2(500, 26);
+        subRt.anchoredPosition = new Vector2(0, -94);
     }
 
     // ────────────────────────────────────────────────────────────────────────
     //  MAIN PANEL
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Brawl Stars tarzı lobi ana ekranı ────────────────────────────────────
+    // Araştırma bulguları (Brawl Stars + modern mobil lobi kalıpları):
+    //  • Ana ekran bir menü listesi değil, HUB'dır — merkez temiz kalır.
+    //  • Tek birincil eylem: BÜYÜK SARI OYNA, sağ-alt (yatay tutuşta başparmak bölgesi).
+    //  • Üst bar: sol = profil + kupa, sağ = para birimleri (dokunmatikten uzak bilgi alanı).
+    //  • İkincil özellikler sol kenarda dikey buton yığını.
     void BuildMainPanel()
     {
-        // Card backdrop behind buttons
-        var backdropGO  = new GameObject("ButtonCard");
-        backdropGO.transform.SetParent(_mainPanel.transform, false);
-        var backdropImg = backdropGO.AddComponent<Image>();
-        backdropImg.color = BgCardDark;
-        var backdropRt  = backdropImg.rectTransform;
-        backdropRt.anchorMin        = new Vector2(0.5f, 0.5f);
-        backdropRt.anchorMax        = new Vector2(0.5f, 0.5f);
-        backdropRt.sizeDelta        = new Vector2(340, 544);
-        backdropRt.anchoredPosition = new Vector2(0, -74);
+        BuildLobbyDecor();
+        BuildTopBar();
+        BuildLeftRail();
+        BuildPlayCluster();
+        BuildDrawer(); // en son: her şeyin üstünde render edilsin
+    }
 
-        // Side accent bar
-        var sideGO  = new GameObject("SideAccent");
-        sideGO.transform.SetParent(backdropGO.transform, false);
-        var sideImg = sideGO.AddComponent<Image>();
-        sideImg.color = AccBlue;
-        var sideRt  = sideImg.rectTransform;
-        sideRt.anchorMin        = new Vector2(0f, 0f);
-        sideRt.anchorMax        = new Vector2(0f, 1f);
-        sideRt.pivot            = new Vector2(0f, 0.5f);
-        sideRt.sizeDelta        = new Vector2(4, 0);
-        sideRt.anchoredPosition = Vector2.zero;
+    /// <summary>Dekor: alt ufukta büyük gezegen + küçük bir ay (derinlik hissi).</summary>
+    void BuildLobbyDecor()
+    {
+        // MakeCircleDecor her çağrıda SetAsFirstSibling yapar → SON oluşturulan en arkada çizilir.
+        // Gezegen önce, rim (hale) sonra oluşturulur ki rim gezegenin ARKASINA düşsün ve yalnızca
+        // üst kenardan 12px'lik ince bir atmosfer parlaması olarak görünsün.
+        MakeCircleDecor(_mainPanel, "PlanetHorizon", new Vector2(0.42f, 0f), new Vector2(-80, -486),
+            1250, new Color(0.11f, 0.09f, 0.24f, 1f));
+        MakeCircleDecor(_mainPanel, "PlanetRim",     new Vector2(0.42f, 0f), new Vector2(-80, -474),
+            1250, new Color(0.25f, 0.32f, 0.70f, 0.35f));
+        MakeCircleDecor(_mainPanel, "Moon",          new Vector2(0.74f, 0.72f), Vector2.zero,
+            72, new Color(0.24f, 0.22f, 0.42f, 1f));
+    }
 
-        // Buttons — centered vertically in card
-        float topY  = 110f;
-        MakeBtn(_mainPanel, "btn_play",          "▶  PLAY",           topY - BTN_GAP * 0, AccBlue,   AccBlueHov,   () => { Click(); LobbyPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_online",        "⇄  ONLINE",         topY - BTN_GAP * 1, AccCyan,   AccCyanHov,   () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_achievements",  "★  ACHIEVEMENTS",   topY - BTN_GAP * 2, AccPurple, AccPurpleHov, () => { Click(); AchievementsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_quests",        "◆  QUESTS",         topY - BTN_GAP * 3, AccGreen,  AccGreenHov,  () => { Click(); QuestsPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_shop",          "$  SHOP",           topY - BTN_GAP * 4, AccGold,   AccGoldHov,   () => { Click(); ShopPanelUI.Instance?.Show(); });
-        MakeBtn(_mainPanel, "btn_settings",      "⚙  SETTINGS",       topY - BTN_GAP * 5, AccBlue,   AccBlueHov,   () => { Click(); ShowPanel(_settingsPanel); });
-        MakeBtn(_mainPanel, "btn_quit",          "✕  QUIT",           topY - BTN_GAP * 6, AccRed,    AccRedHov,    () => { Click(); OnQuit(); });
+    void MakeCircleDecor(GameObject parent, string name, Vector2 anchor, Vector2 pos, float dia, Color color)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        go.transform.SetAsFirstSibling(); // butonların arkasında kalsın
+        var img = go.AddComponent<Image>();
+        img.sprite = UiKit.CircleSprite;
+        img.color  = color;
+        img.raycastTarget = false;
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.sizeDelta = new Vector2(dia, dia);
+        rt.anchoredPosition = pos;
+    }
+
+    /// <summary>
+    /// Brawl Stars üst barı: sol = [avatar+ad plakası][kupa kutusu] (iki ayrı koyu plaka),
+    /// sağ = [gold][gem] para plakaları + [☰] menü (Ayarlar'ı açar).
+    /// </summary>
+    void BuildTopBar()
+    {
+        string playerName = PlayerIdentity.Get();
+
+        // ── Profil plakası (sol-üst) → Sıralama açılır ───────────────────
+        var profile = MakePlate(_mainPanel, "ProfilePlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(16, -14), new Vector2(252, 64),
+            () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
+
+        var avatarGO = new GameObject("Avatar");
+        avatarGO.transform.SetParent(profile.transform, false);
+        var avatarImg = avatarGO.AddComponent<Image>();
+        avatarImg.sprite = UiKit.RoundedSprite;
+        avatarImg.type = Image.Type.Sliced;
+        avatarImg.pixelsPerUnitMultiplier = 1.6f;
+        avatarImg.color = AccBlue;
+        avatarImg.raycastTarget = false;
+        var avatarRt = avatarImg.rectTransform;
+        avatarRt.anchorMin = avatarRt.anchorMax = new Vector2(0f, 0.5f);
+        avatarRt.sizeDelta = new Vector2(48, 48);
+        avatarRt.anchoredPosition = new Vector2(32, 0);
+        var initial = MakeTxt(avatarGO, "Initial",
+            playerName.Length > 0 ? playerName.Substring(0, 1).ToUpperInvariant() : "?",
+            24, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(48, 48), Vector2.zero);
+        UiKit.BrawlText(initial);
+        initial.raycastTarget = false;
+
+        var nameTxt = MakeTxt(profile, "Name", playerName, 19, FontStyles.Normal, NameBlue,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(180, 30), new Vector2(42, 0));
+        UiKit.BrawlText(nameTxt);
+        nameTxt.overflowMode = TextOverflowModes.Ellipsis;
+
+        // ── Kupa kutusu (profilin sağında) → Sıralama açılır ─────────────
+        var trophyPlate = MakePlate(_mainPanel, "TrophyPlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(280, -14), new Vector2(226, 64),
+            () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
+
+        MakeIconCircle(trophyPlate, AccGold, "K", new Vector2(30, 8));
+
+        int trophies = CosmicRumble.Cloud.LeaderboardManager.Instance != null
+            ? CosmicRumble.Cloud.LeaderboardManager.Instance.Trophies : 0;
+        var trophyNum = MakeTxt(trophyPlate, "Count", trophies.ToString(), 22, FontStyles.Normal, AccGold,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(150, 30), new Vector2(42, 8));
+        UiKit.BrawlText(trophyNum);
+        _trophyText = MakeTxt(trophyPlate, "League",
+            CosmicRumble.Cloud.LeaderboardManager.GetLeagueName(trophies), 11, FontStyles.Normal,
+            TextDim, TextAlignmentOptions.Left,
+            new Vector2(0.5f, 0.5f), new Vector2(190, 16), new Vector2(14, -20));
+
+        // ── Sağ-üst: ☰ menü (Ayarlar) + para plakaları ───────────────────
+        var menuBtn = MakePlate(_mainPanel, "MenuBtn", new Vector2(1f, 1f), new Vector2(1f, 1f),
+            new Vector2(-16, -14), new Vector2(72, 64),
+            () => { Click(); SetDrawer(true); });
+        for (int i = 0; i < 3; i++)
+        {
+            var bar = new GameObject($"Bar{i}");
+            bar.transform.SetParent(menuBtn.transform, false);
+            var barImg = bar.AddComponent<Image>();
+            barImg.sprite = UiKit.RoundedSprite;
+            barImg.type = Image.Type.Sliced;
+            barImg.pixelsPerUnitMultiplier = 4f;
+            barImg.color = Color.white;
+            barImg.raycastTarget = false;
+            var barRt = barImg.rectTransform;
+            barRt.anchorMin = barRt.anchorMax = new Vector2(0.5f, 0.5f);
+            barRt.sizeDelta = new Vector2(34, 6);
+            barRt.anchoredPosition = new Vector2(0, 11 - i * 11);
+        }
+
+        _gemText  = BuildCurrencyChip("GemChip",  new Vector2(-100, -14), GemChipColor);
+        _goldText = BuildCurrencyChip("GoldChip", new Vector2(-262, -14), GoldChipColor);
+        RefreshCurrencyChips();
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged += OnCurrencyChangedForTopBar;
+    }
+
+    /// <summary>Koyu, hafif eğik Brawl plakası — üst bar ve raylardaki temel yüzey.</summary>
+    GameObject MakePlate(GameObject parent, string name, Vector2 anchor, Vector2 pivot,
+                         Vector2 pos, Vector2 size, UnityEngine.Events.UnityAction callback)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = PlateDark;
+        UiKit.Round(img, 1.2f);
+        UiKit.Skew(img, 0.07f);
+        UiKit.Shadow(go, 4f, 0.5f);
+
+        if (callback != null)
+        {
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.colors = UiKit.ButtonColors(PlateDark);
+            btn.onClick.AddListener(callback);
+            UiKit.Press(go, 0.96f);
+        }
+
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.pivot = pivot;
+        rt.sizeDelta = size;
+        rt.anchoredPosition = pos;
+        return go;
+    }
+
+    /// <summary>Plaka içinde küçük renkli ikon dairesi (art asset'i yok — harfli rozet).</summary>
+    void MakeIconCircle(GameObject parent, Color color, string letter, Vector2 pos, float dia = 34f)
+    {
+        var go = new GameObject("Icon");
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.sprite = UiKit.CircleSprite;
+        img.color = color;
+        img.raycastTarget = false;
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+        rt.sizeDelta = new Vector2(dia, dia);
+        rt.anchoredPosition = pos;
+
+        var lbl = MakeTxt(go, "Lbl", letter, (int)(dia * 0.5f), FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(dia, dia), Vector2.zero);
+        UiKit.BrawlText(lbl);
+        lbl.raycastTarget = false;
+    }
+
+    static readonly Color GoldChipColor = new Color(1.00f, 0.80f, 0.20f, 1f);
+    static readonly Color GemChipColor  = new Color(0.55f, 0.80f, 1.00f, 1f);
+    TextMeshProUGUI _goldText, _gemText, _trophyText;
+
+    TextMeshProUGUI BuildCurrencyChip(string name, Vector2 pos, Color accent)
+    {
+        var chip = MakePlate(_mainPanel, name, new Vector2(1f, 1f), new Vector2(1f, 1f),
+            pos, new Vector2(154, 52),
+            () => { Click(); ShopPanelUI.Instance?.Show(); });
+
+        MakeIconCircle(chip, accent, "", new Vector2(24, 0), 28f);
+
+        var txt = MakeTxt(chip, "Value", "0", 19, FontStyles.Normal, TextPrimary,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(100, 30), new Vector2(24, 0));
+        UiKit.BrawlText(txt);
+        return txt;
+    }
+
+    void RefreshCurrencyChips()
+    {
+        var cm = CurrencyManager.Instance;
+        if (cm == null) return;
+        if (_goldText) _goldText.text = cm.Get(CurrencyType.Gold).ToString();
+        if (_gemText)  _gemText.text  = cm.Get(CurrencyType.Gem).ToString();
+    }
+
+    void OnCurrencyChangedForTopBar(CurrencyType type, long newBalance)
+    {
+        if (type == CurrencyType.Gold && _goldText) _goldText.text = newBalance.ToString();
+        if (type == CurrencyType.Gem  && _gemText)  _gemText.text  = newBalance.ToString();
+    }
+
+    void OnDestroy()
+    {
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged -= OnCurrencyChangedForTopBar;
+    }
+
+    /// <summary>
+    /// Brawl Stars ray düzeni (ekran görüntülerinden birebir):
+    /// - Sol kolon (koleksiyon tarafı): MARKET (sarı, DÜKKAN karşılığı) + BAŞARIMLAR (koyu).
+    /// - Alt-sol: GÖREVLER (BS'nin quest slotu).
+    /// - Sağ kolon (sosyal taraf): SIRALAMA + YEREL MAÇ (koyu plakalar).
+    /// Ayarlar üst-sağdaki ☰ menüde; ÇIKIŞ butonu yok.
+    /// Tüm plakalar: koyu füme + solda renkli ikon rozeti + beyaz konturlu yazı.
+    /// </summary>
+    void BuildLeftRail()
+    {
+        var size = new Vector2(238, 70);
+
+        // Sol kolon
+        MakeBrawlBtn(_mainPanel, "btn_shop", "MARKET", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+            new Vector2(16, 118), size, 19, BrawlYellow, YellowEdge, AccGold, "M",
+            () => { Click(); ShopPanelUI.Instance?.Show(); });
+        MakeBrawlBtn(_mainPanel, "btn_achievements", "BAŞARIMLAR", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+            new Vector2(16, 32), size, 17, PlateDark, PlateEdge, AccPurple, "B",
+            () => { Click(); AchievementsPanelUI.Instance?.Show(); });
+
+        // Alt-sol: GÖREVLER
+        MakeBrawlBtn(_mainPanel, "btn_quests", "GÖREVLER", new Vector2(0f, 0f), new Vector2(0f, 0f),
+            new Vector2(16, 22), new Vector2(238, 74), 18, PlateDark, PlateEdge, AccGreen, "G",
+            () => { Click(); QuestsPanelUI.Instance?.Show(); });
+
+        // Sağ tarafta kalıcı buton yok — ikincil her şey ☰ çekmecesinde (BS kalıbı).
+    }
+
+    // ── ☰ Çekmece (Brawl Stars'ın sağdan açılan menüsü) ──────────────────────
+    GameObject    _drawerRoot;
+    RectTransform _drawerCol;
+    Coroutine     _drawerAnim;
+
+    /// <summary>
+    /// Sağdan kayarak açılan ikincil menü: AYARLAR / SIRALAMA / YEREL MAÇ / HESAP.
+    /// ☰ butonu açar-kapar; dışına tıklamak kapatır (BS ekran görüntüsündeki çekmecenin karşılığı).
+    /// </summary>
+    void BuildDrawer()
+    {
+        _drawerRoot = new GameObject("Drawer");
+        _drawerRoot.transform.SetParent(_mainPanel.transform, false);
+        var rootRt = _drawerRoot.AddComponent<RectTransform>();
+        rootRt.anchorMin = Vector2.zero; rootRt.anchorMax = Vector2.one;
+        rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
+
+        // Dışına tıklayınca kapat — hafif karartma
+        var dimGO = new GameObject("Dim");
+        dimGO.transform.SetParent(_drawerRoot.transform, false);
+        var dimImg = dimGO.AddComponent<Image>();
+        dimImg.color = new Color(0f, 0f, 0f, 0.35f);
+        var dimRt = dimImg.rectTransform;
+        dimRt.anchorMin = Vector2.zero; dimRt.anchorMax = Vector2.one;
+        dimRt.offsetMin = dimRt.offsetMax = Vector2.zero;
+        var dimBtn = dimGO.AddComponent<Button>();
+        dimBtn.targetGraphic = dimImg;
+        dimBtn.transition = Selectable.Transition.None;
+        dimBtn.onClick.AddListener(() => SetDrawer(false));
+
+        // Sağ kolon
+        var colGO = new GameObject("Column");
+        colGO.transform.SetParent(_drawerRoot.transform, false);
+        _drawerCol = colGO.AddComponent<RectTransform>();
+        _drawerCol.anchorMin = _drawerCol.anchorMax = new Vector2(1f, 0.5f);
+        _drawerCol.pivot = new Vector2(1f, 0.5f);
+        _drawerCol.sizeDelta = new Vector2(300, 4 * 82 + 16);
+        _drawerCol.anchoredPosition = new Vector2(0, 40);
+
+        var size = new Vector2(280, 70);
+        void Item(int i, string nm, string label, Color icon, string letter, UnityEngine.Events.UnityAction act)
+        {
+            MakeBrawlBtn(colGO, nm, label, new Vector2(1f, 1f), new Vector2(1f, 1f),
+                new Vector2(-10, -8 - i * 82), size, 17, PlateDark, PlateEdge, icon, letter,
+                () => { Click(); SetDrawer(false); act(); });
+        }
+        Item(0, "dw_settings",    "AYARLAR",   new Color(0.55f, 0.58f, 0.66f, 1f), "A",
+            () => ShowPanel(_settingsPanel));
+        Item(1, "dw_leaderboard", "SIRALAMA",  AccCyan, "S",
+            () => LeaderboardPanelUI.Instance?.Show());
+        Item(2, "dw_local",       "YEREL MAÇ", AccBlue, "Y",
+            () => LobbyPanelUI.Instance?.Show());
+        Item(3, "dw_account",     "HESAP",     AccGreen, "H",
+            () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
+
+        _drawerRoot.SetActive(false);
+    }
+
+    void SetDrawer(bool open)
+    {
+        if (_drawerRoot == null) return;
+        if (open == _drawerRoot.activeSelf) { if (!open) return; }
+        if (_drawerAnim != null) StopCoroutine(_drawerAnim);
+        if (open)
+        {
+            _drawerRoot.SetActive(true);
+            _drawerAnim = StartCoroutine(SlideDrawer(320f, 0f, deactivateAfter: false));
+        }
+        else if (_drawerRoot.activeSelf)
+        {
+            _drawerAnim = StartCoroutine(SlideDrawer(0f, 320f, deactivateAfter: true));
+        }
+    }
+
+    System.Collections.IEnumerator SlideDrawer(float fromX, float toX, bool deactivateAfter)
+    {
+        const float dur = 0.14f;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / dur);
+            k = 1f - (1f - k) * (1f - k); // ease-out
+            _drawerCol.anchoredPosition = new Vector2(Mathf.Lerp(fromX, toX, k), _drawerCol.anchoredPosition.y);
+            yield return null;
+        }
+        _drawerCol.anchoredPosition = new Vector2(toX, _drawerCol.anchoredPosition.y);
+        if (deactivateAfter) _drawerRoot.SetActive(false);
+        _drawerAnim = null;
+    }
+
+    /// <summary>
+    /// Alt bölge, Brawl Stars düzeni: alt-orta = mod/harita plakası (koyu, bilgi),
+    /// alt-sağ = BÜYÜK SARI OYNA (beyaz konturlu yazı + içinde küçük alt satır).
+    /// </summary>
+    void BuildPlayCluster()
+    {
+        // ── Alt-orta: mod plakası (BS'nin "SAVAŞ AŞÇISI / Kuantum Mutfak" kutusu) ──
+        var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0, 22), new Vector2(430, 66),
+            () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
+        var modeTitle = MakeTxt(mode, "Title", "HIZLI EŞLEŞME", 19, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 26), new Vector2(0, 11));
+        UiKit.BrawlText(modeTitle);
+        modeTitle.raycastTarget = false;
+        var modeSub = MakeTxt(mode, "Sub", "Dereceli  •  Galibiyet +30 kupa", 12, FontStyles.Normal,
+            AccGold, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0.5f), new Vector2(400, 18), new Vector2(0, -16));
+        modeSub.raycastTarget = false;
+
+        // ── Alt-sağ: BÜYÜK SARI OYNA ─────────────────────────────────────
+        var go = new GameObject("btn_play_big");
+        go.transform.SetParent(_mainPanel.transform, false);
+        var edgeImg = go.AddComponent<Image>();
+        edgeImg.color = YellowEdge;
+        UiKit.Round(edgeImg);
+        UiKit.Skew(edgeImg, 0.07f);
+        UiKit.Shadow(go, 6f, 0.50f);
+        var rt = edgeImg.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot = new Vector2(1f, 0f);
+        rt.sizeDelta = new Vector2(420, 128);
+        rt.anchoredPosition = new Vector2(-24, 22);
+
+        var faceGO = new GameObject("Face");
+        faceGO.transform.SetParent(go.transform, false);
+        var faceImg = faceGO.AddComponent<Image>();
+        faceImg.color = Color.white;
+        UiKit.Round(faceImg);
+        UiKit.Skew(faceImg, 0.07f);
+        UiKit.Gradient(faceImg, new Color(1.00f, 0.86f, 0.22f, 1f), new Color(0.96f, 0.70f, 0.05f, 1f));
+        var frt = faceImg.rectTransform;
+        frt.anchorMin = Vector2.zero;
+        frt.anchorMax = Vector2.one;
+        frt.offsetMin = new Vector2(0, 7);
+        frt.offsetMax = Vector2.zero;
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = faceImg;
+        btn.colors = UiKit.ButtonColors(Color.white);
+        btn.onClick.AddListener(() => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
+        UiKit.Pulse(go); // tek birincil eylem: sürekli çok hafif nefes (Press ile çakışmasın diye Press yok)
+
+        var mainLbl = MakeTxt(faceGO, "Label", "OYNA", 50, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 60), new Vector2(0, 10));
+        UiKit.BrawlText(mainLbl);
+        mainLbl.raycastTarget = false;
+        // Küçük harfli: Titan One'da büyük 'İ' glifi yok, fallback sırıtıyor
+        var subLbl = MakeTxt(faceGO, "Sub", "Hızlı Eşleşme  •  Dereceli", 14, FontStyles.Normal,
+            new Color(0.42f, 0.27f, 0.02f, 1f),
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 20), new Vector2(0, -34));
+        subLbl.raycastTarget = false;
+    }
+
+    /// <summary>
+    /// Brawl Stars ray butonu: koyu (veya sarı) eğik plaka + koyu alt kenar + solda renkli
+    /// ikon rozeti + beyaz konturlu yazı.
+    /// </summary>
+    void MakeBrawlBtn(GameObject parent, string name, string label,
+                      Vector2 anchor, Vector2 pivot, Vector2 pos, Vector2 size, int fontSize,
+                      Color plateColor, Color edgeColor, Color iconColor, string iconLetter,
+                      UnityEngine.Events.UnityAction callback)
+    {
+        // Kök = alt kenar (alt 5px görünür)
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var edgeImg = go.AddComponent<Image>();
+        edgeImg.color = edgeColor;
+        UiKit.Round(edgeImg, 1.2f);
+        UiKit.Skew(edgeImg, 0.07f);
+        UiKit.Shadow(go, 4f, 0.5f);
+        var rt = edgeImg.rectTransform;
+        rt.anchorMin = rt.anchorMax = anchor;
+        rt.pivot = pivot;
+        rt.sizeDelta = size;
+        rt.anchoredPosition = pos;
+
+        // Yüz plakası
+        var faceGO = new GameObject("Face");
+        faceGO.transform.SetParent(go.transform, false);
+        var faceImg = faceGO.AddComponent<Image>();
+        faceImg.color = plateColor;
+        UiKit.Round(faceImg, 1.2f);
+        UiKit.Skew(faceImg, 0.07f);
+        var frt = faceImg.rectTransform;
+        frt.anchorMin = Vector2.zero;
+        frt.anchorMax = Vector2.one;
+        frt.offsetMin = new Vector2(0, 5);
+        frt.offsetMax = Vector2.zero;
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = faceImg;
+        btn.colors = UiKit.ButtonColors(plateColor);
+        btn.onClick.AddListener(callback);
+        UiKit.Press(go);
+
+        // İkon rozeti
+        if (!string.IsNullOrEmpty(iconLetter))
+            MakeIconCircle(faceGO, iconColor, iconLetter, new Vector2(30, 0), 38f);
+
+        var txtGO = new GameObject("Label");
+        txtGO.transform.SetParent(faceGO.transform, false);
+        var txt = txtGO.AddComponent<TextMeshProUGUI>();
+        txt.text      = label;
+        txt.fontSize  = fontSize;
+        txt.alignment = TextAlignmentOptions.Center;
+        txt.color     = TextPrimary;
+        UiKit.BrawlText(txt);
+        txt.overflowMode = TextOverflowModes.Ellipsis;
+        var trt = txt.rectTransform;
+        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+        trt.offsetMin = new Vector2(string.IsNullOrEmpty(iconLetter) ? 8 : 54, 0);
+        trt.offsetMax = new Vector2(-8, 0);
     }
 
     // ────────────────────────────────────────────────────────────────────────
     //  SETTINGS PANEL
     // ────────────────────────────────────────────────────────────────────────
 
+    // BS ayarlar ekranı paleti (2. referans görüntü): parlak mavi zemin + mavi plakalar
+    static readonly Color SettingsBg   = new Color(0.13f, 0.42f, 0.90f, 1f);
+    static readonly Color SettingsBtn  = new Color(0.16f, 0.32f, 0.72f, 1f);
+
     void BuildSettingsPanel()
     {
-        // Card backdrop
+        // Tam ekran parlak mavi zemin (Brawl Stars ayarlar ekranı gibi) + soluk desen
         var backdropGO  = new GameObject("SettingsCard");
         backdropGO.transform.SetParent(_settingsPanel.transform, false);
         var backdropImg = backdropGO.AddComponent<Image>();
-        backdropImg.color = BgCardDark;
+        backdropImg.color = Color.white;
+        UiKit.Gradient(backdropImg, SettingsBg, new Color(0.10f, 0.32f, 0.74f, 1f));
         var backdropRt  = backdropImg.rectTransform;
-        backdropRt.anchorMin        = new Vector2(0.5f, 0.5f);
-        backdropRt.anchorMax        = new Vector2(0.5f, 0.5f);
-        backdropRt.sizeDelta        = new Vector2(500, 520);
-        backdropRt.anchoredPosition = new Vector2(0, -10);
+        backdropRt.anchorMin = Vector2.zero;
+        backdropRt.anchorMax = Vector2.one;
+        backdropRt.offsetMin = backdropRt.offsetMax = Vector2.zero;
+        BuildPattern(backdropGO, 26);
 
-        // Top accent
-        var topGO  = new GameObject("TopAccent");
-        topGO.transform.SetParent(backdropGO.transform, false);
-        var topImg = topGO.AddComponent<Image>();
-        topImg.color = AccBlue;
-        var topRt  = topImg.rectTransform;
-        topRt.anchorMin        = new Vector2(0f, 1f);
-        topRt.anchorMax        = new Vector2(1f, 1f);
-        topRt.pivot            = new Vector2(0.5f, 1f);
-        topRt.sizeDelta        = new Vector2(0, 4);
-        topRt.anchoredPosition = Vector2.zero;
+        // Header — beyaz konturlu büyük başlık, üst-orta
+        var hdr = MakeTxt(_settingsPanel, "hdr_settings", "AYARLAR", 36, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(420, 48), new Vector2(0, -36));
+        UiKit.BrawlText(hdr);
 
-        // Header
-        MakeTxt(_settingsPanel, "hdr_settings", "⚙  SETTINGS", 26, FontStyles.Bold, AccGold,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(420, 36), new Vector2(0, 220));
-
-        MakeSeparator(_settingsPanel, new Vector2(0, 195));
+        // Sürüm — alt köşe (footer kaldırıldı, buraya taşındı)
+        MakeTxt(_settingsPanel, "Version", $"{VERSION}  •  © 2025 CosmicRumble", 12, FontStyles.Normal,
+            new Color(1f, 1f, 1f, 0.55f), TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0f), new Vector2(360, 20), new Vector2(0, 12));
 
         // ── Tab row ──────────────────────────────────────────────────────────
-        MakeTabBtn("tab_audio",     "AUDIO",     -168, 170, () => ShowSettingsTab(_audioTab));
-        MakeTabBtn("tab_graphics",  "GRAPHICS",   -56, 170, () => ShowSettingsTab(_graphicsTab));
-        MakeTabBtn("tab_controls",  "CONTROLS",    56, 170, () => ShowSettingsTab(_controlsTab));
-        MakeTabBtn("tab_account",   "ACCOUNT",    168, 170, () => ShowSettingsTab(_accountTab));
+        MakeTabBtn("tab_audio",     "SES",        -168, 170, () => ShowSettingsTab(_audioTab));
+        MakeTabBtn("tab_graphics",  "GRAFİK",      -56, 170, () => ShowSettingsTab(_graphicsTab));
+        MakeTabBtn("tab_controls",  "KONTROLLER",   56, 170, () => ShowSettingsTab(_controlsTab));
+        MakeTabBtn("tab_account",   "HESAP",       168, 170, () => ShowSettingsTab(_accountTab));
 
         MakeSeparator(_settingsPanel, new Vector2(0, 145));
 
@@ -339,8 +784,8 @@ public class MainMenuUI : MonoBehaviour
         BuildAccountTab(_accountTab);
 
         // Back button — always visible, outside the tabs
-        MakeBtn(_settingsPanel, "btn_back", "← BACK", -230,
-            new Color(0.18f, 0.28f, 0.42f), new Color(0.26f, 0.40f, 0.58f),
+        MakeBtn(_settingsPanel, "btn_back", "GERİ", -230,
+            PlateDark, new Color(0.26f, 0.28f, 0.34f),
             () => { Click(); ShowPanel(_mainPanel); });
 
         ShowSettingsTab(_audioTab);
@@ -364,13 +809,13 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildAudioTab(GameObject parent)
     {
-        _masterSlider = MakeSliderRow(parent, "Master Volume", 100);
-        _musicSlider  = MakeSliderRow(parent, "Music",          40);
-        _sfxSlider    = MakeSliderRow(parent, "SFX",           -20);
+        _masterSlider = MakeSliderRow(parent, "Ana Ses", 100);
+        _musicSlider  = MakeSliderRow(parent, "Müzik",    40);
+        _sfxSlider    = MakeSliderRow(parent, "Efektler", -20);
 
         MakeSeparator(parent, new Vector2(0, -60));
 
-        MakeTxt(parent, "lbl_fs", "Fullscreen", 18, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_fs", "Tam Ekran", 18, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(200, 28), new Vector2(-70, -95));
         _fsToggle = MakeToggle(parent, -95);
 
@@ -382,7 +827,7 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildGraphicsTab(GameObject parent)
     {
-        MakeTxt(parent, "lbl_res", "Resolution", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_res", "Çözünürlük", 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 100));
 
         var resolutions = Screen.resolutions;
@@ -398,7 +843,7 @@ public class MainMenuUI : MonoBehaviour
         _resolutionCycler = MakeCycler(parent, "res", 100, resOptions, startRes,
             idx => { if (GameConfig.Instance != null) GameConfig.Instance.ResolutionIndex = idx; });
 
-        MakeTxt(parent, "lbl_quality", "Quality", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_quality", "Kalite", 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 40));
 
         var qualityOptions = QualitySettings.names;
@@ -414,7 +859,7 @@ public class MainMenuUI : MonoBehaviour
         _vsyncToggle.isOn = cfg == null || cfg.VSync;
         _vsyncToggle.onValueChanged.AddListener(v => { if (GameConfig.Instance != null) GameConfig.Instance.VSync = v; });
 
-        MakeBtn(parent, "btn_apply_graphics", "APPLY", -90,
+        MakeBtn(parent, "btn_apply_graphics", "UYGULA", -90,
             AccGreen, AccGreenHov, () =>
             {
                 Click();
@@ -425,19 +870,19 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildControlsTab(GameObject parent)
     {
-        MakeTxt(parent, "lbl_move_left", "Move Left", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_move_left", "Sola Git", 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, 100));
         _btnMoveLeftLabel = MakeRebindBtn(parent, "btn_move_left", new Vector2(105, 100), () => BeginRebind("MoveLeft"));
 
-        MakeTxt(parent, "lbl_move_right", "Move Right", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_move_right", "Sağa Git", 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, 30));
         _btnMoveRightLabel = MakeRebindBtn(parent, "btn_move_right", new Vector2(105, 30), () => BeginRebind("MoveRight"));
 
-        MakeTxt(parent, "lbl_jump", "Jump", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_jump", "Zıpla", 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, -40));
         _btnJumpLabel = MakeRebindBtn(parent, "btn_jump", new Vector2(105, -40), () => BeginRebind("Jump"));
 
-        MakeTxt(parent, "lbl_hint", "Click a button, then press the new key (Esc to cancel)", 13, FontStyles.Italic, TextDim,
+        MakeTxt(parent, "lbl_hint", "Bir butona dokun, sonra yeni tuşa bas (iptal için Esc)", 13, FontStyles.Italic, TextDim,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 24), new Vector2(0, -110));
 
         RefreshControlsLabels();
@@ -470,9 +915,9 @@ public class MainMenuUI : MonoBehaviour
         KeyCode right = cfg != null ? cfg.MoveRightKey : KeyCode.D;
         KeyCode jump  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
 
-        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? "Press a key…" : left.ToString();
-        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? "Press a key…" : right.ToString();
-        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? "Press a key…" : jump.ToString();
+        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? "Bir tuşa bas…" : left.ToString();
+        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? "Bir tuşa bas…" : right.ToString();
+        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? "Bir tuşa bas…" : jump.ToString();
     }
 
     void Update()
@@ -522,10 +967,13 @@ public class MainMenuUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = AccBlue;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 3f, 0.35f);
 
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(OnAccountActionClicked);
+        UiKit.Press(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -547,51 +995,46 @@ public class MainMenuUI : MonoBehaviour
         _accountActionLabel = txt;
     }
 
+    /// <summary>
+    /// Mobil akış: misafir kimliği otomatik olduğundan buradaki tek eylem hesap BAĞLAMAK
+    /// (ilerlemeyi cihazlar arası taşınabilir yapmak) ya da adlı hesaptan ÇIKMAK (misafire döner).
+    /// </summary>
     void OnAccountActionClicked()
     {
         Click();
-        if (AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn)
+        bool named = AuthManager.Instance != null &&
+                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
+        if (named)
         {
-            AuthManager.Instance.Logout();
-            MainMenuAuthButton.Instance?.RefreshButton();
-            RefreshAccountTab();
+            AuthManager.Instance.Logout(); // sahneyi yeniden yükler, misafir olarak döner
         }
         else
         {
             ShowPanel(_mainPanel);
-            LoginPanelUI.Instance?.Show();
+            LoginPanelUI.Instance?.Show(dismissable: true);
         }
     }
 
     void RefreshAccountTab()
     {
-        bool loggedIn = AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn;
-        bool isGuest  = AuthManager.Instance != null && AuthManager.Instance.IsGuest;
+        bool named = AuthManager.Instance != null &&
+                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
 
         if (_accountStatusText != null)
         {
-            _accountStatusText.text = !loggedIn
-                ? "Not logged in"
-                : (isGuest ? "Playing as Guest" : $"Logged in as: {AuthManager.Instance.CurrentUsername}");
+            _accountStatusText.text = named
+                ? $"Hesap: {AuthManager.Instance.CurrentUsername}"
+                : $"{PlayerIdentity.Get()} — hesap bağlı değil.\nİlerlemeni korumak için hesabını bağla.";
         }
 
         if (_accountActionLabel != null)
-            _accountActionLabel.text = loggedIn ? "LOG OUT" : "LOG IN";
+            _accountActionLabel.text = named ? "ÇIKIŞ YAP" : "HESAP BAĞLA";
 
         if (_accountActionBtn != null)
         {
-            var normal = loggedIn ? AccRed  : AccBlue;
-            var hover  = loggedIn ? AccRedHov : AccBlueHov;
+            var normal = named ? AccRed : AccBlue;
             _accountActionBtn.GetComponent<Image>().color = normal;
-            _accountActionBtn.colors = new ColorBlock
-            {
-                normalColor      = normal,
-                highlightedColor = hover,
-                pressedColor     = AccPress,
-                selectedColor    = hover,
-                colorMultiplier  = 1f,
-                fadeDuration     = 0.10f
-            };
+            _accountActionBtn.colors = UiKit.ButtonColors(normal);
         }
     }
 
@@ -604,23 +1047,19 @@ public class MainMenuUI : MonoBehaviour
         var go  = new GameObject(name);
         go.transform.SetParent(_settingsPanel.transform, false);
         var img = go.AddComponent<Image>();
-        img.color = BgCard;
+        img.color = SettingsBtn;
+        UiKit.Round(img, 1.6f);
+        UiKit.Skew(img, 0.06f);
+        UiKit.Shadow(go, 3f, 0.35f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.colors = new ColorBlock
-        {
-            normalColor      = BgCard,
-            highlightedColor = AccBlueHov,
-            pressedColor     = AccPress,
-            selectedColor    = AccBlue,
-            colorMultiplier  = 1f,
-            fadeDuration     = 0.10f
-        };
+        btn.colors = UiKit.ButtonColors(SettingsBtn);
         btn.onClick.AddListener(() => { Click(); cb(); });
+        UiKit.Press(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(104, 34);
+        rt.sizeDelta = new Vector2(110, 42);
         rt.anchoredPosition = new Vector2(xOffset, yOffset);
 
         var txtGO = new GameObject("Label");
@@ -628,9 +1067,10 @@ public class MainMenuUI : MonoBehaviour
         var txt = txtGO.AddComponent<TextMeshProUGUI>();
         txt.text      = label;
         txt.fontSize  = 13;
-        txt.fontStyle = FontStyles.Bold;
         txt.alignment = TextAlignmentOptions.Center;
         txt.color     = TextPrimary;
+        UiKit.BrawlText(txt);
+        txt.overflowMode = TextOverflowModes.Ellipsis;
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
@@ -651,8 +1091,9 @@ public class MainMenuUI : MonoBehaviour
 
         var cycler = new CyclerControl { Options = options, Label = label, OnChanged = onChanged };
 
-        MakeArrowBtn(parent, name + "_Prev", "◀", new Vector2(-95, yOffset), () => cycler.Step(-1));
-        MakeArrowBtn(parent, name + "_Next", "▶", new Vector2(135, yOffset), () => cycler.Step(1));
+        // "<" ">" — ◀▶ glifleri ne Titan One'da ne LiberationSans'ta var (□ görünüyordu)
+        MakeArrowBtn(parent, name + "_Prev", "<", new Vector2(-95, yOffset), () => cycler.Step(-1));
+        MakeArrowBtn(parent, name + "_Next", ">", new Vector2(135, yOffset), () => cycler.Step(1));
 
         cycler.Set(startIndex);
         return cycler;
@@ -756,9 +1197,38 @@ public class MainMenuUI : MonoBehaviour
     void BuildNebulaGlow(GameObject parent)
     {
         // Soft colored glow blobs for depth
-        AddGlow(parent, new Color(0.15f, 0.10f, 0.40f, 0.12f), new Vector2(0.18f, 0.70f), new Vector2(520, 380));
-        AddGlow(parent, new Color(0.05f, 0.20f, 0.45f, 0.10f), new Vector2(0.82f, 0.30f), new Vector2(440, 340));
-        AddGlow(parent, new Color(0.30f, 0.10f, 0.20f, 0.08f), new Vector2(0.50f, 0.15f), new Vector2(600, 260));
+        // Brawl Stars lobisi gibi: sol mavi, sağ pembe/kırmızı sahne ışığı
+        AddGlow(parent, new Color(0.12f, 0.30f, 0.85f, 0.40f), new Vector2(0.12f, 0.55f), new Vector2(1500, 1300));
+        AddGlow(parent, new Color(0.95f, 0.18f, 0.45f, 0.34f), new Vector2(0.90f, 0.50f), new Vector2(1400, 1250));
+        AddGlow(parent, new Color(0.55f, 0.20f, 0.85f, 0.30f), new Vector2(0.50f, 0.10f), new Vector2(1200, 700));
+    }
+
+    /// <summary>Zeminde soluk desen dokusu (Brawl Stars'ın kurukafa deseni karşılığı) —
+    /// düşük alfa, döndürülmüş yuvarlatık karolar.</summary>
+    void BuildPattern(GameObject parent, int count)
+    {
+        var root = new GameObject("Pattern");
+        root.transform.SetParent(parent.transform, false);
+        root.transform.SetSiblingIndex(3); // glow'ların üstünde, UI'ın altında
+        var rootRt = root.AddComponent<RectTransform>();
+        rootRt.anchorMin = Vector2.zero; rootRt.anchorMax = Vector2.one;
+        rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
+
+        var rng = new System.Random(4242);
+        for (int i = 0; i < count; i++)
+        {
+            var go = new GameObject($"P_{i}");
+            go.transform.SetParent(root.transform, false);
+            var img = go.AddComponent<Image>();
+            img.sprite = UiKit.RoundedSprite;
+            img.color = new Color(1f, 1f, 1f, 0.022f);
+            img.raycastTarget = false;
+            float size = 40f + (float)rng.NextDouble() * 50f;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2((float)rng.NextDouble(), (float)rng.NextDouble());
+            rt.sizeDelta = new Vector2(size, size);
+            rt.localRotation = Quaternion.Euler(0, 0, 45f + (float)rng.NextDouble() * 20f - 10f);
+        }
     }
 
     void AddGlow(GameObject parent, Color color, Vector2 anchor, Vector2 size)
@@ -767,7 +1237,9 @@ public class MainMenuUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         go.transform.SetSiblingIndex(2);
         var img = go.AddComponent<Image>();
+        img.sprite = UiKit.GlowSprite; // radyal solan leke — düz Image dikdörtgen gibi görünüyordu
         img.color = color;
+        img.raycastTarget = false;
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta        = size;
@@ -778,42 +1250,9 @@ public class MainMenuUI : MonoBehaviour
     //  FOOTER
     // ────────────────────────────────────────────────────────────────────────
 
-    void BuildFooter(GameObject parent)
-    {
-        // Version — bottom-left
-        MakeTxt(parent, "Version", VERSION, 13, FontStyles.Normal, TextDim,
-            TextAlignmentOptions.Left, new Vector2(0f, 0f), new Vector2(100, 22), new Vector2(14, 12));
-
-        // Copyright — bottom-center
-        MakeTxt(parent, "Copyright", "© 2025 CosmicRumble", 13, FontStyles.Normal, TextDim,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0f), new Vector2(280, 22), new Vector2(0, 12));
-
-        // Bottom separator
-        var lineGO  = new GameObject("FooterLine");
-        lineGO.transform.SetParent(parent.transform, false);
-        var lineImg = lineGO.AddComponent<Image>();
-        lineImg.color = Separator;
-        var lineRt  = lineImg.rectTransform;
-        lineRt.anchorMin        = new Vector2(0.05f, 0f);
-        lineRt.anchorMax        = new Vector2(0.95f, 0f);
-        lineRt.pivot            = new Vector2(0.5f, 0f);
-        lineRt.sizeDelta        = new Vector2(0, 1);
-        lineRt.anchoredPosition = new Vector2(0, 34);
-    }
-
     // ════════════════════════════════════════════════════════════════════════
     //  CALLBACKS
     // ════════════════════════════════════════════════════════════════════════
-
-    void OnQuit()
-    {
-        GameConfig.Instance?.Save();
-#if UNITY_EDITOR
-        UnityEditor.EditorApplication.isPlaying = false;
-#else
-        Application.Quit();
-#endif
-    }
 
     void ShowPanel(GameObject panel)
     {
@@ -876,18 +1315,12 @@ public class MainMenuUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = normal;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 4f, 0.40f);
 
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.colors = new ColorBlock
-        {
-            normalColor      = normal,
-            highlightedColor = hover,
-            pressedColor     = AccPress,
-            selectedColor    = hover,
-            colorMultiplier  = 1f,
-            fadeDuration     = 0.10f
-        };
+        btn.colors = UiKit.ButtonColors(normal);
         btn.onClick.AddListener(callback);
 
         var rt = img.rectTransform;
@@ -896,26 +1329,14 @@ public class MainMenuUI : MonoBehaviour
         rt.sizeDelta        = new Vector2(BTN_W, BTN_H);
         rt.anchoredPosition = new Vector2(0, yOffset);
 
-        // Left color accent strip
-        var stripGO  = new GameObject("Strip");
-        stripGO.transform.SetParent(go.transform, false);
-        var stripImg = stripGO.AddComponent<Image>();
-        stripImg.color = new Color(1f, 1f, 1f, 0.35f);
-        var stripRt  = stripImg.rectTransform;
-        stripRt.anchorMin        = new Vector2(0f, 0f);
-        stripRt.anchorMax        = new Vector2(0f, 1f);
-        stripRt.pivot            = new Vector2(0f, 0.5f);
-        stripRt.sizeDelta        = new Vector2(4, 0);
-        stripRt.anchoredPosition = Vector2.zero;
-
         var txtGO = new GameObject("Label");
         txtGO.transform.SetParent(go.transform, false);
         var txt = txtGO.AddComponent<TextMeshProUGUI>();
         txt.text      = label;
         txt.fontSize  = 21;
-        txt.fontStyle = FontStyles.Bold;
         txt.alignment = TextAlignmentOptions.Center;
         txt.color     = TextPrimary;
+        UiKit.BrawlText(txt);
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
@@ -956,8 +1377,9 @@ public class MainMenuUI : MonoBehaviour
 
     Slider MakeSliderRow(GameObject parent, string label, float yOffset)
     {
+        // Etiket rect'i slider'ın sol kenarından (x=-35) önce bitmeli, yoksa son harf altında kalır
         MakeTxt(parent, "lbl_" + label, label, 17, FontStyles.Normal, TextPrimary,
-            TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-105, yOffset));
+            TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-130, yOffset));
 
         return MakeSlider(parent, "sl_" + label, 0f, 1f, 0.7f,
             new Vector2(0.5f, 0.5f), new Vector2(50, yOffset), 170);

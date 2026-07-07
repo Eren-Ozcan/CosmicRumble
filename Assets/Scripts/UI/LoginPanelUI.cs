@@ -5,22 +5,23 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Giriş / Kayıt paneli.
-/// Kendi Canvas'ını programatik olarak oluşturur.
-/// MenuScene'e boş bir GameObject ekleyip bu scripti yapıştır.
+/// Giriş / hesap bağlama ekranı. İki kullanım:
+/// 1) Açılış kapısı (MainMenuUI.BootstrapSequence): hesabı bağlı OLMAYAN oyuncuya açılışta bir kez
+///    gösterilir, kapatılamaz (X/ESC yok) — giriş/kayıt sonrası doğrudan ana menü.
+/// 2) Ayarlar → Hesap → HESAP BAĞLA: aynı panel, kapatılabilir halde.
+/// Kendi Canvas'ını programatik oluşturur; UiKit stilinde.
 /// </summary>
 public class LoginPanelUI : MonoBehaviour
 {
     public static LoginPanelUI Instance { get; private set; }
 
-    // ── Renk paleti ───────────────────────────────────────────────────────
-    static readonly Color BgPanelColor  = new Color(0.051f, 0.051f, 0.102f, 0.96f);
+    // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
+    static readonly Color CardBg        = new Color(0.07f,  0.07f,  0.16f,  0.97f);
     static readonly Color PrimaryBtn    = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color PrimaryHover  = new Color(0.42f,  0.71f,  1.00f,  1f);
-    static readonly Color DangerBtn     = new Color(1.00f,  0.267f, 0.267f, 1f);
-    static readonly Color DangerHover   = new Color(1.00f,  0.40f,  0.40f,  1f);
-    static readonly Color BorderColor   = new Color(0.165f, 0.165f, 0.29f,  1f);
+    static readonly Color RegisterBtn   = new Color(0.16f,  0.72f,  0.26f,  1f);
+    static readonly Color InputBg       = new Color(0.12f,  0.12f,  0.22f,  1f);
     static readonly Color TextSecondary = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color StrokeCol     = new Color(1f, 1f, 1f, 0.09f);
 
     // ── Referanslar ───────────────────────────────────────────────────────
     GameObject        _root;
@@ -28,9 +29,12 @@ public class LoginPanelUI : MonoBehaviour
     TMP_InputField    _userInput;
     TMP_InputField    _passInput;
     TextMeshProUGUI   _errorText;
+    TextMeshProUGUI   _titleText;
+    TextMeshProUGUI   _hintText;
+    GameObject        _closeBtn;
+    EscapeListener    _escListener;
     Button            _loginBtn;
     Button            _registerBtn;
-    Button            _guestBtn;
     bool              _busy;
 
     // ─────────────────────────────────────────────────────────────────────
@@ -52,12 +56,21 @@ public class LoginPanelUI : MonoBehaviour
     //  PUBLIC API
     // ════════════════════════════════════════════════════════════════════
 
-    public void Show()
+    /// <param name="dismissable">false = açılış kapısı (X/ESC yok, giriş zorunlu);
+    /// true = Ayarlar'dan açılan hesap bağlama diyaloğu.</param>
+    public void Show(bool dismissable = true)
     {
         _root.SetActive(true);
         _busy = false;
         SetButtonsInteractable(true);
         ClearError();
+
+        _closeBtn.SetActive(dismissable);
+        _escListener.enabled = dismissable;
+        _titleText.text = dismissable ? "HESABINI BAĞLA" : "GİRİŞ";
+        _hintText.text  = dismissable
+            ? "Hesap bağlarsan ilerlemen hesabında saklanır ve\nbaşka cihazlardan da devam edebilirsin."
+            : "Devam etmek için hesabına gir\nveya yeni bir hesap oluştur.";
     }
 
     public void Hide() => _root.SetActive(false);
@@ -70,6 +83,7 @@ public class LoginPanelUI : MonoBehaviour
     {
         // Canvas
         var canvasGO = new GameObject("LoginCanvas");
+        canvasGO.transform.SetParent(transform, false);
         var canvas = canvasGO.AddComponent<Canvas>();
         canvas.renderMode  = RenderMode.ScreenSpaceOverlay;
         canvas.sortingOrder = 50;
@@ -83,53 +97,63 @@ public class LoginPanelUI : MonoBehaviour
         _root = new GameObject("LoginRoot");
         _root.transform.SetParent(canvasGO.transform, false);
         var overlay = _root.AddComponent<Image>();
-        overlay.color = new Color(0, 0, 0, 0.6f);
+        overlay.color = new Color(0, 0, 0, 0.65f);
         var overlayRt = overlay.rectTransform;
         overlayRt.anchorMin = Vector2.zero;
         overlayRt.anchorMax = Vector2.one;
         overlayRt.offsetMin = overlayRt.offsetMax = Vector2.zero;
 
-        // Kart (400×500)
+        // Kart
         var cardGO = new GameObject("Card");
         cardGO.transform.SetParent(_root.transform, false);
         var cardImg = cardGO.AddComponent<Image>();
-        cardImg.color = BgPanelColor;
+        cardImg.color = CardBg;
+        UiKit.Round(cardImg);
+        UiKit.Shadow(cardGO, 8f, 0.55f);
+        UiKit.Stroke(cardGO, StrokeCol);
+        UiKit.Pop(cardGO);
         _card = cardImg.rectTransform;
         _card.anchorMin = _card.anchorMax = new Vector2(0.5f, 0.5f);
-        _card.sizeDelta = new Vector2(400, 560);
+        _card.sizeDelta = new Vector2(440, 540);
         _card.anchoredPosition = Vector2.zero;
 
-        // Başlık
-        MakeText(cardGO, "Title", "CosmicRumble", 36,
-            new Vector2(0.5f, 0.87f), new Vector2(360, 50), Color.white);
+        _titleText = MakeText(cardGO, "Title", "GİRİŞ", 28,
+            new Vector2(0.5f, 0.90f), new Vector2(380, 42), Color.white);
+        _titleText.fontStyle = FontStyles.Bold;
+
+        _hintText = MakeText(cardGO, "Hint", "",
+            13, new Vector2(0.5f, 0.80f), new Vector2(400, 40), TextSecondary);
+
+        UiKit.CloseButton(cardGO, Hide);
+        _closeBtn = cardGO.transform.Find("btn_close").gameObject;
 
         // Username input
-        MakeLabel(cardGO, "lbl_user", "Username", new Vector2(0.5f, 0.72f));
-        _userInput = MakeInputField(cardGO, "inp_user", "Username",
-            new Vector2(0.5f, 0.62f), new Vector2(320, 44), false);
+        MakeLabel(cardGO, "lbl_user", "Kullanıcı adı", new Vector2(0.5f, 0.685f));
+        _userInput = MakeInputField(cardGO, "inp_user", "Kullanıcı adı",
+            new Vector2(0.5f, 0.60f), new Vector2(340, 50), false);
 
         // Password input
-        MakeLabel(cardGO, "lbl_pass", "Password", new Vector2(0.5f, 0.50f));
-        _passInput = MakeInputField(cardGO, "inp_pass", "Password",
-            new Vector2(0.5f, 0.40f), new Vector2(320, 44), true);
+        MakeLabel(cardGO, "lbl_pass", "Şifre", new Vector2(0.5f, 0.505f));
+        _passInput = MakeInputField(cardGO, "inp_pass", "Şifre",
+            new Vector2(0.5f, 0.42f), new Vector2(340, 50), true);
 
         // Error message
         _errorText = MakeText(cardGO, "err_text", "", 14,
-            new Vector2(0.5f, 0.30f), new Vector2(340, 30), new Color(1f, 0.3f, 0.3f));
+            new Vector2(0.5f, 0.325f), new Vector2(380, 30), new Color(1f, 0.3f, 0.3f));
         _errorText.gameObject.SetActive(false);
 
         // Buttons
-        _loginBtn = MakeButton(cardGO, "btn_login",    "LOG IN",      new Vector2(0.5f, 0.23f),
-            new Vector2(320, 44), PrimaryBtn, PrimaryHover, OnLoginClicked);
-        _registerBtn = MakeButton(cardGO, "btn_register", "REGISTER",        new Vector2(0.5f, 0.14f),
-            new Vector2(320, 44), DangerBtn,  DangerHover,  OnRegisterClicked);
-        _guestBtn = MakeButton(cardGO, "btn_guest",    "PLAY AS GUEST", new Vector2(0.5f, 0.05f),
-            new Vector2(320, 40),
-            new Color(0.25f, 0.25f, 0.30f), new Color(0.35f, 0.35f, 0.42f),
-            OnGuestClicked);
+        _loginBtn = MakeButton(cardGO, "btn_login", "GİRİŞ YAP", new Vector2(0.5f, 0.23f),
+            new Vector2(340, 54), PrimaryBtn, OnLoginClicked);
+        _registerBtn = MakeButton(cardGO, "btn_register", "YENİ HESAP OLUŞTUR", new Vector2(0.5f, 0.115f),
+            new Vector2(340, 54), RegisterBtn, OnRegisterClicked);
 
-        // ESC dinleyici
-        _root.AddComponent<EscapeListener>().OnEscape = Hide;
+        MakeText(cardGO, "RegisterHint", "Yeni hesap, bu cihazdaki ilerlemeni olduğu gibi devralır.", 12,
+            new Vector2(0.5f, 0.045f), new Vector2(400, 22), TextSecondary);
+
+        // ESC dinleyici (yalnızca dismissable modda etkin — Show() yönetir)
+        _escListener = _root.AddComponent<EscapeListener>();
+        _escListener.OnEscape = Hide;
 
         // Tab → şifre alanına geç
         var tabNav = _root.AddComponent<TabNavigator>();
@@ -146,15 +170,15 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager not found."); return; }
+        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Username and password are required.");
+            ShowError("Kullanıcı adı ve şifre gerekli.");
             StartCoroutine(Shake());
             return;
         }
 
-        await RunAuthAction(AuthManager.Instance.Login(user, pass), "Signing in...");
+        await RunAuthAction(AuthManager.Instance.Login(user, pass), "Giriş yapılıyor...");
     }
 
     async void OnRegisterClicked()
@@ -163,33 +187,15 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager not found."); return; }
+        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Username and password are required.");
+            ShowError("Kullanıcı adı ve şifre gerekli.");
             StartCoroutine(Shake());
             return;
         }
 
-        await RunAuthAction(AuthManager.Instance.Register(user, pass), "Creating account...");
-    }
-
-    async void OnGuestClicked()
-    {
-        if (_busy || AuthManager.Instance == null) return;
-
-        _busy = true;
-        SetButtonsInteractable(false);
-        ShowStatus("Signing in...");
-
-        await AuthManager.Instance.LoginAsGuest();
-
-        _busy = false;
-        SetButtonsInteractable(true);
-        ClearError();
-        Hide();
-        MainMenuAuthButton.Instance?.RefreshButton();
-        LobbyPanelUI.Instance?.Show();
+        await RunAuthAction(AuthManager.Instance.Register(user, pass), "Hesap oluşturuluyor...");
     }
 
     /// <summary>Login()/Register() ortak akışı: yükleniyor durumunu göster, sonucu bekle, başarı/hata işle.</summary>
@@ -208,7 +214,6 @@ public class LoginPanelUI : MonoBehaviour
         {
             ClearError();
             Hide();
-            MainMenuAuthButton.Instance?.RefreshButton();
         }
         else
         {
@@ -221,7 +226,6 @@ public class LoginPanelUI : MonoBehaviour
     {
         if (_loginBtn    != null) _loginBtn.interactable    = interactable;
         if (_registerBtn != null) _registerBtn.interactable = interactable;
-        if (_guestBtn    != null) _guestBtn.interactable     = interactable;
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -287,7 +291,8 @@ public class LoginPanelUI : MonoBehaviour
 
     static void MakeLabel(GameObject parent, string name, string content, Vector2 anchor)
     {
-        MakeText(parent, name, content, 14, anchor, new Vector2(320, 24), TextSecondary);
+        var lbl = MakeText(parent, name, content, 13, anchor, new Vector2(340, 22), TextSecondary);
+        lbl.alignment = TextAlignmentOptions.Left;
     }
 
     static TMP_InputField MakeInputField(GameObject parent, string name, string placeholder,
@@ -296,7 +301,8 @@ public class LoginPanelUI : MonoBehaviour
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
-        img.color = new Color(0.12f, 0.12f, 0.22f, 1f);
+        img.color = InputBg;
+        UiKit.Round(img, 1.5f);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
@@ -309,13 +315,13 @@ public class LoginPanelUI : MonoBehaviour
         var areaGO = new GameObject("TextArea"); areaGO.transform.SetParent(go.transform, false);
         var areaRt = areaGO.AddComponent<RectTransform>();
         areaRt.anchorMin = Vector2.zero; areaRt.anchorMax = Vector2.one;
-        areaRt.offsetMin = new Vector2(8, 2); areaRt.offsetMax = new Vector2(-8, -2);
+        areaRt.offsetMin = new Vector2(12, 2); areaRt.offsetMax = new Vector2(-12, -2);
 
         // Placeholder text
         var phGO  = new GameObject("Placeholder"); phGO.transform.SetParent(areaGO.transform, false);
         var phTxt = phGO.AddComponent<TextMeshProUGUI>();
         phTxt.text      = placeholder;
-        phTxt.fontSize  = 15;
+        phTxt.fontSize  = 16;
         phTxt.color     = new Color(0.5f, 0.5f, 0.6f, 1f);
         phTxt.alignment = TextAlignmentOptions.Left;
         var phRt = phTxt.rectTransform;
@@ -325,7 +331,7 @@ public class LoginPanelUI : MonoBehaviour
         // Main text
         var txtGO  = new GameObject("Text"); txtGO.transform.SetParent(areaGO.transform, false);
         var mainTxt = txtGO.AddComponent<TextMeshProUGUI>();
-        mainTxt.fontSize  = 15;
+        mainTxt.fontSize  = 16;
         mainTxt.color     = Color.white;
         mainTxt.alignment = TextAlignmentOptions.Left;
         var txtRt = mainTxt.rectTransform;
@@ -341,25 +347,20 @@ public class LoginPanelUI : MonoBehaviour
     }
 
     static Button MakeButton(GameObject parent, string name, string label,
-        Vector2 anchor, Vector2 size, Color normal, Color hover,
+        Vector2 anchor, Vector2 size, Color normal,
         UnityEngine.Events.UnityAction callback)
     {
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = normal;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 3f, 0.35f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.colors = new ColorBlock
-        {
-            normalColor      = normal,
-            highlightedColor = hover,
-            pressedColor     = new Color(normal.r * 0.7f, normal.g * 0.7f, normal.b * 0.7f),
-            selectedColor    = hover,
-            colorMultiplier  = 1f,
-            fadeDuration     = 0.1f
-        };
+        btn.colors = UiKit.ButtonColors(normal);
         btn.onClick.AddListener(callback);
+        UiKit.Press(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
@@ -368,7 +369,8 @@ public class LoginPanelUI : MonoBehaviour
         var txtGO = new GameObject("Label"); txtGO.transform.SetParent(go.transform, false);
         var txt   = txtGO.AddComponent<TextMeshProUGUI>();
         txt.text      = label;
-        txt.fontSize  = 16;
+        txt.fontSize  = 17;
+        txt.fontStyle = FontStyles.Bold;
         txt.color     = Color.white;
         txt.alignment = TextAlignmentOptions.Center;
         var trt = txt.rectTransform;

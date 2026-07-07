@@ -960,3 +960,242 @@ providers already cover mobile — everything below is mobile-only work not yet 
 - **Store-side setup (account/config work, not code):** Play Console (min API level, Data Safety form, Play
   Games Services resource XML), App Store Connect (App Privacy nutrition label, ATT prompt if ads/analytics are
   added, TestFlight), age rating, privacy policy URL.
+
+## Yerçekimi düzeltmeleri + Online Leaderboard (kupa sistemi) — Done (2026-07-06)
+
+### Yerçekimi — mermilerin gezegene çekilmeme bug'ı (kök neden + fix, canlı doğrulandı)
+- **Kök neden:** `Projectile.prefab` (Pistol/RPG/Grenade mermilerinin base'i), `PF_BlackHoleProjectile.prefab`
+  ve `TeleportOrbProjectile.prefab` üzerindeki `NetworkRigidbody2D.Awake()` body'yi koşulsuz Kinematic'e
+  zorluyor ve bunu yalnızca `OnNetworkSpawn()` geri alıyor — offline'da spawn hiç olmadığı için mermiler
+  kalıcı Kinematic kalıyor, `GravitySource`'un `AddForce` çekimi sessizce no-op oluyor ve mermiler dümdüz
+  gidiyordu. Milestone 3'te karakterler için bulunan regresyonun (bkz. `GravityBody.Start()`) birebir aynısı,
+  mermi tarafı o zaman gözden kaçmış. **Fix:** `Assets/Scripts/Utilities/NetworkPhysicsGuard.cs`
+  (`EnsureDynamicWhenNotSpawned`) + tüm mermi scriptlerinin `Init()`/`Start()` yollarına çağrı
+  (KineticProjectile, Projectile, HandGrenadeProjectile, BlackHoleProjectile, TeleportOrbProjectile,
+  ProjectileBase). Silahların SpawnAndInit sırası her yerde Spawn()→Init() olduğu için online'da guard
+  kendiliğinden devre dışı (IsSpawned=true → NGO otoriteyi yönetir).
+- **İkinci yapısal sorun:** `GravitySource` script'i Planet_Interior'da, geniş çekim trigger'ı ise child
+  `GravityTrigger`'da ve hiyerarşide Rigidbody2D yok — Unity trigger callback'lerini parent'a İLETMEZ, yani
+  o child'ın `OnTriggerStay2D`'si GravitySource'a hiç ulaşmıyordu. Çekim bugüne kadar yalnızca sahnede
+  Planet_Interior'ın kendi collider'ının elle trigger yapılmış olması sayesinde (ve gravityRadius'tan farklı
+  bir yarıçapta) çalışıyordu. **Fix:** kuvvet uygulaması `GravitySource.FixedUpdate()`'e taşındı —
+  gravityRadius içindeki tüm dinamik Rigidbody2D'lere `OverlapCircle` ile (body başına tek kez, uyuyanlara
+  dokunmadan, `rb.mass` ile ölçekleyerek) uygulanıyor. Böylece etki alanı tam olarak gravityRadius, ivme
+  kütleden bağımsız `gravityForce` ve `TrajectoryDots`/`IGravityStrategy` tahminiyle birebir aynı.
+- `SinglePlanetGravity`/`MultiPlanetGravity` artık `gravityRadius`'a saygı duyuyor (tahmin ile gerçek fizik
+  sınırı aynı).
+- **Canlı doğrulama (Editor Play Mode, SampleScene):** spawn edilen pistol mermisi bodyType=Dynamic, gezegene
+  doğru ölçülen ivme |a|=19.84 ≈ gravityForce(20), 0.84 sn'de yüzeye çarpıp doğru şekilde yok oldu. (İlk
+  ölçümdeki ~34 değeri duvar-saati/fizik catch-up artefaktıydı; Time.time bazlı ikinci ölçüm doğru çıktı.)
+
+### Online Leaderboard — Clash Royale tarzı kupa sistemi (kullanıcı isteğiyle galibiyet sayacından çevrildi)
+- Paket: `com.unity.services.leaderboards` 2.3.4 (Coplay MCP ile kuruldu; araç derleme hatası varken
+  çalışmadığı için önce leaderboard referansları geçici yorumlanıp kurulum sonrası geri açıldı).
+- `Assets/Scripts/Cloud/LeaderboardManager.cs`: kupa mantığı — online maç galibiyeti **+30**, mağlubiyet
+  **−20** (0'ın altına inmez), beraberlikte değişim yok; güncel toplam UGS Leaderboards'a gönderilir.
+  Kupa aralığına göre lig adları (`GetLeagueName`: Asteroid/Moon/Planet/Star/Nebula/Galaxy League).
+  Kayıtlı kullanıcı adı `UpdatePlayerNameAsync` ile leaderboard'a yansıtılır (misafirde no-op).
+- **Önemli bulgu (canlı teşhisle bulundu):** statik `LeaderboardsService.Instance` bu projede HİÇ set
+  edilmiyor — core, paketleri instance-tabanlı yolla (`IInitializablePackageV2.InitializeInstanceAsync`)
+  başlatıyor ve o yol statici atlamıyor... atlıyor (paket kaynağında görülüyor: `Initialize()` statici set
+  eder, `InitializeInstanceAsync()` etmez). Servis CoreRegistry'de kayıtlı ve sağlıklıyken statik erişim
+  `ServicesInitializationException` atıyordu. **Doğru erişim:** `UnityServices.Instance.GetLeaderboardsService()`
+  (LeaderboardManager.Service property'si; statik yalnızca yedek). Bu gotcha diğer UGS paketleri için de
+  geçerli olabilir.
+- `TurnManager.TriggerGameOver` → yeni `AnnounceMatchResultClientRpc(winnerClientId)`: online maç sonucunu
+  TÜM client'lara duyurur (TriggerGameOver yalnızca server'da çalıştığı için client'lar kazanıp
+  kaybettiklerini ancak böyle öğrenebilir; beraberlik = ulong.MaxValue → kupa değişimi yok). Offline maçlar
+  kupa vermez (leaderboard yalnızca online).
+- `Assets/Scripts/UI/LeaderboardPanelUI.cs`: ana menüde yeni "LEADERBOARD" butonu (buton kartı 8 butona göre
+  büyütüldü) → sıra/isim/lig/kupa sütunlu, kendi satırı vurgulu, REFRESH'li panel (AchievementsPanelUI
+  kalıbı). `MainMenuUI.EnsureProgressSingletons` bootstrap'ine LeaderboardManager + panel eklendi.
+- **Doğrulama:** Editor Play Mode'da panel açılıyor, servis çağrısı UGS'ye ulaşıyor; beklenen tek uyarı
+  `Leaderboard config could not be found` — çünkü **dashboard'da leaderboard henüz oluşturulmadı**.
+- **KALAN MANUEL ADIM (kod yok):** cloud.unity.com → proje → Leaderboards → Add leaderboard:
+  ID **`cosmic_trophies`**, Sort order **High to low**, Update type **Latest submission** (kupa
+  düşebildiği için "Keep best" DEĞİL). Oluşturulana kadar panel boş liste + editor'da uyarı gösterir,
+  oyun kırılmaz.
+
+### Genel kontrol — bilinen kalan pürüzler (bu oturumda düzeltilmedi)
+- `GravityBody.DominantSource = AllSources[0]` — çok gezegenli sahnede zıplama yönü "ilk" gezegene göre,
+  en yakın/baskın gezegene göre değil; ikinci gezegen üzerindeyken yanlış yöne zıplama riski.
+- `ProjectileBase.OnBecameInvisible` / `Projectile.destroyOnInvisible` ekran dışına çıkan mermiyi anında
+  yok ediyor — uzun yörüngeli atışları erken öldürebilir (kamera mermiyi takip ettiği için pratikte nadir).
+- Ana menü buton ikonları (▶ ⇄ ★ ◆ ♛ ⚙ ✕) LiberationSans SDF'te yok, hepsi □ görünüyor (önceden beri var;
+  fallback font eklenmeli).
+- Online maç sonunda game-over UI yalnızca host'ta görünüyor (TriggerGameOver server-only; kupa RPC'si sonucu
+  client'lara iletiyor ama UI gösterimi ayrı, kapsam dışı bırakıldı).
+
+## Kalan pürüzler çözüldü + Dereceli/Dostluk maç ayrımı — Done (2026-07-06, 2. tur)
+
+- **Leaderboard dashboard DOĞRULANDI (uçtan uca):** `cosmic_trophies` kullanıcı tarafından oluşturuldu
+  (High to low / Latest). Canlı test: fetch uyarısız boş liste ✓; `ReportOnlineMatchResult(true)` → +30
+  kupa gönderildi → tabloda rank #1, score=30 göründü ✓; test verisi 0'a sıfırlanıp geri gönderildi
+  (tablo temiz bırakıldı). Not: editor oturumu misafir olduğu için isim anonim UGS adı
+  ("EasyAstonishedOstrich#26782") göründü — kayıtlı kullanıcıda `SyncPlayerNameAsync` gerçek adı yazar.
+- **DominantSource düzeltildi** (`GravityBody.FixedUpdate`): körlemesine `AllSources[0]` yerine en yakın
+  gezegen (gravityRadius içindekiler öncelikli). Zıplama yönü ve `CameraController` rotasyonu artık çok
+  gezegenli sahnede doğru gezegene göre.
+- **Ekran dışı mermi ölümü yumuşatıldı:** `ProjectileBase`/`Projectile.OnBecameInvisible` artık anında yok
+  etmiyor — `offscreenGraceTime` (3 sn) içinde `OnBecameVisible` gelirse iptal; gezegen arkasından dolanan
+  yörünge atışları yaşıyor, dönmeyenler yine temizleniyor (TTL de ayrıca duruyor).
+- **Ana menü ikon glyph'leri kaldırıldı** (▶ ⇄ ★ ◆ ♛ ⚙ ✕ → yalnız metin): LiberationSans SDF'te olmayan
+  karakterler □ görünüyordu; mobil için temiz metin-only butonlar. Ekran görüntüsüyle doğrulandı.
+  (Kalıcı ikon istenirse ileride fallback font asset'i eklenebilir.)
+- **Online maç sonu artık HER İKİ makinede işleniyor:** `TurnManager.TriggerGameOver` yeniden yapılandırıldı —
+  online'da tüm maç-sonu yerel işleri (game-over UI, XP/Gold/sandık, başarım event'leri, ses, kupa) yeni
+  `AnnounceMatchResultClientRpc(winnerClientId, winnerName, matchDuration, totalShots)` içinden
+  `FinishMatchLocally()` ile her makinede kendi yerel sonucuna göre çalışıyor (host çift ödül almaz, client
+  artık game-over ekranını ve ödüllerini görür). Offline hotseat eski davranışıyla `FinishMatchLocally`'yi
+  doğrudan çağırıyor. Beraberlik = winnerClientId=ulong.MaxValue → kupa değişimi yok, iki taraf da "kaybetti"
+  akışını görür (eski host davranışıyla tutarlı).
+- **Dereceli/Dostluk ayrımı (Clash Royale kuralı):** `NetworkBootstrap.IsRankedMatch` — `QuickMatchAsync`
+  true, `HostSessionAsync`/`JoinSessionAsync` false, `LeaveSessionAsync` sıfırlar; client reconnect'i maçın
+  dereceli durumunu korur. Kupa yalnızca dereceli maçlarda değişir. Quick Match beklerken katılım kodu artık
+  GÖSTERİLMİYOR (koda katılan arkadaş taraflar arasında dereceli/dostluk uyuşmazlığı yaratırdı).
+- **Online lobi yeniden çerçevelendi (mobil ana akış = Quick Match):** üstte büyük "HIZLI EŞLEŞME — DERECELİ"
+  kartı (+30/−20 kupa ipucu), altta "ARKADAŞINLA OYNA — dostluk maçı, kupa değişmez" başlığı ile
+  "KOD OLUŞTUR" (kodu arkadaşına gönder) ve "KODA KATIL" kartları; "← BACK" → "GERİ". Ekran görüntüsüyle
+  doğrulandı.
+
+## Mobil görsel yenileme (menü + online lobi + leaderboard) — Done (2026-07-06, 3. tur)
+
+- **`Assets/Scripts/UI/UiKit.cs` (yeni):** projede hiç UI sprite asset'i olmadığı için yuvarlatılmış köşe
+  sprite'ı runtime'da SDF ile üretilir (antialias'lı, 9-slice, cache'li). `UiKit.Round(img, cornerScale)`,
+  `UiKit.Shadow(go)` (yumuşak alt gölge) ve `UiKit.ButtonColors(normal)` (hover/press renklerini normal
+  renkten türetir) tüm yeni stil yüzeylerinde kullanılıyor.
+- **Ana menü mobil yatay düzene geçti:** 8 butonluk dar dikey liste yerine geniş yuvarlatılmış kart içinde
+  2 büyük birincil buton (PLAY / ONLINE, 388×92) + 2 sütun × 3 satır ikincil grid (376×72) — dokunma
+  hedefleri büyüdü, yatay ekran alanı kullanılıyor. Başlık arka planı ve settings kartı/sekmeleri/back
+  butonu da yuvarlatıldı; settings başlığındaki □ (⚙) kaldırıldı; eski butonlardaki sol şerit (yuvarlatmayla
+  çakışıyordu) kaldırıldı.
+- **Online lobi:** kartlar yuvarlatık+gölgeli; OYNA birincil eylem olarak büyük ve YEŞİL (320×68); KOD
+  OLUŞTUR/KATIL 290×62'ye büyütüldü; İPTAL/GERİ nötr koyu renge alınıp büyütüldü; kod input'u yuvarlatıldı.
+- **Leaderboard:** kart 760 genişliğe çıkıp yuvarlatıldı+gölgelendi, satırlar yuvarlatık (52 yükseklik,
+  6 aralık), CLOSE/REFRESH büyütüldü.
+- Hepsi Editor Play Mode ekran görüntüleriyle doğrulandı (menü, lobi, leaderboard). Achievements/Quests/Shop
+  panelleri ESKİ düz stilde kaldı — aynı UiKit çağrılarıyla geçirilebilir, ayrı iş.
+
+## Brawl Stars tarzı lobi ana ekranı — Done (2026-07-06, 4. tur)
+
+Araştırma (Brawl Stars UI analizleri + mobil lobi kalıpları) sonrası ana menü "buton listesi"nden
+"lobi/hub" düzenine geçirildi:
+- **Sağ-alt: BÜYÜK SARI OYNA** (420×124, koyu yazı) → OnlineLobbyPanelUI; üstünde "DERECELİ • HIZLI
+  EŞLEŞME" bilgi çipi; solunda ikincil "YEREL MAÇ" (hotseat). Yatay tutuşta sağ başparmak bölgesi.
+- **Üst bar:** solda profil çipi (kullanıcı adı/Misafir + canlı kupa sayısı + lig adı; tıklayınca
+  Sıralama açılır), sağda Gem + Gold çipleri (CurrencyManager'a canlı abone, tıklayınca Market;
+  MainMenuAuthButton'ın sağ-üst kartıyla çakışmayacak şekilde konumlandı).
+- **Sol ray:** MARKET / GÖREVLER / BAŞARIMLAR / SIRALAMA "chunky" butonlar; alt-sol: AYARLAR + ÇIKIŞ (nötr).
+- **MakeChunkyBtn:** Brawl Stars görünümü için 3B kenarlı buton (koyu alt kenar 6px + yüz plakası).
+- **Dekor:** UiKit.CircleSprite (yeni, AA daire) ile alt ufukta gezegen + mavi atmosfer halesi + küçük ay.
+  Başlık bloğu küçültüldü (52pt) — merkez artık ferah.
+- AchievementsPanelUI'nin sol-üstteki eski kısayol butonu kaldırıldı (sol rayla çakışıyor + mükerrerdi).
+- Etiketler Türkçe'ye çevrildi (lobi paneliyle tutarlı). Ekran görüntüleriyle doğrulandı; derleme temiz.
+
+## Yeni nesil UI turu: panel restyle + sessiz giriş + OYNA v2 — Done (2026-07-08)
+
+Kapsam (kullanıcı isteği): (1) Achievements/Quests/Shop panellerini UiKit stiline geçir, (2) Brawl Stars /
+modern mobil UI kalıplarını araştır, (3) OYNA butonunu farklılaştır, giriş/kayıt akışını mobil kalıba çevir
+(görünür login yok — bir kere sessiz giriş), UI'ı "yeni nesil" yap. Oyun artık **mobil-only** kabul ediliyor
+(Steam yok gibi davranılıyor — kullanıcı açıkça söyledi; TODO'daki Steam bölümleri tarihçe olarak duruyor).
+
+- **UiKit büyüdü (yeni araçlar, hepsi runtime-üretimli sprite/bileşen):** `Stroke` (ince açık kontur — cam
+  kenar hissi, `RoundedOutlineSprite`), `Gradient` (dikey vertex gradyanı, `UiVerticalGradient:BaseMeshEffect`),
+  `Press` (`UiPressScale` — dokununca %94'e küçülme), `Pop` (`UiPopIn` — panel açılışında ölçek+alfa,
+  ease-out-back), `Pulse` (`UiPulse` — birincil buton nefes animasyonu), `CloseButton` (mobil standart:
+  kartın sağ-üst köşesinden taşan kırmızı X), `GlowSprite` (radyal solan leke — MainMenuUI'ın nebula
+  "Glow"ları düz Image'dı ve dikdörtgen görünüyordu, artık yumuşak).
+  - Gotcha: `UiPulse`/`UiPressScale` ikisi de localScale yazar — aynı objeye ikisini birden ekleme (OYNA'da
+    yalnız Pulse var).
+- **Achievements/Quests/Shop panelleri yeniden stillendi** (820×600 yuvarlatık+konturlu+pop kart, köşe X,
+  yuvarlatık satırlar/ilerleme çubukları, Türkçe metinler): Başarımlar'da nadirlik renkli ikon dairesi
+  (eski kare şerit yerine) ve Sıradan/Nadir/Epik/Efsanevi etiketleri; Görevler'de pill sekmeler
+  (GÜNLÜK/HAFTALIK/AYLIK); **Market tamamen yeni düzen** — satır listesi yerine 5 yan yana gradyanlı paket
+  kartı (gem dairesi + miktar + fiyatlı yeşil SATIN AL), 1200'de "POPÜLER", 6000'de "EN İYİ DEĞER" rozeti.
+  LeaderboardPanelUI de aynı dile getirildi (SIRALAMA başlık, YENİLE, köşe X, Türkçe durum metinleri).
+- **Sessiz tek seferlik giriş (Supercell kalıbı):** `MainMenuUI.BootstrapSequence` artık cloud init'ten sonra
+  oturum yoksa `LoginAsGuest()`'i sessizce bekliyor → `IsLoggedIn=True IsGuest=True` hiçbir UI göstermeden
+  (canlı doğrulandı). Sağ-üstteki kalıcı LOG IN kartı (`MainMenuAuthButton.cs`) **silindi** (+ MenuScene'deki
+  GO'su MCP ile kaldırıldı); para çipleri gerçek sağ-üst köşeye taşındı. `LobbyPanelUI`'daki "LOG IN AND
+  START" kapısı kaldırıldı. Hesap bağlama tek yerde: Ayarlar → HESAP sekmesi ("Misafir olarak oynuyorsun...
+  hesabını bağla" + HESAP BAĞLA/ÇIKIŞ YAP) → `LoginPanelUI` yeniden çerçevelendi: "HESABINI BAĞLA" başlığı,
+  ilerleme-taşıma değer önerisi metni, GİRİŞ YAP / YENİ HESAP OLUŞTUR (misafir ilerlemesini devralır
+  ipucuyla), PLAY AS GUEST butonu kalktı (misafir zaten varsayılan), UiKit stiline geçti.
+- **OYNA v2:** açık→koyu altın dikey gradyanlı yüz + beyaz cam kontur + koyu altın 3B kenar + sürekli hafif
+  nefes (Pulse) + butona gömülü "HIZLI EŞLEŞME • DERECELİ" alt satırı (ayrı mod çipi kaldırıldı). Profil
+  çipine baş harfli avatar dairesi eklendi. Tüm chunky buton/çiplere Press mikro-etkileşimi, panellere Pop.
+- Ayarlar Türkçeleşti (AYARLAR, SES/GRAFİK/KONTROLLER/HESAP, GERİ/UYGULA...); slider etiketlerinin slider
+  altında ezilmesi düzeltildi (öncesinde de vardı: "Master Volume" → "Ana Se" gibi kesiliyordu).
+- **Doğrulama:** Editor Play Mode ekran görüntüleriyle: hub (yumuşak nebula + yeni OYNA + avatar çipi),
+  GÖREVLER, BAŞARIMLAR, MARKET, SIRALAMA (canlı UGS verisiyle), HESABINI BAĞLA diyaloğu, AYARLAR/HESAP
+  sekmesi. Derleme temiz. `AuthState` script'iyle sessiz misafir girişi doğrulandı.
+- **Tooling gotcha (yeni):** Coplay `save_scene(scene_name)` aktif sahneyi `Assets/<ad>.unity`'ye **save-as**
+  yapıyor (`Assets/Scenes/...` yolunu korumuyor) — MenuScene yanlışlıkla köke kopyalandı; `execute_script`
+  ile `EditorSceneManager.SaveScene(scene, "Assets/Scenes/MenuScene.unity")` + stray asset silme ile
+  düzeltildi. Bundan sonra sahne kaydetmek için save_scene yerine execute_script kullan.
+
+## Brawl Stars menü revizyonu: Misafir kalktı, giriş kapısı, eğik butonlar — Done (2026-07-08, 2. tur)
+
+Kullanıcı geri bildirimi üzerine ("beğenmedim; misafir olmayacak — sadece test için; çıkış butonu ana menüde
+olmayacak; Brawl Stars menüsünü iyi incele; giriş ekranı yalnızca hesabı bağlı olmayana, girince ana menüye"):
+
+- **"Misafir/Guest" UI'dan tamamen kalktı.** Yeni `Assets/Scripts/Utilities/PlayerIdentity.cs`: görünen ad
+  tek kaynaktan — bağlı hesapta kullanıcı adı, değilse cihazda bir kez üretilip PlayerPrefs'e yazılan kozmik
+  takma ad (ör. "Pulsar630"; ASCII prefix listesi — UGS UpdatePlayerNameAsync özel karakter reddediyor).
+  Kullanan yerler: ana menü profil çipi, `GameInitializer` (hotseat karakter adı — eskiden misafirde "Guest"
+  görünüyordu), `LobbyPanelUI`, `LeaderboardManager.SyncPlayerNameAsync` (artık misafir no-op DEĞİL — anonim
+  oturumda da takma adı UGS'ye yazar, leaderboard'da "EasyAstonishedOstrich" tarzı ad kalmaz).
+- **Giriş kapısı (tek giriş ekranı):** `MainMenuUI.BootstrapSequence` sonunda hesap bağlı değilse
+  `LoginPanelUI.Show(dismissable:false)` — cihazda kapatılamaz (X/ESC yok, başlık "GİRİŞ"); giriş/kayıt
+  sonrası panel kapanır, oyuncu ana menüde. Editor'da `dismissable:true` (bağlantısız oturum yalnızca test
+  için — hotseat testleri girişe takılmasın). Ayarlar → HESAP BAĞLA aynı paneli kapatılabilir halde açar
+  (başlık "HESABINI BAĞLA"). Arka plandaki sessiz anonim UGS oturumu duruyor (Register'ın ilerlemeyi
+  devralması için şart) ama bir UI durumu değil.
+- **ÇIKIŞ butonu ana menüden kaldırıldı** (`OnQuit` ile birlikte — mobil oyunda çıkış butonu olmaz).
+- **Brawl Stars menü imzaları:** `UiKit.Skew` (`UiSkew:BaseMeshEffect`, yatay shear 0.10 — tüm chunky
+  butonlar + OYNA paralelkenar) ve `UiKit.BrawlText` (kalın italik + koyu SDF kontur — tüm buton yazıları,
+  OYNA yazısı beyaz-konturlu). Düzen Brawl Stars'a hizalandı: sol ray 3 buton (MARKET/BAŞARIMLAR/SIRALAMA),
+  **GÖREVLER alt-sol** (BS'nin quest slotu), **AYARLAR üst-sağda küçük nötr çip** (para çiplerinin altında),
+  alt-sağ OYNA + solunda YEREL MAÇ. OYNA yüzündeki Stroke kaldırıldı (child stroke skew'lenmiyordu,
+  uyumsuz görünürdü).
+- **Bug fix (loglardan yakalandı):** `UiPopIn.OnEnable`'daki `GetComponent<CanvasGroup>() ?? AddComponent`
+  Unity fake-null yüzünden `MissingComponentException` fırlatıyordu — açık `== null` kontrolüne çevrildi.
+  (Play Mode çıkışındaki `NetworkManager.OnDestroy` NullRef'leri NGO paketinin kendi bilinen kapanış
+  gürültüsü, bizim kod değil.)
+- **Doğrulama:** Editor Play Mode — açılışta GİRİŞ ekranı (X'siz) otomatik geldi; arkada ana menü yeni
+  düzende ("Pulsar630" profil, eğik butonlar, ÇIKIŞ yok); OYNA'nın sağ marjı `GetWorldCorners` ile ölçüldü
+  (1884/1920 — capture aracının kırpması taşma gibi göstermişti, gerçek taşma yok); görev paneli pop
+  animasyonuyla hatasız açıldı. Derleme temiz.
+
+## Brawl Stars görsel dili — gerçek referansla tam revizyon — Done (2026-07-08, 3. tur)
+
+Kullanıcı gerçek Brawl Stars ekran görüntüleri paylaştı ("tasarım hala kötü", "önemli olan yerleşim",
+"3. resimdeki sağdan açılır pencere çok mantıklı") — tasarım artık tahmin değil, birebir referansla yapıldı:
+
+- **Font (en büyük fark buydu):** `Assets/Fonts/TitanOne-Regular.ttf` (Google Fonts, OFL) indirildi;
+  editor script ile dinamik TMP font asset'i üretilip (`Assets/Fonts/TitanOne SDF.asset`) **TMP Settings
+  varsayılan fontu yapıldı** — tüm programatik UI otomatik geçti. `UiKit.BrawlText` artık: beyaz dolgu +
+  kalın koyu SDF kontur, DÜZ (italik/fake-bold kapatıldı — Titan One zaten kalın display font).
+  - **Glif gotcha:** Titan One'da büyük **'İ' yok** (U+0130) — LiberationSans fallback'e düşer, ince
+    sırıtır. Lilita One denendi: daha kötü (ğşĞŞİ yok), silindi. Çare: alt etiketlerde küçük harf kullan
+    ("Hızlı Eşleşme • Dereceli"); başlıklardaki GERİ/GRAFİK gibi İ'ler fallback ile kalıyor (kabul edildi).
+  - MakeCycler'ın ◀▶ okları "<" ">" yapıldı (iki fontta da glif yok, □ görünüyordu).
+- **Buton dili düzeltildi:** renkli yüzlü butonlar yerine BS'deki gibi **koyu füme plakalar**
+  (`MakePlate`/`MakeBrawlBtn`: PlateDark + koyu alt kenar + hafif skew + solda renkli daire-harf ikon
+  rozeti + beyaz konturlu yazı). Renk yalnız vurguda: MARKET ve OYNA sarı (BS DÜKKAN/OYNA), fiyatlar yeşil.
+- **Yerleşim (BS ana ekranından birebir):** üst-sol: [avatar+ad plakası][kupa kutusu: K rozeti + sayı +
+  lig] iki ayrı plaka (ikisi de Sıralama açar); üst-sağ: [gold][gem] plakaları + **☰ menü butonu**
+  (3 beyaz çubuk, Image ile çizili); sol kolon: MARKET (sarı) + BAŞARIMLAR; alt-sol: GÖREVLER; alt-orta:
+  **mod plakası** ("HIZLI EŞLEŞME / Dereceli • Galibiyet +30 kupa" — BS'nin harita kutusu konumu, tıklayınca
+  online lobi); alt-sağ: büyük sarı OYNA. Footer tamamen kaldırıldı (sürüm Ayarlar'ın altına taşındı).
+- **☰ Çekmece (kullanıcının özellikle istediği):** sağdan 0.14s ease-out ile kayan koyu plaka listesi —
+  AYARLAR / SIRALAMA / YEREL MAÇ / HESAP (HESAP → Ayarlar'ın Hesap sekmesi); dışına tıklayınca kapanır
+  (şeffaf karartma butonu). `SetDrawer(bool)` + `SlideDrawer` coroutine, MainMenuUI içinde.
+- **Arka plan:** simsiyah uzay yerine canlı BS lobisi: mor dikey gradyan + solda mavi/sağda pembe dev
+  radyal glow + **soluk desen dokusu** (`BuildPattern`: alfa 0.022, döndürülmüş yuvarlatık karolar —
+  BS kurukafa deseninin karşılığı) + mevcut yıldız alanı/gezegen ufku.
+- **Ayarlar ekranı BS mavisine geçti** (2. referans görüntü): tam ekran mavi gradyan + desen, beyaz
+  konturlu AYARLAR başlığı, mavi sekme plakaları, koyu GERİ.
+- **Doğrulama:** Play Mode ekran görüntüleri — hub (yeni yerleşim, yumuşak desen, OYNA alt yazısı düzgün),
+  çekmece açık hali (BS 3. görüntüdeki dizilişle aynı), mavi AYARLAR, MARKET paneli yeni fontla. Derleme
+  temiz, konsolda yeni hata yok.

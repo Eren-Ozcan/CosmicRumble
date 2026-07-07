@@ -63,9 +63,8 @@ public class GameInitializer : MonoBehaviour
         var allPlayers = new List<GravityBody>();
 
         // ── 3. İnsan oyuncuyu spawn et (slot 0) ──────────────────────────
-        string humanName = (AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn)
-            ? AuthManager.Instance.CurrentUsername
-            : "Oyuncu";
+        // PlayerIdentity tek kaynak: bağlı hesap adı ya da üretilmiş takma ad ("Guest" asla görünmez)
+        string humanName = PlayerIdentity.Get();
 
         if (_humanPrefab != null)
         {

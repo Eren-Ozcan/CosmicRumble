@@ -5,22 +5,27 @@ using TMPro;
 using CosmicRumble.Economy.IAP;
 
 /// <summary>
-/// Ana menüdeki "SHOP" butonu → Gem satın alma paneli. IAPManager.GemPacks'teki her paket için
-/// bir satır: paket adı, verilecek Gem miktarı, mağazadan gelen fiyat (henüz mağaza bağlanmadıysa
-/// "--"), ve bir Buy butonu. Programatik Canvas oluşturur, MenuScene'e boş GO ekleyip scripti
-/// yapıştır.
+/// Ana menüdeki MARKET butonu → Gem satın alma paneli. Modern mobil mağaza düzeni:
+/// yan yana dikey paket kartları (gem ikonu + miktar + fiyatlı satın al butonu), popüler
+/// pakette rozet. IAPManager.GemPacks kataloğunu kullanır; mağaza bağlanmadıysa fiyat "--".
+/// UiKit stiliyle programatik Canvas kurar.
 /// </summary>
 public class ShopPanelUI : MonoBehaviour
 {
     public static ShopPanelUI Instance { get; private set; }
 
-    static readonly Color BgColor      = new Color(0.051f, 0.051f, 0.102f, 0.97f);
-    static readonly Color CardBg       = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.20f,  1f);
-    static readonly Color PrimaryBtn   = new Color(0.60f,  0.85f,  1.00f,  1f);
-    static readonly Color PrimaryHover = new Color(0.72f,  0.92f,  1.00f,  1f);
-    static readonly Color GemColor     = new Color(0.60f,  0.85f,  1.00f,  1f);
-    static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color CardBg     = new Color(0.07f,  0.07f,  0.16f,  0.97f);
+    static readonly Color PackBg     = new Color(0.11f,  0.11f,  0.21f,  1f);
+    static readonly Color PackBgTop  = new Color(0.16f,  0.16f,  0.30f,  1f);
+    static readonly Color BuyGreen   = new Color(0.16f,  0.72f,  0.26f,  1f);
+    static readonly Color GemColor   = new Color(0.60f,  0.85f,  1.00f,  1f);
+    static readonly Color BadgeGold  = new Color(1.00f,  0.72f,  0.00f,  1f);
+    static readonly Color TextSec    = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color StrokeCol  = new Color(1f, 1f, 1f, 0.09f);
+
+    /// <summary>Rozet gösterilecek paketler (indeks → etiket).</summary>
+    const int PopularPackIndex   = 2; // gem_pack_1200
+    const int BestValuePackIndex = 4; // gem_pack_6000
 
     GameObject _panelRoot;
     TextMeshProUGUI[] _priceTexts;
@@ -64,9 +69,12 @@ public class ShopPanelUI : MonoBehaviour
     {
         var packs = IAPManager.GemPacks;
         for (int i = 0; i < packs.Length && i < _priceTexts.Length; i++)
-            _priceTexts[i].text = IAPManager.Instance != null
+        {
+            string price = IAPManager.Instance != null
                 ? IAPManager.Instance.GetLocalizedPrice(packs[i].productId)
                 : "--";
+            _priceTexts[i].text = string.IsNullOrEmpty(price) ? "--" : price;
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -91,37 +99,142 @@ public class ShopPanelUI : MonoBehaviour
         overlay.color = new Color(0, 0, 0, 0.65f);
         StretchFull(overlay.rectTransform);
 
-        var card = MakeCard(_panelRoot, "Card", new Vector2(0.5f, 0.5f), new Vector2(560, 520));
-
-        MakeText(card, "Title", "GEM SHOP", 28, new Vector2(0.5f, 0.93f), new Vector2(500, 46), Color.white);
-
-        MakeSmallButton(card, "btn_close", "X CLOSE",
-            new Vector2(0.85f, 0.93f), new Vector2(110, 34), Hide);
-
         var packs = IAPManager.GemPacks;
         _priceTexts = new TextMeshProUGUI[packs.Length];
 
-        float top = 0.80f;
-        float step = 0.145f;
+        // Kart: 5 paket yan yana rahat sığsın (yatay telefon ekranı)
+        var card = new GameObject("Card");
+        card.transform.SetParent(_panelRoot.transform, false);
+        var cardImg = card.AddComponent<Image>();
+        cardImg.color = CardBg;
+        UiKit.Round(cardImg);
+        UiKit.Shadow(card, 8f, 0.55f);
+        UiKit.Stroke(card, StrokeCol);
+        UiKit.Pop(card);
+        var cardRt = cardImg.rectTransform;
+        cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRt.sizeDelta = new Vector2(1060, 560);
+        cardRt.anchoredPosition = Vector2.zero;
+
+        var title = MakeText(card, "Title", "MARKET", 30,
+            new Vector2(0.5f, 0.92f), new Vector2(500, 46), GemColor);
+        title.fontStyle = FontStyles.Bold;
+
+        MakeText(card, "Subtitle", "Gem paketleri — kostüm ve sandıklar için", 14,
+            new Vector2(0.5f, 0.845f), new Vector2(600, 24), TextSec);
+
+        UiKit.CloseButton(card, Hide);
+
+        // ── Paket kartları: yatay sıra ───────────────────────────────────
+        float packW   = 188f;
+        float gap     = 14f;
+        float totalW  = packs.Length * packW + (packs.Length - 1) * gap;
+        float startX  = -totalW * 0.5f + packW * 0.5f;
+
         for (int i = 0; i < packs.Length; i++)
         {
-            var pack = packs[i];
-            var row = MakeCard(card, $"Row_{pack.productId}", new Vector2(0.5f, top - step * i), new Vector2(500, 84));
-            row.GetComponent<Image>().color = RowBg;
-
-            MakeText(row, "Name", pack.displayName, 16, new Vector2(0.30f, 0.65f), new Vector2(280, 24), Color.white);
-            MakeText(row, "Amount", $"{pack.gemAmount} Gem", 18, new Vector2(0.30f, 0.30f), new Vector2(280, 26), GemColor);
-
-            _priceTexts[i] = MakeText(row, "Price", "--", 14, new Vector2(0.72f, 0.5f), new Vector2(90, 24), TextSec);
-
-            string productId = pack.productId;
-            MakeSmallButton(row, "btn_buy", "BUY",
-                new Vector2(0.90f, 0.5f), new Vector2(80, 44),
-                () => IAPManager.Instance?.BuyGemPack(productId));
+            BuildPackCard(card, packs[i], i,
+                new Vector2(startX + i * (packW + gap), -40f), new Vector2(packW, 360f));
         }
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
         _panelRoot.SetActive(false);
+    }
+
+    /// <summary>Tek paket kartı: gradyanlı zemin, gem dairesi, miktar, ad, fiyatlı SATIN AL.</summary>
+    void BuildPackCard(GameObject parent, GemPackDefinition pack, int index,
+        Vector2 pos, Vector2 size)
+    {
+        var cardGO = new GameObject($"Pack_{pack.productId}");
+        cardGO.transform.SetParent(parent.transform, false);
+        var img = cardGO.AddComponent<Image>();
+        img.color = Color.white;
+        UiKit.Round(img, 1.2f);
+        UiKit.Gradient(img, PackBgTop, PackBg);
+        UiKit.Shadow(cardGO, 5f, 0.45f);
+        UiKit.Stroke(cardGO, StrokeCol, 1.2f);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = pos;
+
+        // Rozet (popüler / en iyi değer)
+        string badge = index == PopularPackIndex   ? "POPÜLER"
+                     : index == BestValuePackIndex ? "EN İYİ DEĞER" : null;
+        if (badge != null)
+        {
+            var badgeGO = new GameObject("Badge");
+            badgeGO.transform.SetParent(cardGO.transform, false);
+            var badgeImg = badgeGO.AddComponent<Image>();
+            badgeImg.color = BadgeGold;
+            UiKit.Round(badgeImg, 2.2f);
+            var brt = badgeImg.rectTransform;
+            brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 1f);
+            brt.sizeDelta = new Vector2(size.x - 34f, 30);
+            brt.anchoredPosition = new Vector2(0, 4); // üst kenardan hafif taşar
+            var bTxt = MakeText(badgeGO, "Lbl", badge, 13,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Color(0.18f, 0.12f, 0.02f, 1f));
+            bTxt.fontStyle = FontStyles.Bold;
+            StretchFull(bTxt.rectTransform);
+        }
+
+        // Gem ikonu (renkli daire + iç parlama)
+        var gemGO = new GameObject("GemIcon");
+        gemGO.transform.SetParent(cardGO.transform, false);
+        var gemImg = gemGO.AddComponent<Image>();
+        gemImg.sprite = UiKit.CircleSprite;
+        gemImg.color  = new Color(GemColor.r, GemColor.g, GemColor.b, 0.25f);
+        var gemRt = gemImg.rectTransform;
+        gemRt.anchorMin = gemRt.anchorMax = new Vector2(0.5f, 1f);
+        gemRt.sizeDelta = new Vector2(92, 92);
+        gemRt.anchoredPosition = new Vector2(0, -86);
+
+        var gemInnerGO = new GameObject("GemInner");
+        gemInnerGO.transform.SetParent(gemGO.transform, false);
+        var gemInner = gemInnerGO.AddComponent<Image>();
+        gemInner.sprite = UiKit.CircleSprite;
+        gemInner.color  = GemColor;
+        var giRt = gemInner.rectTransform;
+        giRt.anchorMin = giRt.anchorMax = new Vector2(0.5f, 0.5f);
+        giRt.sizeDelta = new Vector2(56, 56);
+        giRt.anchoredPosition = Vector2.zero;
+
+        // Miktar (büyük) + ad (küçük)
+        var amount = MakeText(cardGO, "Amount", $"{pack.gemAmount}", 34,
+            new Vector2(0.5f, 1f), new Vector2(160, 44), Color.white);
+        amount.fontStyle = FontStyles.Bold;
+        amount.rectTransform.anchoredPosition = new Vector2(0, -166);
+
+        MakeText(cardGO, "GemLbl", "GEM", 14,
+            new Vector2(0.5f, 1f), new Vector2(160, 22), GemColor)
+            .rectTransform.anchoredPosition = new Vector2(0, -196);
+
+        // Satın al butonu (fiyat butonun üstünde)
+        var buyGO = new GameObject("btn_buy");
+        buyGO.transform.SetParent(cardGO.transform, false);
+        var buyImg = buyGO.AddComponent<Image>();
+        buyImg.color = BuyGreen;
+        UiKit.Round(buyImg, 1.5f);
+        UiKit.Shadow(buyGO, 3f, 0.35f);
+        var buyBtn = buyGO.AddComponent<Button>();
+        buyBtn.targetGraphic = buyImg;
+        buyBtn.colors = UiKit.ButtonColors(BuyGreen);
+        string productId = pack.productId;
+        buyBtn.onClick.AddListener(() => IAPManager.Instance?.BuyGemPack(productId));
+        UiKit.Press(buyGO);
+        var buyRt = buyImg.rectTransform;
+        buyRt.anchorMin = buyRt.anchorMax = new Vector2(0.5f, 0f);
+        buyRt.sizeDelta = new Vector2(size.x - 28f, 58);
+        buyRt.anchoredPosition = new Vector2(0, 46);
+
+        _priceTexts[index] = MakeText(buyGO, "Price", "--", 17,
+            new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+        _priceTexts[index].fontStyle = FontStyles.Bold;
+        StretchFull(_priceTexts[index].rectTransform);
+
+        MakeText(cardGO, "BuyHint", "SATIN AL", 12,
+            new Vector2(0.5f, 0f), new Vector2(140, 20), TextSec)
+            .rectTransform.anchoredPosition = new Vector2(0, 16);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -135,19 +248,6 @@ public class ShopPanelUI : MonoBehaviour
         rt.offsetMin = rt.offsetMax = Vector2.zero;
     }
 
-    static GameObject MakeCard(GameObject parent, string name, Vector2 anchor, Vector2 size)
-    {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        img.color = CardBg;
-        var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta = size;
-        rt.anchoredPosition = Vector2.zero;
-        return go;
-    }
-
     static TextMeshProUGUI MakeText(GameObject parent, string name, string content,
         int size, Vector2 anchor, Vector2 sizeDelta, Color color)
     {
@@ -158,46 +258,11 @@ public class ShopPanelUI : MonoBehaviour
         txt.fontSize  = size;
         txt.color     = color;
         txt.alignment = TextAlignmentOptions.Center;
+        txt.overflowMode = TextOverflowModes.Ellipsis;
         var rt = txt.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = sizeDelta;
         rt.anchoredPosition = Vector2.zero;
         return txt;
-    }
-
-    static void MakeSmallButton(GameObject parent, string name, string label,
-        Vector2 anchor, Vector2 size, UnityEngine.Events.UnityAction callback)
-    {
-        var go  = new GameObject(name);
-        go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        img.color = PrimaryBtn;
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
-        btn.colors = new ColorBlock
-        {
-            normalColor      = PrimaryBtn,
-            highlightedColor = PrimaryHover,
-            pressedColor     = new Color(PrimaryBtn.r * 0.7f, PrimaryBtn.g * 0.7f, PrimaryBtn.b * 0.7f),
-            selectedColor    = PrimaryHover,
-            colorMultiplier  = 1f,
-            fadeDuration     = 0.1f
-        };
-        btn.onClick.AddListener(callback);
-        var rt  = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta = size;
-        rt.anchoredPosition = Vector2.zero;
-
-        var txtGO = new GameObject("Lbl");
-        txtGO.transform.SetParent(go.transform, false);
-        var txt   = txtGO.AddComponent<TextMeshProUGUI>();
-        txt.text      = label;
-        txt.fontSize  = 14;
-        txt.color     = Color.black;
-        txt.alignment = TextAlignmentOptions.Center;
-        var trt = txt.rectTransform;
-        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-        trt.offsetMin = trt.offsetMax = Vector2.zero;
     }
 }

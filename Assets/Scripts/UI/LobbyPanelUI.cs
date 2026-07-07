@@ -117,10 +117,8 @@ public class LobbyPanelUI : MonoBehaviour
         MakeText(card, "hdr", "CREATE LOBBY", 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
 
-        // Player name
-        string playerName = (AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn)
-            ? AuthManager.Instance.CurrentUsername
-            : "Guest";
+        // Player name — "Misafir/Guest" görünmez, PlayerIdentity tek kaynak
+        string playerName = PlayerIdentity.Get();
 
         MakeText(card, "playerName", playerName, 16,
             new Vector2(0.5f, 0.78f), new Vector2(280, 26), SuccessColor);
@@ -212,22 +210,13 @@ public class LobbyPanelUI : MonoBehaviour
 
     void RefreshStartButton()
     {
+        // Mobil akış: oturum açılışta sessizce kurulur (misafir varsayılan), giriş kapısı yok.
         if (_startBtnLabel == null) return;
-        bool loggedIn = AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn;
-        _startBtnLabel.text = loggedIn ? "START GAME" : "LOG IN AND START";
+        _startBtnLabel.text = "START GAME";
     }
 
     void OnStartClicked()
     {
-        bool loggedIn = AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn;
-
-        if (!loggedIn)
-        {
-            Hide();
-            LoginPanelUI.Instance?.Show();
-            return;
-        }
-
         // LobbyData doldur
         LobbyData.BotCount = _botCount;
         LobbyData.MapName  = "CosmicArena";

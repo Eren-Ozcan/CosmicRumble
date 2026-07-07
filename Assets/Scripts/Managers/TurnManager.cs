@@ -277,13 +277,53 @@ public class TurnManager : NetworkBehaviour
         Debug.Log($"[TurnManager] Game over — Winner: {winnerName ?? "None (Draw)"}");
         #endif
 
-        // ── Economy & Achievement entegrasyonu ────────────────────────────────
-        // Local player: characters listesinde kalan tek karakter = winner
-        // Multiplayer entegrasyonu gelince isLocalPlayerWinner doğru kaynaktan alınacak
-        bool isWinner = winner != null;
         float matchDuration = Time.time - _matchStartTime;
 
-        AchievementEvents.FireMatchCompleted(_totalShots);
+        if (IsSpawned && IsServer)
+        {
+            // Online: TriggerGameOver yalnızca server'da çalışır — game-over UI'ı, ödüller,
+            // başarımlar ve kupa değişimi HER makinede kendi yerel sonucuna göre RPC içinde
+            // işlenir (ClientRpc host'ta da çalışır, bu yüzden burada ayrıca YAPILMAZ; yoksa
+            // host çift ödül alırdı, client ise hiçbir şey görmezdi).
+            ulong winnerClientId = winner != null ? winner.OwnerClientId : ulong.MaxValue;
+            AnnounceMatchResultClientRpc(winnerClientId, winnerName ?? "", matchDuration, _totalShots);
+        }
+        else
+        {
+            // Offline hotseat: eski davranış — "biri kazandıysa" kazanan akışı (bkz. eski not:
+            // yerel oyuncu/bot ayrımı yapılmaz).
+            FinishMatchLocally(winner != null, winnerName, matchDuration, _totalShots);
+        }
+    }
+
+    [ClientRpc]
+    private void AnnounceMatchResultClientRpc(ulong winnerClientId, string winnerName, float matchDuration, int totalShots)
+    {
+        gameOver = true;
+
+        bool isDraw   = winnerClientId == ulong.MaxValue;
+        bool localWon = !isDraw &&
+                        NetworkManager.Singleton != null &&
+                        NetworkManager.Singleton.LocalClientId == winnerClientId;
+
+        // Kupa yalnızca DERECELİ (Quick Match) maçlarda değişir — arkadaş koduyla kurulan
+        // maçlar dostluk maçıdır, beraberlikte de değişim yok (Clash Royale kuralları).
+        bool ranked = CosmicRumble.Networking.NetworkBootstrap.Instance != null &&
+                      CosmicRumble.Networking.NetworkBootstrap.Instance.IsRankedMatch;
+        if (!isDraw && ranked)
+            CosmicRumble.Cloud.LeaderboardManager.Instance?.ReportOnlineMatchResult(localWon);
+
+        FinishMatchLocally(localWon, string.IsNullOrEmpty(winnerName) ? null : winnerName,
+                           matchDuration, totalShots);
+    }
+
+    /// <summary>
+    /// Maç sonu yerel işlemleri: başarım event'leri, ses, XP/Gold/sandık ödülleri ve game-over
+    /// ekranı. Offline'da server yolundan, online'da her makinede kendi RPC'sinden çağrılır.
+    /// </summary>
+    private void FinishMatchLocally(bool isWinner, string winnerName, float matchDuration, int totalShots)
+    {
+        AchievementEvents.FireMatchCompleted(totalShots);
         if (isWinner) AchievementEvents.FireMatchWon();
         else          AchievementEvents.FireMatchLost();
         AudioManager.Instance?.PlaySfx(isWinner ? "match_win" : "match_lose");
@@ -294,7 +334,6 @@ public class TurnManager : NetworkBehaviour
         CurrencyManager.Instance?.Add(CurrencyType.Gold, gold);
 
         ChestManager.Instance?.TryGrantChest(isWinner);
-        // ─────────────────────────────────────────────────────────────────────
 
         UIManager.Instance?.ShowGameOver(winnerName, xp, gold);
     }

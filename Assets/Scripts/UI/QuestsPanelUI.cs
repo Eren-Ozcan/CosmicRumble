@@ -6,24 +6,22 @@ using TMPro;
 using CosmicRumble.Economy;
 
 /// <summary>
-/// Ana menüdeki "QUESTS" butonu → günlük/haftalık/aylık görev paneli.
-/// Programatik Canvas oluşturur. MenuScene'e boş GO ekleyip scripti yapıştır.
+/// Ana menüdeki GÖREVLER butonu → günlük/haftalık/aylık görev paneli.
+/// UiKit stiliyle (yuvarlatık kart + pill sekmeler + pop animasyonu + köşe X) programatik Canvas kurar.
 /// </summary>
 public class QuestsPanelUI : MonoBehaviour
 {
     public static QuestsPanelUI Instance { get; private set; }
 
-    // ── Renk paleti ───────────────────────────────────────────────────────
-    static readonly Color BgColor      = new Color(0.051f, 0.051f, 0.102f, 0.97f);
-    static readonly Color CardBg       = new Color(0.09f,  0.09f,  0.18f,  1f);
+    // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
+    static readonly Color CardBg       = new Color(0.07f,  0.07f,  0.16f,  0.97f);
     static readonly Color PrimaryBtn   = new Color(0.12f,  0.68f,  0.22f,  1f);
-    static readonly Color PrimaryHover = new Color(0.18f,  0.82f,  0.30f,  1f);
-    static readonly Color TabOff       = new Color(0.16f,  0.16f,  0.28f,  1f);
-    static readonly Color TabOffHover  = new Color(0.22f,  0.22f,  0.36f,  1f);
-    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.20f,  1f);
-    static readonly Color RowBgAlt     = new Color(0.13f,  0.13f,  0.24f,  1f);
+    static readonly Color TabOff       = new Color(0.15f,  0.15f,  0.27f,  1f);
+    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.21f,  1f);
+    static readonly Color RowBgAlt     = new Color(0.13f,  0.13f,  0.25f,  1f);
     static readonly Color CompletedGr  = new Color(0.30f,  0.85f,  0.40f,  1f);
     static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color StrokeCol    = new Color(1f, 1f, 1f, 0.09f);
 
     enum Tab { Daily, Weekly, Monthly }
     Tab _currentTab = Tab.Daily;
@@ -109,19 +107,22 @@ public class QuestsPanelUI : MonoBehaviour
         StretchFull(overlay.rectTransform);
 
         var card = MakePanel(_panelRoot, "Card", CardBg, Vector2.zero,
-            new Vector2(760, 580), new Vector2(0.5f, 0.5f));
+            new Vector2(820, 600), new Vector2(0.5f, 0.5f));
+        UiKit.Round(card.GetComponent<Image>());
+        UiKit.Shadow(card, 8f, 0.55f);
+        UiKit.Stroke(card, StrokeCol);
+        UiKit.Pop(card);
 
-        MakeTxt(card, "Title", "QUESTS", 28, Color.white,
-            new Vector2(0.5f, 0.92f), new Vector2(680, 46));
+        var title = MakeTxt(card, "Title", "GÖREVLER", 30, CompletedGr,
+            new Vector2(0.5f, 0.925f), new Vector2(680, 46));
+        title.fontStyle = FontStyles.Bold;
 
-        MakeBtn(card, "btn_close", "X CLOSE",
-            new Vector2(0.88f, 0.92f), new Vector2(100, 34),
-            new Color(0.25f, 0.25f, 0.4f), new Color(0.38f, 0.38f, 0.58f), Hide);
+        UiKit.CloseButton(card, Hide);
 
         BuildTabs(card);
 
-        _resetText = MakeTxt(card, "ResetInfo", "", 12, TextSec,
-            new Vector2(0.5f, 0.775f), new Vector2(680, 20));
+        _resetText = MakeTxt(card, "ResetInfo", "", 13, TextSec,
+            new Vector2(0.5f, 0.765f), new Vector2(680, 20));
 
         BuildScrollView(card);
 
@@ -132,9 +133,9 @@ public class QuestsPanelUI : MonoBehaviour
     void BuildTabs(GameObject parent)
     {
         float y = 0.845f;
-        _tabDailyBtn   = MakeTabBtn(parent, "tab_daily",   "DAILY",   new Vector2(0.30f, y), () => SwitchTab(Tab.Daily));
-        _tabWeeklyBtn  = MakeTabBtn(parent, "tab_weekly",  "WEEKLY",  new Vector2(0.50f, y), () => SwitchTab(Tab.Weekly));
-        _tabMonthlyBtn = MakeTabBtn(parent, "tab_monthly", "MONTHLY", new Vector2(0.70f, y), () => SwitchTab(Tab.Monthly));
+        _tabDailyBtn   = MakeTabBtn(parent, "tab_daily",   "GÜNLÜK",   new Vector2(0.29f, y), () => SwitchTab(Tab.Daily));
+        _tabWeeklyBtn  = MakeTabBtn(parent, "tab_weekly",  "HAFTALIK", new Vector2(0.50f, y), () => SwitchTab(Tab.Weekly));
+        _tabMonthlyBtn = MakeTabBtn(parent, "tab_monthly", "AYLIK",    new Vector2(0.71f, y), () => SwitchTab(Tab.Monthly));
     }
 
     Button MakeTabBtn(GameObject parent, string name, string label, Vector2 anchor, UnityEngine.Events.UnityAction cb)
@@ -142,15 +143,18 @@ public class QuestsPanelUI : MonoBehaviour
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
+        UiKit.Round(img, 1.1f); // pill görünüm
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(cb);
+        UiKit.Press(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta        = new Vector2(160, 34);
+        rt.sizeDelta        = new Vector2(164, 44);
         rt.anchoredPosition = Vector2.zero;
 
-        var lbl = MakeTxt(go, "Lbl", label, 13, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);
+        var lbl = MakeTxt(go, "Lbl", label, 15, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);
+        lbl.fontStyle = FontStyles.Bold;
         StretchFull(lbl.rectTransform);
         return btn;
     }
@@ -173,8 +177,8 @@ public class QuestsPanelUI : MonoBehaviour
         var scrollRt = scrollGO.GetComponent<RectTransform>();
         scrollRt.anchorMin = new Vector2(0.5f, 0.5f);
         scrollRt.anchorMax = new Vector2(0.5f, 0.5f);
-        scrollRt.sizeDelta        = new Vector2(720, 380);
-        scrollRt.anchoredPosition = new Vector2(0, -60);
+        scrollRt.sizeDelta        = new Vector2(770, 400);
+        scrollRt.anchoredPosition = new Vector2(0, -70);
 
         var vpGO  = new GameObject("Viewport");
         vpGO.transform.SetParent(scrollGO.transform, false);
@@ -191,7 +195,7 @@ public class QuestsPanelUI : MonoBehaviour
         contentGO.transform.SetParent(vpGO.transform, false);
 
         var vlg = contentGO.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing              = 6;
+        vlg.spacing              = 8;
         vlg.padding              = new RectOffset(0, 0, 0, 0);
         vlg.childControlWidth    = true;
         vlg.childControlHeight   = true;
@@ -209,35 +213,6 @@ public class QuestsPanelUI : MonoBehaviour
         scrollRect.content = cRt;
 
         _contentParent = contentGO;
-
-        var sbGO  = new GameObject("Scrollbar");
-        sbGO.transform.SetParent(scrollGO.transform, false);
-        var sbImg = sbGO.AddComponent<Image>();
-        sbImg.color = new Color(0.12f, 0.12f, 0.25f);
-        var sb  = sbGO.AddComponent<Scrollbar>();
-        sb.direction = Scrollbar.Direction.BottomToTop;
-
-        var sbRt = sbImg.rectTransform;
-        sbRt.anchorMin = new Vector2(1, 0);
-        sbRt.anchorMax = new Vector2(1, 1);
-        sbRt.sizeDelta        = new Vector2(8, 0);
-        sbRt.anchoredPosition = Vector2.zero;
-
-        var haGO = new GameObject("Area"); haGO.transform.SetParent(sbGO.transform, false);
-        var haRt = haGO.AddComponent<RectTransform>();
-        haRt.anchorMin = Vector2.zero; haRt.anchorMax = Vector2.one;
-        haRt.offsetMin = haRt.offsetMax = Vector2.zero;
-
-        var hGO  = new GameObject("Handle"); hGO.transform.SetParent(haGO.transform, false);
-        var hImg = hGO.AddComponent<Image>(); hImg.color = PrimaryBtn;
-        var hRt  = hImg.rectTransform;
-        hRt.anchorMin = Vector2.zero; hRt.anchorMax = Vector2.one;
-        hRt.offsetMin = hRt.offsetMax = Vector2.zero;
-
-        sb.handleRect    = hRt;
-        sb.targetGraphic = hImg;
-        scrollRect.verticalScrollbar = sb;
-        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -254,7 +229,7 @@ public class QuestsPanelUI : MonoBehaviour
         var mgr = QuestManager.Instance;
         if (mgr == null)
         {
-            MakeEmptyRow("Quest system not available.");
+            MakeEmptyRow("Görev sistemi şu anda kullanılamıyor.");
             if (_resetText) _resetText.text = "";
             return;
         }
@@ -264,22 +239,22 @@ public class QuestsPanelUI : MonoBehaviour
         {
             case Tab.Weekly:
                 quests = mgr.GetActiveWeeklyQuests();
-                _resetText.text = $"Resets in {FormatRemaining(NextWeeklyReset())}";
+                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextWeeklyReset())} kaldı";
                 break;
             case Tab.Monthly:
                 var monthly = mgr.GetActiveMonthlyQuest();
                 quests = monthly != null ? new List<QuestDefinition> { monthly } : new List<QuestDefinition>();
-                _resetText.text = $"Resets in {FormatRemaining(NextMonthlyReset())}";
+                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextMonthlyReset())} kaldı";
                 break;
             default:
                 quests = mgr.GetActiveDailyQuests();
-                _resetText.text = $"Resets in {FormatRemaining(NextDailyReset())}";
+                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextDailyReset())} kaldı";
                 break;
         }
 
         if (quests == null || quests.Count == 0)
         {
-            MakeEmptyRow("No quests active right now.");
+            MakeEmptyRow("Şu anda aktif görev yok.");
             return;
         }
 
@@ -305,8 +280,9 @@ public class QuestsPanelUI : MonoBehaviour
     {
         if (btn == null) return;
         var img = btn.GetComponent<Image>();
-        img.color = active ? PrimaryBtn : TabOff;
-        btn.colors = ColorBlock(active ? PrimaryBtn : TabOff, active ? PrimaryHover : TabOffHover);
+        Color c = active ? PrimaryBtn : TabOff;
+        img.color  = c;
+        btn.colors = UiKit.ButtonColors(c);
     }
 
     void BuildRow(QuestDefinition def, int progress, bool completed, bool alt)
@@ -315,37 +291,39 @@ public class QuestsPanelUI : MonoBehaviour
         row.transform.SetParent(_contentParent.transform, false);
         var rowImg = row.AddComponent<Image>();
         rowImg.color = alt ? RowBg : RowBgAlt;
+        UiKit.Round(rowImg, 2f);
 
         var rowLE = row.AddComponent<LayoutElement>();
-        rowLE.preferredHeight = 78;
-        rowLE.minHeight       = 78;
+        rowLE.preferredHeight = 88;
+        rowLE.minHeight       = 88;
 
         var rowVLG = row.AddComponent<VerticalLayoutGroup>();
-        rowVLG.spacing              = 4;
-        rowVLG.padding              = new RectOffset(14, 14, 10, 10);
+        rowVLG.spacing              = 5;
+        rowVLG.padding              = new RectOffset(16, 16, 12, 12);
         rowVLG.childControlWidth    = true;
         rowVLG.childControlHeight   = true;
         rowVLG.childForceExpandWidth  = true;
         rowVLG.childForceExpandHeight = false;
 
-        // Üst satır: isim (sol) + ödül/durum (sağ) — tek satırda iki metin, basitlik için ayrı GO'lar horizontal group ile
+        // Üst satır: isim (sol) + ödül (sağ)
         var topRowGO = new GameObject("TopRow");
         topRowGO.transform.SetParent(row.transform, false);
         var topLE = topRowGO.AddComponent<LayoutElement>();
-        topLE.preferredHeight = 22;
+        topLE.preferredHeight = 24;
         var topHLG = topRowGO.AddComponent<HorizontalLayoutGroup>();
         topHLG.childControlWidth = true; topHLG.childControlHeight = true;
         topHLG.childForceExpandWidth = true; topHLG.childForceExpandHeight = false;
 
-        var nameTxt = MakeTxtLE(topRowGO, "Name", def.displayName, 15,
+        var nameTxt = MakeTxtLE(topRowGO, "Name", def.displayName, 16,
             completed ? CompletedGr : Color.white, TextAlignmentOptions.Left);
         nameTxt.fontStyle = FontStyles.Bold;
 
         string rewardStr = BuildRewardString(def);
-        MakeTxtLE(topRowGO, "Reward", rewardStr, 12, TextSec, TextAlignmentOptions.Right);
+        MakeTxtLE(topRowGO, "Reward", rewardStr, 13, new Color(1f, 0.80f, 0.20f, 1f),
+            TextAlignmentOptions.Right);
 
         // Açıklama
-        MakeTxtLE(row, "Desc", def.description, 11, TextSec, TextAlignmentOptions.Left);
+        MakeTxtLE(row, "Desc", def.description, 12, TextSec, TextAlignmentOptions.Left);
 
         // Progress bar + sayı
         var barRowGO = new GameObject("BarRow");
@@ -353,7 +331,7 @@ public class QuestsPanelUI : MonoBehaviour
         var barRowLE = barRowGO.AddComponent<LayoutElement>();
         barRowLE.preferredHeight = 16;
         var barHLG = barRowGO.AddComponent<HorizontalLayoutGroup>();
-        barHLG.spacing = 8;
+        barHLG.spacing = 10;
         barHLG.childControlWidth = true; barHLG.childControlHeight = true;
         barHLG.childForceExpandWidth = false; barHLG.childForceExpandHeight = true;
 
@@ -363,22 +341,27 @@ public class QuestsPanelUI : MonoBehaviour
         barBgLE.flexibleWidth = 1;
         var barBg = barBgGO.AddComponent<Image>();
         barBg.color = new Color(0.2f, 0.2f, 0.32f);
+        UiKit.Round(barBg, 4f);
 
         int clamped = Mathf.Clamp(progress, 0, Mathf.Max(1, def.targetValue));
-        float fill = def.targetValue > 0 ? (float)clamped / def.targetValue : 0f;
-        var fillGO  = new GameObject("Fill");
-        fillGO.transform.SetParent(barBgGO.transform, false);
-        var fillImg = fillGO.AddComponent<Image>();
-        fillImg.color = completed ? CompletedGr : PrimaryBtn;
-        var fillRt = fillImg.rectTransform;
-        fillRt.anchorMin = new Vector2(0, 0);
-        fillRt.anchorMax = new Vector2(Mathf.Clamp01(fill), 1);
-        fillRt.offsetMin = fillRt.offsetMax = Vector2.zero;
+        float fill = def.targetValue > 0 ? Mathf.Clamp01((float)clamped / def.targetValue) : 0f;
+        if (fill > 0.001f)
+        {
+            var fillGO  = new GameObject("Fill");
+            fillGO.transform.SetParent(barBgGO.transform, false);
+            var fillImg = fillGO.AddComponent<Image>();
+            fillImg.color = completed ? CompletedGr : PrimaryBtn;
+            UiKit.Round(fillImg, 4f);
+            var fillRt = fillImg.rectTransform;
+            fillRt.anchorMin = new Vector2(0, 0);
+            fillRt.anchorMax = new Vector2(fill, 1);
+            fillRt.offsetMin = fillRt.offsetMax = Vector2.zero;
+        }
 
-        var countCol = ColFixed(barRowGO, "Count", 70);
+        var countCol = ColFixed(barRowGO, "Count", 80);
         MakeTxt(countCol, "CountLbl",
-            completed ? "DONE" : $"{clamped}/{def.targetValue}",
-            12, completed ? CompletedGr : TextSec,
+            completed ? "TAMAM" : $"{clamped}/{def.targetValue}",
+            13, completed ? CompletedGr : TextSec,
             new Vector2(0.5f, 0.5f), Vector2.zero)
             .rectTransform.Let(rt => StretchFull(rt));
     }
@@ -396,9 +379,11 @@ public class QuestsPanelUI : MonoBehaviour
     {
         var go  = new GameObject("EmptyRow");
         go.transform.SetParent(_contentParent.transform, false);
-        go.AddComponent<Image>().color = RowBg;
+        var img = go.AddComponent<Image>();
+        img.color = RowBg;
+        UiKit.Round(img, 2f);
         var le = go.AddComponent<LayoutElement>();
-        le.preferredHeight = 60;
+        le.preferredHeight = 64;
 
         var txt = MakeTxt(go, "Msg", msg, 15, TextSec,
             new Vector2(0.5f, 0.5f), Vector2.zero);
@@ -435,8 +420,8 @@ public class QuestsPanelUI : MonoBehaviour
     static string FormatRemaining(TimeSpan span)
     {
         if (span.TotalDays >= 1)
-            return $"{(int)span.TotalDays}d {span.Hours}h";
-        return $"{span.Hours}h {span.Minutes}m";
+            return $"{(int)span.TotalDays}g {span.Hours}s";
+        return $"{span.Hours}s {span.Minutes}dk";
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -503,46 +488,10 @@ public class QuestsPanelUI : MonoBehaviour
         return txt;
     }
 
-    static void MakeBtn(GameObject parent, string name, string label,
-        Vector2 anchor, Vector2 size, Color normal, Color hover,
-        UnityEngine.Events.UnityAction cb)
-    {
-        var go  = new GameObject(name);
-        go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        img.color = normal;
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
-        btn.colors = ColorBlock(normal, hover);
-        btn.onClick.AddListener(cb);
-        var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta        = size;
-        rt.anchoredPosition = Vector2.zero;
-
-        var lblGO = new GameObject("Lbl"); lblGO.transform.SetParent(go.transform, false);
-        var lbl   = lblGO.AddComponent<TextMeshProUGUI>();
-        lbl.text      = label; lbl.fontSize = 13; lbl.color = Color.white;
-        lbl.alignment = TextAlignmentOptions.Center;
-        var lrt = lbl.rectTransform;
-        lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-        lrt.offsetMin = lrt.offsetMax = Vector2.zero;
-    }
-
     static void StretchFull(RectTransform rt)
     {
         rt.anchorMin = Vector2.zero;
         rt.anchorMax = Vector2.one;
         rt.offsetMin = rt.offsetMax = Vector2.zero;
     }
-
-    static ColorBlock ColorBlock(Color normal, Color hover) => new ColorBlock
-    {
-        normalColor      = normal,
-        highlightedColor = hover,
-        pressedColor     = new Color(normal.r * 0.7f, normal.g * 0.7f, normal.b * 0.7f),
-        selectedColor    = hover,
-        colorMultiplier  = 1f,
-        fadeDuration     = 0.1f
-    };
 }

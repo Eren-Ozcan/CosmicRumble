@@ -84,9 +84,10 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
         if (NetworkBootstrap.Instance.IsHostAfterQuickMatch)
         {
-            // Havuzda bekleyen kimse yoktu, kendi genel oturumumuzu kurduk — mevcut Host
-            // akışıyla aynı "rakip bekleniyor" durumuna giriyoruz.
-            _quickMatchStatusText.text = $"Kod: {NetworkBootstrap.Instance.LastJoinCode}\nRakip bekleniyor...";
+            // Havuzda bekleyen kimse yoktu, kendi genel oturumumuzu kurduk — rakip bekliyoruz.
+            // Katılım kodu bilerek GÖSTERİLMEZ: bu dereceli bir oturum, koda bir arkadaş katılırsa
+            // taraflar maçın dereceli olup olmadığı konusunda uyuşmazdı.
+            _quickMatchStatusText.text = "Rakip bekleniyor...";
             _waitingForOpponent = true;
             _quickMatchCancelBtn.SetActive(true);
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -213,13 +214,14 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.90f), new Vector2(600, 50), Color.white);
 
         BuildQuickMatchCard();
-        MakeText(_panelRoot, "orDivider", "— ya da bir arkadaşını davet et —", 16,
+        MakeText(_panelRoot, "friendsHeader", "ARKADAŞINLA OYNA  —  dostluk maçı, kupa değişmez", 16,
             new Vector2(0.5f, 0.46f), new Vector2(700, 30), TextSec);
         BuildHostCard();
         BuildJoinCard();
 
-        MakeSmallButton(_panelRoot, "btn_back", "← BACK",
-            new Vector2(0.5f, 0.06f), new Vector2(160, 46), OnBackClicked);
+        MakeSmallButton(_panelRoot, "btn_back", "GERİ",
+            new Vector2(0.5f, 0.06f), new Vector2(200, 56), OnBackClicked,
+            new Color(0.30f, 0.30f, 0.45f, 1f));
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnBackClicked;
         _panelRoot.SetActive(false);
@@ -229,15 +231,20 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.68f), new Vector2(520, 220));
 
-        MakeText(card, "hdr", "HIZLI EŞLEŞME", 24, new Vector2(0.5f, 0.86f), new Vector2(460, 36), Color.white);
+        MakeText(card, "hdr", "HIZLI EŞLEŞME — DERECELİ", 24, new Vector2(0.5f, 0.88f), new Vector2(460, 36), Color.white);
+        MakeText(card, "hint", "Galibiyet +30 kupa  •  Mağlubiyet −20 kupa", 14,
+            new Vector2(0.5f, 0.76f), new Vector2(460, 24), TextSec);
+        // Birincil eylem: büyük, yeşil OYNA (mobil ana akış)
         MakeSmallButton(card, "btn_quickmatch", "OYNA",
-            new Vector2(0.5f, 0.62f), new Vector2(280, 58), OnQuickMatchClicked);
+            new Vector2(0.5f, 0.54f), new Vector2(320, 68), OnQuickMatchClicked,
+            new Color(0.13f, 0.72f, 0.35f, 1f));
 
         _quickMatchStatusText = MakeText(card, "status", "", 16,
             new Vector2(0.5f, 0.24f), new Vector2(460, 90), CodeColor);
 
         _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", "İPTAL ET",
-            new Vector2(0.5f, 0.10f), new Vector2(200, 40), OnQuickMatchCancelClicked);
+            new Vector2(0.5f, 0.11f), new Vector2(220, 48), OnQuickMatchCancelClicked,
+            new Color(0.30f, 0.30f, 0.45f, 1f));
         _quickMatchCancelBtn.SetActive(false);
     }
 
@@ -245,15 +252,18 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_panelRoot, "HostCard", new Vector2(0.28f, 0.24f), new Vector2(420, 340));
 
-        MakeText(card, "hdr", "HOST", 22, new Vector2(0.5f, 0.88f), new Vector2(360, 34), Color.white);
-        MakeSmallButton(card, "btn_host", "HOST OLUŞTUR",
-            new Vector2(0.5f, 0.66f), new Vector2(260, 54), OnHostClicked);
+        MakeText(card, "hdr", "KOD OLUŞTUR", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
+        MakeText(card, "hint", "Kodu arkadaşına gönder", 14,
+            new Vector2(0.5f, 0.80f), new Vector2(360, 24), TextSec);
+        MakeSmallButton(card, "btn_host", "KOD OLUŞTUR",
+            new Vector2(0.5f, 0.63f), new Vector2(290, 62), OnHostClicked);
 
         _hostStatusText = MakeText(card, "status", "", 16,
             new Vector2(0.5f, 0.36f), new Vector2(380, 160), CodeColor);
 
         _cancelBtn = MakeSmallButton(card, "btn_cancel", "İPTAL ET",
-            new Vector2(0.5f, 0.10f), new Vector2(200, 44), OnCancelClicked);
+            new Vector2(0.5f, 0.10f), new Vector2(220, 48), OnCancelClicked,
+            new Color(0.30f, 0.30f, 0.45f, 1f));
         _cancelBtn.SetActive(false);
     }
 
@@ -261,13 +271,15 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_panelRoot, "JoinCard", new Vector2(0.72f, 0.24f), new Vector2(420, 340));
 
-        MakeText(card, "hdr", "JOIN", 22, new Vector2(0.5f, 0.88f), new Vector2(360, 34), Color.white);
+        MakeText(card, "hdr", "KODA KATIL", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
+        MakeText(card, "hint", "Arkadaşının kodunu gir", 14,
+            new Vector2(0.5f, 0.80f), new Vector2(360, 24), TextSec);
 
         _codeInput = MakeInputField(card, "codeInput",
-            new Vector2(0.5f, 0.66f), new Vector2(260, 50));
+            new Vector2(0.5f, 0.64f), new Vector2(260, 50));
 
         MakeSmallButton(card, "btn_join", "KATIL",
-            new Vector2(0.5f, 0.50f), new Vector2(260, 54), OnJoinClicked);
+            new Vector2(0.5f, 0.43f), new Vector2(290, 62), OnJoinClicked);
 
         _joinStatusText = MakeText(card, "status", "", 16,
             new Vector2(0.5f, 0.28f), new Vector2(380, 120), TextSec);
@@ -290,6 +302,8 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = CardBg;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 6f, 0.50f);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
@@ -319,7 +333,8 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         var go = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
-        img.color = new Color(1f, 1f, 1f, 0.9f);
+        img.color = new Color(1f, 1f, 1f, 0.92f);
+        UiKit.Round(img, 1.3f);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
@@ -360,22 +375,20 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     static GameObject MakeSmallButton(GameObject parent, string name, string label,
         Vector2 anchor, Vector2 size, UnityEngine.Events.UnityAction callback)
+        => MakeSmallButton(parent, name, label, anchor, size, callback, PrimaryBtn);
+
+    static GameObject MakeSmallButton(GameObject parent, string name, string label,
+        Vector2 anchor, Vector2 size, UnityEngine.Events.UnityAction callback, Color color)
     {
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
-        img.color = PrimaryBtn;
+        img.color = color;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 4f, 0.40f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.colors = new ColorBlock
-        {
-            normalColor      = PrimaryBtn,
-            highlightedColor = PrimaryHover,
-            pressedColor     = new Color(PrimaryBtn.r * 0.7f, PrimaryBtn.g * 0.7f, PrimaryBtn.b * 0.7f),
-            selectedColor    = PrimaryHover,
-            colorMultiplier  = 1f,
-            fadeDuration     = 0.1f
-        };
+        btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(callback);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;

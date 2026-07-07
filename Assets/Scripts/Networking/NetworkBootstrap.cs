@@ -28,6 +28,13 @@ namespace CosmicRumble.Networking
         public string LastJoinCode { get; private set; }
         public bool IsBusy { get; private set; }
 
+        /// <summary>
+        /// Bu oturum DERECELİ mi? Quick Match ile kurulan maçlar dereceli (kupa +30/−20),
+        /// arkadaş koduyla (Host/Join) kurulanlar dostluk maçıdır — kupa değişmez
+        /// (Clash Royale'deki friendly battle kuralı). TurnManager maç sonunda bunu okur.
+        /// </summary>
+        public bool IsRankedMatch { get; private set; }
+
         [Header("Reconnect (client-tarafı, kendi bağlantımız koparsa)")]
         [Tooltip("Beklenmedik kopuşta kaç kez yeniden katılma denenecek. Host taraflı " +
                  "NetworkPlayerSpawner artık disconnect anında RemoveDisconnectedPeerAsync ile " +
@@ -80,6 +87,7 @@ namespace CosmicRumble.Networking
 
                 LastJoinCode = session.Code;
                 _wasClient = false;
+                IsRankedMatch = false; // arkadaş daveti = dostluk maçı
                 Debug.Log($"[NET] Hosted session, code={LastJoinCode}, IsHost={NetworkManager.Singleton.IsHost}");
                 return LastJoinCode;
             }
@@ -117,6 +125,7 @@ namespace CosmicRumble.Networking
                 var session = await MultiplayerService.Instance.MatchmakeSessionAsync(quickJoinOptions, sessionOptions);
                 _session = session;
                 LastJoinCode = session.Code;
+                IsRankedMatch = true; // Quick Match = dereceli (kupa sistemi işler)
 
                 bool becameHost = NetworkManager.Singleton.IsHost;
                 _wasClient = !becameHost;
@@ -157,6 +166,7 @@ namespace CosmicRumble.Networking
                 LastJoinCode = code;
                 _wasClient = true;
                 _intentionalLeave = false;
+                IsRankedMatch = false; // kodla katılma = dostluk maçı (reconnect bunu geri yükler, aşağıya bak)
                 Debug.Log($"[NET] Joined session code={code}, IsClient={NetworkManager.Singleton.IsClient}");
 
                 NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
@@ -202,6 +212,7 @@ namespace CosmicRumble.Networking
                         NetworkManager.Singleton.Shutdown();
                 }
                 LastJoinCode = null;
+                IsRankedMatch = false;
                 HideStatus();
             }
         }
@@ -248,6 +259,7 @@ namespace CosmicRumble.Networking
             if (clientId != NetworkManager.Singleton.LocalClientId) return; // başkasının kopuşu
 
             string codeToRetry = LastJoinCode;
+            bool wasRanked = IsRankedMatch; // JoinSessionAsync bayrağı sıfırlar; rejoin sonrası geri yüklenir
             if (string.IsNullOrEmpty(codeToRetry))
             {
                 Debug.LogWarning("[NET] Unexpected disconnect but no LastJoinCode to retry with.");
@@ -265,6 +277,7 @@ namespace CosmicRumble.Networking
                 bool ok = await JoinSessionAsync(codeToRetry);
                 if (ok)
                 {
+                    IsRankedMatch = wasRanked; // dereceli maça rejoin, dereceli kalır
                     Debug.Log("[NET] Reconnect succeeded.");
                     HideStatus();
                     return;
