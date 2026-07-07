@@ -144,7 +144,7 @@ public class TrajectoryDots : MonoBehaviour
         for (int i = 0; i < _dots.Count; i++)
         {
             // Strateji üzerinden ivme hesapla — GravityManager.Instance.Strategy.CalculateAcceleration
-            // Single/MultiPlanetGravity, GravitySource.OnTriggerStay2D ile aynı sabit kuvvet formülünü kullanır.
+            // Single/MultiPlanetGravity, GravitySource.FixedUpdate ile aynı sabit kuvvet formülünü kullanır.
             Vector2 acc = (GravityManager.Instance != null && GravityManager.Instance.Strategy != null)
                 ? GravityManager.Instance.Strategy.CalculateAcceleration(pos)
                 : Vector2.zero;

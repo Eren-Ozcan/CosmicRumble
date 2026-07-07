@@ -17,6 +17,9 @@ public class ProjectileBase : MonoBehaviour
 
     [Header("Genel Ayarlar")]
     public bool destroyWhenOffScreen = true;
+    [Tooltip("Ekran dışına çıkan mermi bu kadar saniye içinde tekrar görünmezse yok edilir — " +
+             "uzun yörüngeli (gezegen arkasından dolanan) atışların anında ölmesini engeller.")]
+    public float offscreenGraceTime = 3f;
     public float timeToLive = 10f;
 
     protected Rigidbody2D rb;
@@ -38,6 +41,9 @@ public class ProjectileBase : MonoBehaviour
 
     protected virtual void Start()
     {
+        // Start, dinamik NGO spawn'larından sonra çalışır: offline'da IsSpawned=false kalır ve
+        // NetworkRigidbody2D'nin Awake'te zorladığı Kinematic geri alınır (yoksa yerçekimi AddForce'u no-op olur).
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         spawnTime = Time.time;
         StartCoroutine(TemporaryIgnoreCharacters());
         CameraController.OnProjectileSpawned(transform);
@@ -66,7 +72,7 @@ public class ProjectileBase : MonoBehaviour
 
     protected virtual void FixedUpdate()
     {
-        // Gravity GravitySource.OnTriggerStay2D üzerinden uygulanır — Physics2D.gravity kapalı
+        // Gravity GravitySource.FixedUpdate üzerinden uygulanır — Physics2D.gravity kapalı
     }
 
     /// <summary>Calls NotifyProjectileSettled exactly once, regardless of how many destroy paths fire.</summary>
@@ -150,12 +156,22 @@ public class ProjectileBase : MonoBehaviour
 
     protected virtual void OnBecameInvisible()
     {
+        // Anında yok etme yerine tolerans süresi: yörüngedeki mermi ekrana geri dönerse yaşamaya
+        // devam eder (OnBecameVisible iptal eder); dönmezse süre sonunda temizlenir.
         if (destroyWhenOffScreen)
-        {
-            CameraController.OnProjectileDestroyed();
-            SettleOnce();
-            Destroy(gameObject);
-        }
+            Invoke(nameof(OffscreenExpired), offscreenGraceTime);
+    }
+
+    protected virtual void OnBecameVisible()
+    {
+        CancelInvoke(nameof(OffscreenExpired));
+    }
+
+    private void OffscreenExpired()
+    {
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
+        Destroy(gameObject);
     }
 
     protected virtual void Update()

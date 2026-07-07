@@ -33,6 +33,7 @@ public class HandGrenadeProjectile : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         owner = ownerObj;
 
         // Temporarily ignore all characters for 0.3 s to prevent spawn-push

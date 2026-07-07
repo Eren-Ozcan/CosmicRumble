@@ -62,6 +62,7 @@ public class KineticProjectile : MonoBehaviour
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 0.5f)
     {
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         owner = ownerObj;
         ignoreOwnerTime = ignoreTime;
         lastPos = rb.position;

@@ -33,6 +33,7 @@ public class BlackHoleProjectile : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         owner = ownerObj;
 
         // velocity düzeltme

@@ -22,6 +22,11 @@ namespace CosmicRumble.Gravity
             Vector2 to = (Vector2)_planet.transform.position - fromPosition;
             if (to.sqrMagnitude < 1e-4f) return Vector2.zero;
 
+            // gravityRadius dışında çekim yok — GravitySource.FixedUpdate ile aynı sınır,
+            // yoksa yörünge tahmini gerçek fizikten sapar.
+            if (to.sqrMagnitude > _planet.gravityRadius * _planet.gravityRadius)
+                return Vector2.zero;
+
             return to.normalized * _planet.gravityForce;
         }
     }

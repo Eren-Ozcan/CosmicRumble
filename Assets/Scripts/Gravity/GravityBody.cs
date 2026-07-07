@@ -174,8 +174,33 @@ public class GravityBody : NetworkBehaviour
             ? GravityManager.Instance.Strategy.CalculateAcceleration(transform.position)
             : Vector2.zero;
 
+        // Baskın kaynak = bize en yakın gezegen (gravityRadius içindekiler önceliklidir).
+        // Eskiden körlemesine AllSources[0] alınıyordu — çok gezegenli sahnede ikinci gezegenin
+        // üzerindeyken zıplama yönü ve kamera rotasyonu ilk gezegene göre (yanlış) hesaplanıyordu.
         var allSrc = GravitySource.AllSources;
-        DominantSource = allSrc.Count > 0 ? allSrc[0] : null;
+        {
+            GravitySource best = null;
+            float bestSqr = float.PositiveInfinity;
+            bool bestInRange = false;
+            Vector2 myPos = transform.position;
+
+            for (int i = 0; i < allSrc.Count; i++)
+            {
+                var src = allSrc[i];
+                if (!src) continue;
+
+                float sqr = ((Vector2)src.transform.position - myPos).sqrMagnitude;
+                bool inRange = sqr <= src.gravityRadius * src.gravityRadius;
+
+                if ((inRange && !bestInRange) || (inRange == bestInRange && sqr < bestSqr))
+                {
+                    best = src;
+                    bestSqr = sqr;
+                    bestInRange = inRange;
+                }
+            }
+            DominantSource = best;
+        }
 
         if (netGravity.sqrMagnitude > 0.001f)
             _gravDir = netGravity.normalized;
@@ -252,7 +277,7 @@ public class GravityBody : NetworkBehaviour
         // ── 4. Rotasyon ───────────────────────────────────────────────────────
         // Zone 1-2 (≤75°): yüzey normaline doğru smooth lerp → ayaklar yüzeye dik
         // Zone 3 (>75°) / havada: yerçekimi yönüne göre radyal
-        // Force is applied by GravitySource.OnTriggerStay2D — only update orientation here
+        // Force is applied by GravitySource.FixedUpdate — only update orientation here
         Vector2 targetUp = (_isGrounded && surfaceAngle <= stableAngleLimit)
             ? surfaceNormal
             : (Vector2)(-_gravDir);

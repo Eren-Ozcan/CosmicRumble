@@ -58,27 +58,58 @@ public class GravitySource : MonoBehaviour
         gravityCollider.radius = worldScale > 0f ? gravityRadius / worldScale : gravityRadius;
     }
 
-    private void OnTriggerStay2D(Collider2D other)
+    // ── Yerçekimi kuvveti uygulaması ────────────────────────────────────────
+    // Eskiden OnTriggerStay2D ile yapılıyordu, ama bu yapı kırılgandı: trigger collider child
+    // "GravityTrigger" objesinde ve hiyerarşide Rigidbody2D olmadığı için Unity o child'ın trigger
+    // callback'lerini bu script'e HİÇ iletmiyordu — çekim yalnızca, sahnedeki Planet_Interior
+    // collider'ının (script'le aynı objede) elle trigger yapılmış olması sayesinde çalışıyordu ve
+    // yarıçapı gravityRadius ile eşleşmiyordu. Artık kuvvet FixedUpdate'te gravityRadius içindeki
+    // tüm dinamik Rigidbody2D'lere doğrudan uygulanır: mermiler dahil her şey gezegen merkezine
+    // çekilir, etki alanı tam olarak gravityRadius'tur ve TrajectoryDots'un Strategy tabanlı
+    // tahminiyle birebir aynı formül kullanılır.
+    private static readonly Collider2D[] _overlapBuffer = new Collider2D[64];
+    private static readonly HashSet<Rigidbody2D> _seenBodies = new HashSet<Rigidbody2D>();
+    private static ContactFilter2D _overlapFilter = CreateOverlapFilter();
+
+    private static ContactFilter2D CreateOverlapFilter()
     {
-        if (other.attachedRigidbody == null) return;
+        var f = new ContactFilter2D();
+        f.NoFilter();
+        f.useTriggers = true; // mermi collider'ları trigger olabilir (KineticProjectile)
+        return f;
+    }
 
-        Rigidbody2D rb = other.attachedRigidbody;
+    private void FixedUpdate()
+    {
+        Vector2 center = transform.position;
+        int count = Physics2D.OverlapCircle(center, gravityRadius, _overlapFilter, _overlapBuffer);
 
-        Vector2 direction = (Vector2)transform.position - rb.position;
-        float distance = direction.magnitude;
-        if (distance <= 0f) return;
-        if (distance < 0.3f) return;
+        _seenBodies.Clear();
+        for (int i = 0; i < count; i++)
+        {
+            Rigidbody2D rb = _overlapBuffer[i] != null ? _overlapBuffer[i].attachedRigidbody : null;
+            if (rb == null) continue;
+            if (!_seenBodies.Add(rb)) continue;                     // aynı body'ye çift kuvvet yok
+            if (rb.bodyType != RigidbodyType2D.Dynamic) continue;   // kinematic/static: AddForce no-op
+            if (rb.IsSleeping()) continue;                          // uyuyan body'leri uyandırma
 
-        // Gravity formulas — choose one:
-        // 1/r² (realistic): force increases as character approaches center
-        //   → causes extreme pull near core, unpredictable gameplay feel
-        // float forceMag = gravityForce / (distance * distance);
+            Vector2 direction = center - rb.position;
+            float distance = direction.magnitude;
+            if (distance < 0.3f) continue; // merkez tekilliği koruması
 
-        // Constant (arcade): same pull everywhere regardless of distance
-        //   → consistent movement speed, recommended for turn-based gameplay
-        float forceMag = gravityForce;
+            // Gravity formulas — choose one:
+            // 1/r² (realistic): force increases as character approaches center
+            //   → causes extreme pull near core, unpredictable gameplay feel
+            // float forceMag = gravityForce / (distance * distance);
 
-        rb.AddForce(direction.normalized * forceMag, ForceMode2D.Force);
+            // Constant (arcade): same pull everywhere regardless of distance
+            //   → consistent movement speed, recommended for turn-based gameplay
+            // rb.mass ile çarpılır ki ivme kütleden bağımsız gravityForce olsun —
+            // IGravityStrategy.CalculateAcceleration (yörünge tahmini) ile birebir tutarlı.
+            float forceMag = gravityForce * rb.mass;
+
+            rb.AddForce(direction.normalized * forceMag, ForceMode2D.Force);
+        }
     }
 
 // Gizmo çizimi PlanetDebugVisualizer tarafından yapılır (ColliderDebugVisualizer.cs).

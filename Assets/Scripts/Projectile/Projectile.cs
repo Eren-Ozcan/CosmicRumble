@@ -13,6 +13,9 @@ public class Projectile : MonoBehaviour
     public float timeToLive = 15f;
     public float gravityScale = 0f;
     public bool destroyOnInvisible = true;
+    [Tooltip("Ekran dışına çıkan mermi bu kadar saniye içinde tekrar görünmezse yok edilir — " +
+             "uzun yörüngeli atışların anında ölmesini engeller.")]
+    public float offscreenGraceTime = 3f;
 
     [Header("Explosion & Damage")]
     public GameObject splashEffectPrefab;
@@ -51,6 +54,7 @@ public class Projectile : MonoBehaviour
 
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 1f)
     {
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         owner = ownerObj;
         ignoreOwnerTime = ignoreTime;
         spawnTime = Time.time;
@@ -98,12 +102,21 @@ public class Projectile : MonoBehaviour
 
     void OnBecameInvisible()
     {
+        // Anında yok etme yerine tolerans süresi — bkz. ProjectileBase.OnBecameInvisible.
         if (destroyOnInvisible)
-        {
-            CameraController.OnProjectileDestroyed();
-            SettleOnce();
-            Destroy(gameObject);
-        }
+            Invoke(nameof(OffscreenExpired), offscreenGraceTime);
+    }
+
+    void OnBecameVisible()
+    {
+        CancelInvoke(nameof(OffscreenExpired));
+    }
+
+    void OffscreenExpired()
+    {
+        CameraController.OnProjectileDestroyed();
+        SettleOnce();
+        Destroy(gameObject);
     }
 
     void SettleOnce(bool isHit = false)

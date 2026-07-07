@@ -84,6 +84,7 @@ public class TeleportOrbProjectile : MonoBehaviour
     /// </summary>
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
+        NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
         owner = ownerObj;
         rb.linearVelocity = initialVelocity;
         CameraController.OnProjectileSpawned(transform);
