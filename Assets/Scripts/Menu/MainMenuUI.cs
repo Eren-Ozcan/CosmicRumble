@@ -713,7 +713,10 @@ public class MainMenuUI : MonoBehaviour
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = faceImg;
         btn.colors = UiKit.ButtonColors(Color.white);
-        btn.onClick.AddListener(() => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
+        // Mod plakasından farklı olarak burada paneli açmakla yetinmiyoruz — hızlı eşleşmeyi
+        // direkt başlatıyoruz (oyuncu ortadaki plakadan modu inceleyebilir, ama OYNA'ya basınca
+        // ekstra bir "OYNA" tıklaması daha istemiyoruz).
+        btn.onClick.AddListener(() => { Click(); OnlineLobbyPanelUI.Instance?.ShowAndStartQuickMatch(); });
         UiKit.Pulse(go); // tek birincil eylem: sürekli çok hafif nefes (Press ile çakışmasın diye Press yok)
 
         var mainLbl = MakeTxt(faceGO, "Label", "OYNA", 50, FontStyles.Normal, Color.white,

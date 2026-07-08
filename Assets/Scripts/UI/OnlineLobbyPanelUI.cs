@@ -53,6 +53,15 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         _quickMatchCancelBtn.SetActive(false);
     }
 
+    /// <summary>Ana menüdeki büyük sarı OYNA butonu için: paneli açıp hızlı eşleşmeyi
+    /// hemen başlatır — oyuncu "Rakip aranıyor..." durumunu ve İPTAL butonunu direkt görür,
+    /// tekrar OYNA'ya basmasına gerek kalmaz.</summary>
+    public void ShowAndStartQuickMatch()
+    {
+        Show();
+        OnQuickMatchClicked();
+    }
+
     public void Hide() => _panelRoot.SetActive(false);
 
     // ════════════════════════════════════════════════════════════════════
