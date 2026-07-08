@@ -16,20 +16,27 @@ namespace CosmicRumble.Achievements
         public void Initialize(Action onReady)
         {
 #if GPGS_INSTALLED
-            PlayGamesPlatform.Activate();
-            Social.localUser.Authenticate(success =>
-            {
-#if UNITY_EDITOR
-                Debug.Log($"[GooglePlayAchievementProvider] Authenticate: {success}");
-#endif
-                onReady?.Invoke();
-            });
+            // Oturum kurulumu GooglePlayAuthProvider.Shared'da tekilleştirildi — AuthManager'ın
+            // açılıştaki sessiz girişiyle yarışmasın diye burada Activate/Authenticate çağrılmaz.
+            _ = AuthenticateViaSharedProviderAsync(onReady);
 #else
             Debug.LogWarning("[GooglePlayAchievementProvider] Google Play Games Plugin is not installed — " +
                 "see TODO.md 'Achievement platform providers' for setup steps. Falling back to no-op.");
             onReady?.Invoke();
 #endif
         }
+
+#if GPGS_INSTALLED
+        static async System.Threading.Tasks.Task AuthenticateViaSharedProviderAsync(Action onReady)
+        {
+            bool success = await CosmicRumble.Auth.GooglePlayAuthProvider.Shared
+                .EnsureAuthenticatedAsync(silent: true);
+#if UNITY_EDITOR
+            Debug.Log($"[GooglePlayAchievementProvider] Authenticate: {success}");
+#endif
+            onReady?.Invoke();
+        }
+#endif
 
         public void Tick() { }
 

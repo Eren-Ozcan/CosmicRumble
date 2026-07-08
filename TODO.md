@@ -160,6 +160,45 @@ no console errors).
          downloaded from Play Console → Play Games Services → Configuration, once step 1/2 exist.
       Everything else (the plugin, the define, the API calls) is ready and waiting on those three steps.
 
+## Google Play Games GİRİŞİ — Console/Dashboard kurulumu (yapılmadı, kod hazır)
+
+2026-07-08/09'daki sosyal+auth yenilemesinin (tam ekran login, Platform + Cosmic ID modeli,
+UGS Friends, davet lobisi) kod tarafı tamamen bitti ve Editor'da doğrulandı. Android'de Google
+girişinin fiilen çalışması için kalan adımların HEPSİ kullanıcının kendi Google hesaplarını
+gerektiriyor — kod değişikliği gerekmiyor:
+
+1. **Play Console'da uygulama kaydı** (taslak yeterli) + **Play Games Hizmetleri kurulumu**
+   (Büyüme → Play Games Hizmetleri → Yapılandırma → "Hayır, yeni oyun kur"; verilen 12 haneli
+   oyun kimliğini not et). Yukarıdaki "Achievement platform providers" bölümünün 1. adımıyla
+   aynı kayıt — bir kere yapılır, ikisine de yarar.
+2. **Android kimliği** (Credentials → Android): paket adı + APK'yı imzalayan keystore'un SHA-1'i.
+   Play App Signing anahtarı ile lokal test keystore'unun SHA-1'leri farklıysa İKİ ayrı Android
+   kimliği eklenmeli (en sık takılınan nokta: SHA-1 uyuşmazlığında giriş sessizce başarısız olur).
+3. **Oyun sunucusu kimliği** (Credentials → Game server): Google Cloud Console'da **Web
+   uygulaması** tipi OAuth istemcisi oluştur (Android tipi DEĞİL; ilk seferde OAuth izin ekranı
+   da doldurulur — Test modundaysa kendi Gmail'i test kullanıcılarına eklenmeli). Çıkan
+   **Client ID + Client Secret** kopyalanır.
+4. **Unity Dashboard** → Player Authentication → Identity Providers → **Google Play Games** →
+   3. adımdaki Web Client ID + Secret girilir → Enable. (Unity tarafındaki tek adım; Unity
+   hiçbir kimlik üretmez, sadece Google'ın verdiğini bildirirsin.)
+5. **Play Games Hizmetleri → Test kullanıcıları**: PGS yayınlanana kadar sadece bu listedekiler
+   giriş yapabilir — kendi hesabını ekle.
+6. **Unity Editor'da bir kere**: Window → Google Play Games → Setup → Android Setup — Play
+   Console "Kaynakları al" XML'i + 3. adımdaki WEB Client ID (yukarıdaki achievements bölümünün
+   3. adımıyla aynı sihirbaz, tek seferde ikisi de biter).
+7. **Cihaz testi**: 2. adımdaki keystore ile imzalı build → beklenen akış: açılışta sessiz
+   Google girişi → yükleme → menü; Ayarlar → Hesap'ta "GOOGLE — Bağlı (ad)".
+
+Kod tarafında hazır bekleyenler: `GooglePlayAuthProvider` (sessiz/etkileşimli auth code),
+`AuthManager.SignInWithPlatformAsync` (Link/SignIn + AccountAlreadyLinked hesap değişimi),
+LoginScreenUI'daki "GOOGLE İLE DEVAM ET" butonu (`UNITY_ANDROID && GPGS_INSTALLED`).
+
+Ayrıca ertelenen: **iOS Game Center girişi** — `AppleGameCenterAuthProvider` stub olarak duruyor
+(IsAvailable=false); iOS hattı kurulunca Apple.GameKit plugin'i + `SignInWithAppleGameCenterAsync`
+ile doldurulacak. **Arkadaş/davet uçtan uca testi** de iki gerçek kimlik gerektirir (Editor'daki
+testuser1 + ikinci cihaz/build'de ikinci Cosmic ID) — Editor'da tek taraflı doğrulandı
+(Friends init + kendi kodu "Pulsar630#51647" UGS'den geldi), iki taraflı akış cihaz testinde.
+
 ## Multiplayer
 
 ### Done (2026-07-04) — Milestone 1: two-client connection + turn sync, verified end-to-end

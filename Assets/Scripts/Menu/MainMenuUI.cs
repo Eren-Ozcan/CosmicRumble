@@ -62,8 +62,9 @@ public class MainMenuUI : MonoBehaviour
     TextMeshProUGUI _btnMoveLeftLabel, _btnMoveRightLabel, _btnJumpLabel;
     string _awaitingRebindFor; // null | "MoveLeft" | "MoveRight" | "Jump"
 
-    TextMeshProUGUI _accountStatusText, _accountActionLabel;
-    Button _accountActionBtn;
+    TextMeshProUGUI _accountStatusText;
+    TextMeshProUGUI _googleStatusText, _cosmicStatusText;
+    GameObject _googleLinkBtn, _cosmicLinkBtn, _logoutBtn;
 
     /// <summary>Simple prev/next value cycler used for Resolution/Quality settings rows.</summary>
     class CyclerControl
@@ -108,30 +109,67 @@ public class MainMenuUI : MonoBehaviour
     {
         EnsureCoreSingletons();
 
+        // Açılış perdesi: sessiz giriş + bulut senkronu bitene kadar menü görünmez.
+        LoadingScreenUI.Instance?.Show("Bağlanılıyor...");
+
+        // 1) Sessiz oturum kurtarma: session token bağlı hesabı geri yükler; Android'de
+        //    ayrıca sessiz GPGS bağlama denenir. IsGuest/CurrentUsername kimliklerden dolar
+        //    (eskiden restore edilen bağlı hesap bile misafir sayılıyordu — kapı her açılışta
+        //    çıkıyordu; artık çıkmaz).
+        if (AuthManager.Instance != null)
+        {
+            var silentTask = AuthManager.Instance.TrySilentSignInAsync();
+            while (!silentTask.IsCompleted) yield return null;
+        }
+
+        // 2) Giriş kapısı: adlı/platform hesabı yoksa TAM EKRAN giriş ekranı (popup değil).
+        //    Cihazda atlanamaz; Editor'da "MİSAFİR OLARAK DEVAM (TEST)" butonu var.
+        bool named = AuthManager.Instance != null && AuthManager.Instance.HasNamedAccount;
+        if (!named && LoginScreenUI.Instance != null)
+        {
+            LoadingScreenUI.Instance?.Hide();
+            var waitTask = LoginScreenUI.Instance.ShowAndWaitAsync();
+            while (!waitTask.IsCompleted) yield return null;
+            // Not: Cosmic ID Login() sahneyi yeniden yükler — o durumda bu coroutine ölür ve
+            // yeni bootstrap sessiz restore ile devam eder; buraya hiç dönülmez.
+            LoadingScreenUI.Instance?.Show("Bulut kaydı alınıyor...");
+        }
+        else
+        {
+            LoadingScreenUI.Instance?.SetStatus("Bulut kaydı alınıyor...");
+        }
+
+        // 3) Bulut senkronu — progress manager'lar oluşturulmadan ÖNCE bitmeli.
         if (CloudSaveManager.Instance != null)
             yield return CloudSaveManager.Instance.InitializeAndPull();
 
-        // Arka planda oturum her zaman kurulur (UGS servisleri + Register'ın misafir ilerlemesini
-        // devralabilmesi için anonim oturum şart) — ama bu bir UI durumu DEĞİL, "Misafir" hiçbir
-        // yerde görünmez (PlayerIdentity üretilmiş takma adı gösterir).
+        // 4) Offline/başarısızlık emniyeti: hâlâ oturum yoksa misafir olarak devam (oyun offline
+        //    da açılmalı) — "Misafir" UI'da görünmez, PlayerIdentity takma ad üretir.
         if (AuthManager.Instance != null && !AuthManager.Instance.IsLoggedIn)
         {
             var guestTask = AuthManager.Instance.LoginAsGuest();
             while (!guestTask.IsCompleted) yield return null;
         }
 
+        LoadingScreenUI.Instance?.SetStatus("Profil yükleniyor...");
         EnsureProgressSingletons();
+
+        // UGS player name'i (Nova731#1234) erken eşitle — SOSYAL panelin arkadaş kodu ve
+        // leaderboard görünen adı buna bağlı (eskiden sadece leaderboard açılınca yapılıyordu).
+        if (CosmicRumble.Cloud.LeaderboardManager.Instance != null)
+        {
+            var nameTask = CosmicRumble.Cloud.LeaderboardManager.Instance.SyncPlayerNameAsync();
+            while (!nameTask.IsCompleted) yield return null;
+        }
+
+        // Arkadaş sistemi — oturum kesinleştikten sonra (hesap değişiminde sahne reload'u yine
+        // buradan geçer, yeni PlayerId ile yeniden init olur). Boot'u bloklamaz.
+        if (CosmicRumble.Social.FriendsManager.Instance != null)
+            _ = CosmicRumble.Social.FriendsManager.Instance.EnsureInitializedAsync();
+
         BuildUI();
         ShowPanel(_mainPanel);
-
-        // Giriş kapısı: hesabı bağlı OLMAYAN oyuncu açılışta giriş ekranını görür (tek sefer);
-        // giriş/kayıt sonrası doğrudan ana menüdedir ve bir daha görmez. Cihazda kapatılamaz;
-        // Editor'da kapatılabilir (bağlantısız oturum yalnızca test için var — hotseat testleri
-        // her Play Mode girişinde girişe takılmasın).
-        bool named = AuthManager.Instance != null &&
-                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
-        if (!named)
-            LoginPanelUI.Instance?.Show(dismissable: Application.isEditor);
+        LoadingScreenUI.Instance?.Hide();
     }
 
     void EnsureCoreSingletons()
@@ -141,6 +179,12 @@ public class MainMenuUI : MonoBehaviour
         if (AuthManager.Instance     == null) new GameObject("AuthManager").AddComponent<AuthManager>();
         if (AudioManager.Instance    == null) new GameObject("AudioManager").AddComponent<AudioManager>();
         if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
+        if (CosmicRumble.Social.FriendsManager.Instance == null)
+            new GameObject("FriendsManager").AddComponent<CosmicRumble.Social.FriendsManager>();
+
+        // Açılış ekranları — sahne ömürlü (DontDestroyOnLoad değil), her menü dönüşünde yeniden kurulur.
+        if (LoadingScreenUI.Instance == null) new GameObject("LoadingScreenUI").AddComponent<LoadingScreenUI>();
+        if (LoginScreenUI.Instance   == null) new GameObject("LoginScreenUI").AddComponent<LoginScreenUI>();
     }
 
     void EnsureProgressSingletons()
@@ -160,14 +204,17 @@ public class MainMenuUI : MonoBehaviour
             // identity explicitly here, same as AuthManager.Login()/Register() already do on the
             // instance that's about to be destroyed.
             var auth = AuthManager.Instance;
-            string username = (auth != null && auth.IsLoggedIn && !auth.IsGuest) ? auth.CurrentUsername : null;
-            AchievementManager.Instance.LoadForUser(username);
+            string userKey = (auth != null && auth.HasNamedAccount) ? auth.UserFileKey : null;
+            AchievementManager.Instance.LoadForUser(userKey);
         }
         if (AchievementTracker.Instance == null) new GameObject("AchievementTracker").AddComponent<AchievementTracker>();
         if (IAPManager.Instance          == null) new GameObject("IAPManager").AddComponent<IAPManager>();
         if (LeaderboardManager.Instance  == null) new GameObject("LeaderboardManager").AddComponent<LeaderboardManager>();
-        // Panel MenuScene'e bağlı yaşar (DontDestroyOnLoad değil) — her menü dönüşünde yeniden kurulur.
+        // Paneller MenuScene'e bağlı yaşar (DontDestroyOnLoad değil) — her menü dönüşünde yeniden kurulur.
         if (LeaderboardPanelUI.Instance  == null) new GameObject("LeaderboardPanelUI").AddComponent<LeaderboardPanelUI>();
+        if (SocialPanelUI.Instance       == null) new GameObject("SocialPanelUI").AddComponent<SocialPanelUI>();
+        if (FriendLobbyPanelUI.Instance  == null) new GameObject("FriendLobbyPanelUI").AddComponent<FriendLobbyPanelUI>();
+        if (InvitePopupUI.Instance       == null) new GameObject("InvitePopupUI").AddComponent<InvitePopupUI>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -505,9 +552,9 @@ public class MainMenuUI : MonoBehaviour
         MakeBrawlBtn(_mainPanel, "btn_shop", "MARKET", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
             new Vector2(16, 118), size, 19, BrawlYellow, YellowEdge, AccGold, "M",
             () => { Click(); ShopPanelUI.Instance?.Show(); });
-        MakeBrawlBtn(_mainPanel, "btn_achievements", "BAŞARIMLAR", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(16, 32), size, 17, PlateDark, PlateEdge, AccPurple, "B",
-            () => { Click(); AchievementsPanelUI.Instance?.Show(); });
+        MakeBrawlBtn(_mainPanel, "btn_social", "SOSYAL", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+            new Vector2(16, 32), size, 17, PlateDark, PlateEdge, AccCyan, "S",
+            () => { Click(); SocialPanelUI.Instance?.Show(); });
 
         // Alt-sol: GÖREVLER
         MakeBrawlBtn(_mainPanel, "btn_quests", "GÖREVLER", new Vector2(0f, 0f), new Vector2(0f, 0f),
@@ -557,20 +604,29 @@ public class MainMenuUI : MonoBehaviour
         _drawerCol.anchoredPosition = new Vector2(0, 40);
 
         var size = new Vector2(280, 70);
-        void Item(int i, string nm, string label, Color icon, string letter, UnityEngine.Events.UnityAction act)
+        int itemCount = 0;
+        void Item(string nm, string label, Color icon, string letter, UnityEngine.Events.UnityAction act)
         {
+            int i = itemCount++;
             MakeBrawlBtn(colGO, nm, label, new Vector2(1f, 1f), new Vector2(1f, 1f),
                 new Vector2(-10, -8 - i * 82), size, 17, PlateDark, PlateEdge, icon, letter,
                 () => { Click(); SetDrawer(false); act(); });
         }
-        Item(0, "dw_settings",    "AYARLAR",   new Color(0.55f, 0.58f, 0.66f, 1f), "A",
+        Item("dw_settings",     "AYARLAR",    new Color(0.55f, 0.58f, 0.66f, 1f), "A",
             () => ShowPanel(_settingsPanel));
-        Item(1, "dw_leaderboard", "SIRALAMA",  AccCyan, "S",
+        Item("dw_leaderboard",  "SIRALAMA",   AccCyan, "S",
             () => LeaderboardPanelUI.Instance?.Show());
-        Item(2, "dw_local",       "YEREL MAÇ", AccBlue, "Y",
-            () => LobbyPanelUI.Instance?.Show());
-        Item(3, "dw_account",     "HESAP",     AccGreen, "H",
+        Item("dw_achievements", "BAŞARIMLAR", AccPurple, "B",
+            () => AchievementsPanelUI.Instance?.Show());
+        Item("dw_account",      "HESAP",      AccGreen, "H",
             () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
+#if UNITY_EDITOR
+        // Yerel/bot maçı menüden kaldırıldı (arkadaş davetli özel lobi yerini aldı) — offline
+        // spawn yolu (GameInitializer/LobbyData) test için Editor'a kilitli girişle duruyor.
+        Item("dw_botmatch",     "BOT MAÇI (DEV)", AccBlue, "Y",
+            () => LobbyPanelUI.Instance?.Show());
+#endif
+        _drawerCol.sizeDelta = new Vector2(300, itemCount * 82 + 16);
 
         _drawerRoot.SetActive(false);
     }
@@ -890,10 +946,19 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildAccountTab(GameObject parent)
     {
-        _accountStatusText = MakeTxt(parent, "lbl_account_status", "—", 19, FontStyles.Bold, TextPrimary,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(420, 60), new Vector2(0, 60));
+        _accountStatusText = MakeTxt(parent, "lbl_account_status", "—", 18, FontStyles.Bold, TextPrimary,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(520, 50), new Vector2(0, 130));
 
-        MakeAccountActionBtn(parent, -40);
+        // Bağlı sağlayıcılar listesi — Platform + Cosmic ID modeli
+#if UNITY_ANDROID
+        (_googleStatusText, _googleLinkBtn) = MakeProviderRow(parent, "row_google", "GOOGLE",
+            new Vector2(0, 60), OnGoogleLinkClicked);
+#endif
+        (_cosmicStatusText, _cosmicLinkBtn) = MakeProviderRow(parent, "row_cosmic", "COSMIC ID",
+            new Vector2(0, -14), OnCosmicLinkClicked);
+
+        _logoutBtn = MakeSettingsButton(parent, "btn_logout", "ÇIKIŞ YAP", AccRed,
+            new Vector2(0, -110), OnLogoutClicked);
 
         RefreshAccountTab();
     }
@@ -961,29 +1026,63 @@ public class MainMenuUI : MonoBehaviour
     //  ACCOUNT TAB
     // ────────────────────────────────────────────────────────────────────────
 
-    void MakeAccountActionBtn(GameObject parent, float yOffset)
+    /// <summary>Sağlayıcı satırı: solda ad, ortada bağlılık durumu, sağda BAĞLA butonu.</summary>
+    (TextMeshProUGUI status, GameObject linkBtn) MakeProviderRow(GameObject parent, string name,
+        string providerLabel, Vector2 pos, UnityEngine.Events.UnityAction onLink)
     {
-        var go  = new GameObject("btn_account_action");
+        var row = new GameObject(name);
+        row.transform.SetParent(parent.transform, false);
+        var img = row.AddComponent<Image>();
+        img.color = BgCardDark;
+        UiKit.Round(img, 1.2f);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(560, 64);
+        rt.anchoredPosition = pos;
+
+        var nameTxt = MakeTxt(row, "Provider", providerLabel, 17, FontStyles.Bold, TextPrimary,
+            TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(170, 28), new Vector2(110, 0));
+        UiKit.BrawlText(nameTxt);
+
+        var statusTxt = MakeTxt(row, "Status", "", 14, FontStyles.Normal, TextDim,
+            TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(240, 40), new Vector2(320, 0));
+
+        var btnGO = MakeSettingsButton(row, "btn_link", "BAĞLA", AccBlue, Vector2.zero, onLink,
+            new Vector2(130, 46));
+        var btnRt = btnGO.GetComponent<RectTransform>();
+        btnRt.anchorMin = btnRt.anchorMax = new Vector2(1f, 0.5f);
+        btnRt.pivot = new Vector2(1f, 0.5f);
+        btnRt.anchoredPosition = new Vector2(-12, 0);
+
+        return (statusTxt, btnGO);
+    }
+
+    GameObject MakeSettingsButton(GameObject parent, string name, string label, Color color,
+        Vector2 pos, UnityEngine.Events.UnityAction onClick, Vector2? size = null)
+    {
+        var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
-        img.color = AccBlue;
+        img.color = color;
         UiKit.Round(img);
         UiKit.Shadow(go, 3f, 0.35f);
 
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
-        btn.onClick.AddListener(OnAccountActionClicked);
+        btn.colors = UiKit.ButtonColors(color);
+        btn.onClick.AddListener(onClick);
         UiKit.Press(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(BTN_W, BTN_H);
-        rt.anchoredPosition = new Vector2(0, yOffset);
+        rt.sizeDelta = size ?? new Vector2(BTN_W, BTN_H);
+        rt.anchoredPosition = pos;
 
         var txtGO = new GameObject("Label");
         txtGO.transform.SetParent(go.transform, false);
         var txt = txtGO.AddComponent<TextMeshProUGUI>();
-        txt.fontSize  = 20;
+        txt.text      = label;
+        txt.fontSize  = 17;
         txt.fontStyle = FontStyles.Bold;
         txt.alignment = TextAlignmentOptions.Center;
         txt.color     = TextPrimary;
@@ -991,51 +1090,64 @@ public class MainMenuUI : MonoBehaviour
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
 
-        _accountActionBtn   = btn;
-        _accountActionLabel = txt;
+        return go;
     }
 
-    /// <summary>
-    /// Mobil akış: misafir kimliği otomatik olduğundan buradaki tek eylem hesap BAĞLAMAK
-    /// (ilerlemeyi cihazlar arası taşınabilir yapmak) ya da adlı hesaptan ÇIKMAK (misafire döner).
-    /// </summary>
-    void OnAccountActionClicked()
+    async void OnGoogleLinkClicked()
     {
         Click();
-        bool named = AuthManager.Instance != null &&
-                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
-        if (named)
-        {
-            AuthManager.Instance.Logout(); // sahneyi yeniden yükler, misafir olarak döner
-        }
-        else
-        {
-            ShowPanel(_mainPanel);
-            LoginPanelUI.Instance?.Show(dismissable: true);
-        }
+        if (AuthManager.Instance == null) return;
+        if (_googleStatusText != null) _googleStatusText.text = "Bağlanılıyor...";
+
+        var (ok, error) = await AuthManager.Instance.SignInWithPlatformAsync(
+            CosmicRumble.Auth.GooglePlayAuthProvider.Shared, silent: false);
+
+        if (!ok && _googleStatusText != null)
+            _googleStatusText.text = error ?? "Bağlanamadı.";
+        RefreshAccountTab();
+        // Not: hesap değişimi gerektiyse (AccountAlreadyLinked) sahne zaten yeniden yüklenir.
+    }
+
+    void OnCosmicLinkClicked()
+    {
+        Click();
+        ShowPanel(_mainPanel);
+        LoginPanelUI.Instance?.Show(dismissable: true);
+    }
+
+    void OnLogoutClicked()
+    {
+        Click();
+        AuthManager.Instance?.Logout(); // sahneyi yeniden yükler → giriş ekranı yeniden görünür
     }
 
     void RefreshAccountTab()
     {
-        bool named = AuthManager.Instance != null &&
-                     AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest;
+        var auth = AuthManager.Instance;
+        bool named = auth != null && auth.HasNamedAccount;
 
         if (_accountStatusText != null)
         {
             _accountStatusText.text = named
-                ? $"Hesap: {AuthManager.Instance.CurrentUsername}"
+                ? $"Hesap: {auth.CurrentUsername}"
                 : $"{PlayerIdentity.Get()} — hesap bağlı değil.\nİlerlemeni korumak için hesabını bağla.";
         }
 
-        if (_accountActionLabel != null)
-            _accountActionLabel.text = named ? "ÇIKIŞ YAP" : "HESAP BAĞLA";
+        bool googleLinked = auth != null && auth.HasProvider(AuthManager.ProviderGooglePlayGames);
+        bool cosmicLinked = auth != null && auth.HasProvider(AuthManager.ProviderUsernamePassword);
 
-        if (_accountActionBtn != null)
+        if (_googleStatusText != null)
         {
-            var normal = named ? AccRed : AccBlue;
-            _accountActionBtn.GetComponent<Image>().color = normal;
-            _accountActionBtn.colors = UiKit.ButtonColors(normal);
+            _googleStatusText.text = googleLinked ? $"Bağlı ({auth.CurrentUsername})" : "Bağlı değil";
+            _googleLinkBtn?.SetActive(!googleLinked);
         }
+        if (_cosmicStatusText != null)
+        {
+            _cosmicStatusText.text = cosmicLinked ? $"Bağlı ({auth.CurrentUsername})" : "Bağlı değil";
+            _cosmicLinkBtn?.SetActive(!cosmicLinked);
+        }
+
+        _logoutBtn?.SetActive(named);
     }
 
     // ────────────────────────────────────────────────────────────────────────

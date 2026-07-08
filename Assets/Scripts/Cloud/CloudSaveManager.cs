@@ -42,11 +42,12 @@ namespace CosmicRumble.Cloud
 
         private const string AchievementsKey = "achievements";
 
-        // achievements_<username>.json / achievements_guest.json — AchievementManager.SavePath ile
-        // birebir aynı mantık, kullanıcı adına göre dosya adı değiştiği için sabit sözlükte tutulamaz.
+        // achievements_<userFileKey>.json / achievements_guest.json — AchievementManager.SavePath
+        // ile birebir aynı mantık, kullanıcıya göre dosya adı değiştiği için sabit sözlükte
+        // tutulamaz. UserFileKey dosya-güvenli (Google görünen adı boşluk/emoji içerebilir).
         private static string CurrentAchievementsFileName =>
-            AuthManager.Instance != null && AuthManager.Instance.IsLoggedIn && !AuthManager.Instance.IsGuest
-                ? $"achievements_{AuthManager.Instance.CurrentUsername}.json"
+            AuthManager.Instance != null && AuthManager.Instance.HasNamedAccount
+                ? $"achievements_{AuthManager.Instance.UserFileKey}.json"
                 : "achievements_guest.json";
 
         private void Awake()

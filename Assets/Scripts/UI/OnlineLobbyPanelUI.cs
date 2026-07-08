@@ -6,12 +6,10 @@ using Unity.Netcode;
 using CosmicRumble.Networking;
 
 /// <summary>
-/// Online 2 oyunculu eşleşme paneli (Host/Join) — mevcut yerel hotseat "PLAY" akışından
-/// (LobbyPanelUI, dokunulmadı) tamamen ayrı, ana menüde ayrı bir "ONLINE" butonuyla açılır.
-/// Host: bir Relay oturumu oluşturur, katılım kodunu gösterir, 2. oyuncu bağlanınca (server
-/// olarak) Game sahnesini yükler — NGO bu yüklemeyi bağlı client'a otomatik yayar.
-/// Join: girilen kodla mevcut oturuma bağlanır, sahne yüklemesini host'tan bekler.
-/// MenuScene'e boş bir GameObject ekleyip scripti yapıştır.
+/// Online eşleşme paneli — tek akış: HIZLI EŞLEŞME (dereceli). Eski "KOD OLUŞTUR"/"KODA KATIL"
+/// kartları kaldırıldı; arkadaşla oynamak artık SOSYAL panelindeki davet sistemiyle yapılıyor
+/// (FriendLobbyPanelUI). Host tarafı 2. oyuncu bağlanınca (server olarak) Game sahnesini
+/// yükler — NGO bu yüklemeyi bağlı client'a otomatik yayar.
 /// </summary>
 public class OnlineLobbyPanelUI : MonoBehaviour
 {
@@ -25,14 +23,10 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     static readonly Color CodeColor    = new Color(1.00f,  0.80f,  0.20f,  1f);
 
     GameObject      _panelRoot;
-    GameObject      _cancelBtn;
     GameObject      _quickMatchCancelBtn;
-    TextMeshProUGUI _hostStatusText;
-    TextMeshProUGUI _joinStatusText;
     TextMeshProUGUI _quickMatchStatusText;
-    TMP_InputField  _codeInput;
     bool            _waitingForOpponent;
-    bool            _connectionActive;   // Host/Join/QuickMatch tıklandıktan sonra, LeaveSessionAsync'e kadar true
+    bool            _connectionActive;   // QuickMatch tıklandıktan sonra, LeaveSessionAsync'e kadar true
 
     void Awake()
     {
@@ -55,11 +49,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     public void Show()
     {
         _panelRoot.SetActive(true);
-        _hostStatusText.text = "";
-        _joinStatusText.text = "";
         _quickMatchStatusText.text = "";
-        _codeInput.text      = "";
-        _cancelBtn.SetActive(false);
         _quickMatchCancelBtn.SetActive(false);
     }
 
@@ -107,45 +97,6 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         _quickMatchCancelBtn.SetActive(false);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    //  HOST / JOIN (arkadaşı koduyla davet et — ikincil akış)
-    // ════════════════════════════════════════════════════════════════════
-
-    async void OnHostClicked()
-    {
-        _hostStatusText.text = "Oturum oluşturuluyor...";
-        _connectionActive = true;
-        string code = await NetworkBootstrap.Instance.HostSessionAsync();
-
-        if (string.IsNullOrEmpty(code))
-        {
-            _hostStatusText.text = "Oluşturulamadı, tekrar dene.";
-            _connectionActive = false;
-            return;
-        }
-
-        _hostStatusText.text = $"Kod: {code}\nRakip bekleniyor...";
-        _waitingForOpponent  = true;
-        _cancelBtn.SetActive(true);
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-    }
-
-    async void OnJoinClicked()
-    {
-        string code = _codeInput.text.Trim().ToUpperInvariant();
-        if (string.IsNullOrEmpty(code))
-        {
-            _joinStatusText.text = "Bir kod gir.";
-            return;
-        }
-
-        _joinStatusText.text = "Bağlanılıyor...";
-        _connectionActive = true;
-        bool ok = await NetworkBootstrap.Instance.JoinSessionAsync(code);
-        _joinStatusText.text = ok ? "Bağlandı, host başlatmasını bekleniyor..." : "Bağlanamadı, kodu kontrol et.";
-        if (!ok) _connectionActive = false;
-    }
-
     void OnClientConnected(ulong clientId)
     {
         Debug.Log($"[NET] ClientConnected id={clientId} isHost={NetworkManager.Singleton.IsHost} totalClients={NetworkManager.Singleton.ConnectedClientsIds.Count}");
@@ -164,14 +115,6 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     // tarafından ele alınıyor (bkz. NetworkBootstrap.cs) — bu panel MenuScene'e özel olduğu
     // için Game sahnesine geçildikten sonra zaten var olamıyordu, gerçek bir mid-match
     // kopuşu hiçbir zaman burada yakalanamazdı.
-
-    async void OnCancelClicked()
-    {
-        _hostStatusText.text = "İptal ediliyor...";
-        await CancelConnectionAsync();
-        _hostStatusText.text = "";
-        _cancelBtn.SetActive(false);
-    }
 
     async System.Threading.Tasks.Task CancelConnectionAsync()
     {
@@ -214,10 +157,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.90f), new Vector2(600, 50), Color.white);
 
         BuildQuickMatchCard();
-        MakeText(_panelRoot, "friendsHeader", "ARKADAŞINLA OYNA  —  dostluk maçı, kupa değişmez", 16,
-            new Vector2(0.5f, 0.46f), new Vector2(700, 30), TextSec);
-        BuildHostCard();
-        BuildJoinCard();
+        BuildSocialHint();
 
         MakeSmallButton(_panelRoot, "btn_back", "GERİ",
             new Vector2(0.5f, 0.06f), new Vector2(200, 56), OnBackClicked,
@@ -229,18 +169,18 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     void BuildQuickMatchCard()
     {
-        var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.68f), new Vector2(520, 220));
+        var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.55f), new Vector2(560, 260));
 
-        MakeText(card, "hdr", "HIZLI EŞLEŞME — DERECELİ", 24, new Vector2(0.5f, 0.88f), new Vector2(460, 36), Color.white);
+        MakeText(card, "hdr", "HIZLI EŞLEŞME — DERECELİ", 24, new Vector2(0.5f, 0.88f), new Vector2(500, 36), Color.white);
         MakeText(card, "hint", "Galibiyet +30 kupa  •  Mağlubiyet −20 kupa", 14,
-            new Vector2(0.5f, 0.76f), new Vector2(460, 24), TextSec);
+            new Vector2(0.5f, 0.76f), new Vector2(500, 24), TextSec);
         // Birincil eylem: büyük, yeşil OYNA (mobil ana akış)
         MakeSmallButton(card, "btn_quickmatch", "OYNA",
-            new Vector2(0.5f, 0.54f), new Vector2(320, 68), OnQuickMatchClicked,
+            new Vector2(0.5f, 0.54f), new Vector2(340, 72), OnQuickMatchClicked,
             new Color(0.13f, 0.72f, 0.35f, 1f));
 
         _quickMatchStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.24f), new Vector2(460, 90), CodeColor);
+            new Vector2(0.5f, 0.24f), new Vector2(500, 90), CodeColor);
 
         _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", "İPTAL ET",
             new Vector2(0.5f, 0.11f), new Vector2(220, 48), OnQuickMatchCancelClicked,
@@ -248,41 +188,19 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         _quickMatchCancelBtn.SetActive(false);
     }
 
-    void BuildHostCard()
+    /// <summary>Eski kod kartlarının yerine: arkadaşla oynamanın artık davetle olduğunu anlatan
+    /// ipucu plakası + SOSYAL kısayolu.</summary>
+    void BuildSocialHint()
     {
-        var card = MakeCard(_panelRoot, "HostCard", new Vector2(0.28f, 0.24f), new Vector2(420, 340));
+        var card = MakeCard(_panelRoot, "SocialHint", new Vector2(0.5f, 0.26f), new Vector2(560, 120));
 
-        MakeText(card, "hdr", "KOD OLUŞTUR", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
-        MakeText(card, "hint", "Kodu arkadaşına gönder", 14,
-            new Vector2(0.5f, 0.80f), new Vector2(360, 24), TextSec);
-        MakeSmallButton(card, "btn_host", "KOD OLUŞTUR",
-            new Vector2(0.5f, 0.63f), new Vector2(290, 62), OnHostClicked);
+        MakeText(card, "hint", "Arkadaşınla oynamak için SOSYAL panelinden\ndavet gönder — dostluk maçı, kupa değişmez.", 15,
+            new Vector2(0.5f, 0.68f), new Vector2(520, 48), TextSec);
 
-        _hostStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.36f), new Vector2(380, 160), CodeColor);
-
-        _cancelBtn = MakeSmallButton(card, "btn_cancel", "İPTAL ET",
-            new Vector2(0.5f, 0.10f), new Vector2(220, 48), OnCancelClicked,
-            new Color(0.30f, 0.30f, 0.45f, 1f));
-        _cancelBtn.SetActive(false);
-    }
-
-    void BuildJoinCard()
-    {
-        var card = MakeCard(_panelRoot, "JoinCard", new Vector2(0.72f, 0.24f), new Vector2(420, 340));
-
-        MakeText(card, "hdr", "KODA KATIL", 22, new Vector2(0.5f, 0.90f), new Vector2(360, 34), Color.white);
-        MakeText(card, "hint", "Arkadaşının kodunu gir", 14,
-            new Vector2(0.5f, 0.80f), new Vector2(360, 24), TextSec);
-
-        _codeInput = MakeInputField(card, "codeInput",
-            new Vector2(0.5f, 0.64f), new Vector2(260, 50));
-
-        MakeSmallButton(card, "btn_join", "KATIL",
-            new Vector2(0.5f, 0.43f), new Vector2(290, 62), OnJoinClicked);
-
-        _joinStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.28f), new Vector2(380, 120), TextSec);
+        MakeSmallButton(card, "btn_social", "SOSYAL",
+            new Vector2(0.5f, 0.24f), new Vector2(220, 48),
+            () => { Hide(); SocialPanelUI.Instance?.Show(); },
+            new Color(0.15f, 0.70f, 0.75f, 1f));
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -326,51 +244,6 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         rt.sizeDelta = sizeDelta;
         rt.anchoredPosition = Vector2.zero;
         return txt;
-    }
-
-    static TMP_InputField MakeInputField(GameObject parent, string name, Vector2 anchor, Vector2 size)
-    {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        img.color = new Color(1f, 1f, 1f, 0.92f);
-        UiKit.Round(img, 1.3f);
-        var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta = size;
-        rt.anchoredPosition = Vector2.zero;
-
-        var textGO = new GameObject("Text");
-        textGO.transform.SetParent(go.transform, false);
-        var text = textGO.AddComponent<TextMeshProUGUI>();
-        text.fontSize  = 22;
-        text.color     = Color.black;
-        text.alignment = TextAlignmentOptions.Left;
-        text.margin    = new Vector4(12, 4, 12, 4);
-        var trt = text.rectTransform;
-        trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-        trt.offsetMin = trt.offsetMax = Vector2.zero;
-
-        var placeholderGO = new GameObject("Placeholder");
-        placeholderGO.transform.SetParent(go.transform, false);
-        var placeholder = placeholderGO.AddComponent<TextMeshProUGUI>();
-        placeholder.text      = "KOD";
-        placeholder.fontSize  = 22;
-        placeholder.color     = new Color(0, 0, 0, 0.4f);
-        placeholder.alignment = TextAlignmentOptions.Left;
-        placeholder.margin    = new Vector4(12, 4, 12, 4);
-        var prt = placeholder.rectTransform;
-        prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
-        prt.offsetMin = prt.offsetMax = Vector2.zero;
-
-        var input = go.AddComponent<TMP_InputField>();
-        input.textViewport      = rt;
-        input.textComponent     = text;
-        input.placeholder       = placeholder;
-        input.characterLimit    = 6;
-        input.characterValidation = TMP_InputField.CharacterValidation.Alphanumeric;
-
-        return input;
     }
 
     static GameObject MakeSmallButton(GameObject parent, string name, string label,

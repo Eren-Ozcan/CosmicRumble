@@ -5,15 +5,22 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Giriş / hesap bağlama ekranı. İki kullanım:
-/// 1) Açılış kapısı (MainMenuUI.BootstrapSequence): hesabı bağlı OLMAYAN oyuncuya açılışta bir kez
-///    gösterilir, kapatılamaz (X/ESC yok) — giriş/kayıt sonrası doğrudan ana menü.
-/// 2) Ayarlar → Hesap → HESAP BAĞLA: aynı panel, kapatılabilir halde.
-/// Kendi Canvas'ını programatik oluşturur; UiKit stilinde.
+/// Cosmic ID form kartı (kullanıcı adı/şifre ile giriş/kayıt). Açılış kapısı rolü artık tam
+/// ekran LoginScreenUI'da — bu kart iki yerden, hep kapatılabilir halde açılır:
+/// 1) LoginScreenUI → "COSMIC ID İLE GİRİŞ" (kapatınca tam ekran kapı arkada durur).
+/// 2) Ayarlar → Hesap → COSMIC ID satırındaki BAĞLA.
+/// Kendi Canvas'ını programatik oluşturur (order 95); UiKit stilinde.
 /// </summary>
 public class LoginPanelUI : MonoBehaviour
 {
     public static LoginPanelUI Instance { get; private set; }
+
+#if UNITY_EDITOR
+    // Editor-only test hesabı — UGS şifre kuralını karşılar (8-30 karakter,
+    // en az 1 büyük harf, 1 küçük harf, 1 rakam, 1 sembol). Sadece "TEST" butonuyla doldurulur.
+    const string TestUsername = "testuser1";
+    const string TestPassword = "Test1234!";
+#endif
 
     // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
     static readonly Color CardBg        = new Color(0.07f,  0.07f,  0.16f,  0.97f);
@@ -86,7 +93,8 @@ public class LoginPanelUI : MonoBehaviour
         canvasGO.transform.SetParent(transform, false);
         var canvas = canvasGO.AddComponent<Canvas>();
         canvas.renderMode  = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 50;
+        // Tam ekran LoginScreenUI'ın (85) ÜSTÜNDE açılan Cosmic ID form kartı.
+        canvas.sortingOrder = 95;
         var scaler = canvasGO.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920, 1080);
@@ -150,6 +158,11 @@ public class LoginPanelUI : MonoBehaviour
 
         MakeText(cardGO, "RegisterHint", "Yeni hesap, bu cihazdaki ilerlemeni olduğu gibi devralır.", 12,
             new Vector2(0.5f, 0.045f), new Vector2(400, 22), TextSecondary);
+
+#if UNITY_EDITOR
+        MakeButton(cardGO, "btn_fill_test", "TEST BİLGİLERİYLE DOLDUR", new Vector2(0.5f, -0.03f),
+            new Vector2(340, 32), TextSecondary, FillTestCredentials);
+#endif
 
         // ESC dinleyici (yalnızca dismissable modda etkin — Show() yönetir)
         _escListener = _root.AddComponent<EscapeListener>();
@@ -221,6 +234,14 @@ public class LoginPanelUI : MonoBehaviour
             StartCoroutine(Shake());
         }
     }
+
+#if UNITY_EDITOR
+    void FillTestCredentials()
+    {
+        _userInput.text = TestUsername;
+        _passInput.text = TestPassword;
+    }
+#endif
 
     void SetButtonsInteractable(bool interactable)
     {
