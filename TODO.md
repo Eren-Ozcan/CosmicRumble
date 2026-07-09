@@ -60,7 +60,13 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     state, leaderboard rank API, tutorial sistemi) — bilinçli olarak bu geçişte yapılmadı.
 15. `ui_button_hover` klibi: **tamam** (2026-07-10) — `UiKit.Hover()` eklendi, tüm programatik
     butonlara (29/30, bilinçli 1 istisna) bağlandı, play-test edildi. Bkz. "ui_button_hover wiring".
-16. Ölü kod: `AbilityController.cs`, `ObjectSpawnSkill.cs` (referanssız, eski mimari).
+16. Ölü kod: **tamam** (2026-07-10) — `AbilityController.cs` ve `ObjectSpawnSkill.cs` silindi.
+    Her ikisi de kod tabanında (script referansları) ve tüm `.unity`/`.prefab`/`.asset` dosyalarında
+    (GUID bazlı Component referansları) tek eşleşme dahi bulunamadı — kendi dosyaları dışında hiçbir
+    yerden çağrılmıyor/kullanılmıyorlardı (eski, `IAbility`'yi merkezi bir `List<MonoBehaviour>` ile
+    yöneten mimarinin kalıntısı; güncel sistem her yeteneği kendi script'i üzerinden bağımsız çalıştırıyor).
+    Silindikten sonra Play Mode'da misafir girişi + ana menü akışı hatasız çalıştığı doğrulandı
+    (missing-script/missing-reference hatası yok).
 17. Editor'da UGS timeout'ları (CloudSave local-only düşüşleri) — cihazda sorun değilse kalsın;
     açılış yükleme ekranındaki timeout mesajı kibarlaştırılabilir.
 18. Davet köşe durumları: host davet gönderip uygulamayı kapatır/arka plana atarsa session
