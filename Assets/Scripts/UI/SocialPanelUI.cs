@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using Unity.Services.Friends.Models;
 using CosmicRumble.Social;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// SOSYAL paneli (Brawl Stars'ın Sosyal ekranı karşılığı):
@@ -108,11 +109,11 @@ public class SocialPanelUI : MonoBehaviour
 
     async System.Threading.Tasks.Task RefreshOwnCodeAsync()
     {
-        _ownCodeText.text = "SENİN ID'N: ...";
+        _ownCodeText.text = Loc.T("YOUR ID: ...");
         var fm = FriendsManager.Instance;
         string code = fm != null ? await fm.GetOwnFriendCodeAsync() : null;
         if (_ownCodeText != null)
-            _ownCodeText.text = string.IsNullOrEmpty(code) ? "SENİN ID'N: —" : $"SENİN ID'N: {code}";
+            _ownCodeText.text = string.IsNullOrEmpty(code) ? Loc.T("YOUR ID: —") : string.Format(Loc.T("YOUR ID: {0}"), code);
         _cachedOwnCode = code;
     }
 
@@ -122,7 +123,7 @@ public class SocialPanelUI : MonoBehaviour
     {
         if (string.IsNullOrEmpty(_cachedOwnCode)) return;
         GUIUtility.systemCopyBuffer = _cachedOwnCode;
-        StartCoroutine(ShowToast("Kopyalandı!"));
+        StartCoroutine(ShowToast(Loc.T("Copied!")));
     }
 
     IEnumerator ShowToast(string msg)
@@ -138,13 +139,13 @@ public class SocialPanelUI : MonoBehaviour
         if (fm == null) return;
         string code = _addInput.text;
         _addStatusText.color = TextSec;
-        _addStatusText.text  = "Gönderiliyor...";
+        _addStatusText.text  = Loc.T("Sending...");
 
         var (ok, error) = await fm.AddFriendByCodeAsync(code);
         if (ok)
         {
             _addStatusText.color = AccGreen;
-            _addStatusText.text  = "İstek gönderildi!";
+            _addStatusText.text  = Loc.T("Request sent!");
             _addInput.text = "";
         }
         else
@@ -191,7 +192,7 @@ public class SocialPanelUI : MonoBehaviour
         var fm = FriendsManager.Instance;
         if (fm == null || !fm.IsAvailable)
         {
-            _emptyText.text = "Arkadaş sistemi şu an kullanılamıyor.";
+            _emptyText.text = Loc.T("Friends system is currently unavailable.");
             _emptyText.gameObject.SetActive(true);
             RefreshTabs();
             return;
@@ -200,8 +201,8 @@ public class SocialPanelUI : MonoBehaviour
         IReadOnlyList<Relationship> rows = _showingRequests ? fm.IncomingRequests : fm.Friends;
         _emptyText.gameObject.SetActive(rows.Count == 0);
         _emptyText.text = _showingRequests
-            ? "Bekleyen davet yok."
-            : "Henüz arkadaşın yok — ID ile ekle!";
+            ? Loc.T("No pending requests.")
+            : Loc.T("You don't have any friends yet — add one by ID!");
 
         foreach (var rel in rows)
             BuildRow(rel);
@@ -230,19 +231,19 @@ public class SocialPanelUI : MonoBehaviour
         string statusLine;
         if (_showingRequests)
         {
-            statusLine = "Seni arkadaş olarak eklemek istiyor";
+            statusLine = Loc.T("Wants to add you as a friend");
         }
         else
         {
             var (availability, activity) = ReadPresence(rel);
             online  = availability == Availability.Online;
             bool away = availability == Availability.Away || availability == Availability.Busy;
-            inMatch = activity != null && activity.status == "Maçta";
+            inMatch = activity != null && activity.status == "in_match";
 
-            string state = online ? (inMatch ? "Maçta" : "Çevrimiçi")
-                         : away   ? "Uzakta"
-                                  : "Çevrimdışı";
-            statusLine = activity != null ? $"{state}  •  {activity.trophies} kupa" : state;
+            string state = online ? (inMatch ? Loc.T("In Match") : Loc.T("Online"))
+                         : away   ? Loc.T("Away")
+                                  : Loc.T("Offline");
+            statusLine = activity != null ? string.Format(Loc.T("{0}  •  {1} trophies"), state, activity.trophies) : state;
 
             // Durum noktası
             var dot = new GameObject("Dot");
@@ -270,19 +271,19 @@ public class SocialPanelUI : MonoBehaviour
 
         if (_showingRequests)
         {
-            MakeRowButton(row, "btn_accept", "KABUL", AccGreen, new Vector2(-190, 0), 130,
+            MakeRowButton(row, "btn_accept", Loc.T("ACCEPT"), AccGreen, new Vector2(-190, 0), 130,
                 async () =>
                 {
                     var (ok, err) = await FriendsManager.Instance.AcceptRequestAsync(memberId);
                     if (!ok) { _addStatusText.color = new Color(1f, 0.35f, 0.35f); _addStatusText.text = err; }
                 });
-            MakeRowButton(row, "btn_decline", "REDDET", AccRed, new Vector2(-55, 0), 120,
+            MakeRowButton(row, "btn_decline", Loc.T("DECLINE"), AccRed, new Vector2(-55, 0), 120,
                 async () => await FriendsManager.Instance.DeclineRequestAsync(memberId));
         }
         else
         {
             bool canInvite = online && !inMatch;
-            var inviteBtn = MakeRowButton(row, "btn_invite", "OYUNA DAVET ET",
+            var inviteBtn = MakeRowButton(row, "btn_invite", Loc.T("INVITE TO GAME"),
                 canInvite ? AccGreen : new Color(0.25f, 0.28f, 0.32f, 1f),
                 new Vector2(-230, 0), 210,
                 () =>
@@ -293,7 +294,7 @@ public class SocialPanelUI : MonoBehaviour
             inviteBtn.GetComponent<Button>().interactable = canInvite;
 
             bool pendingRemove = _pendingRemoveId == memberId;
-            MakeRowButton(row, "btn_remove", pendingRemove ? "EMİN MİSİN?" : "ÇIKAR",
+            MakeRowButton(row, "btn_remove", pendingRemove ? Loc.T("ARE YOU SURE?") : Loc.T("REMOVE"),
                 pendingRemove ? AccRed : new Color(0.35f, 0.20f, 0.20f, 1f),
                 new Vector2(-60, 0), 130,
                 async () =>
@@ -349,7 +350,7 @@ public class SocialPanelUI : MonoBehaviour
         overlayRt.anchorMax = Vector2.one;
         overlayRt.offsetMin = overlayRt.offsetMax = Vector2.zero;
 
-        var title = MakeText(_panelRoot, "Title", "SOSYAL", 34,
+        var title = MakeText(_panelRoot, "Title", Loc.T("SOCIAL"), 34,
             new Vector2(0.5f, 0.94f), new Vector2(400, 48), AccGold);
         UiKit.BrawlText(title);
 
@@ -364,20 +365,20 @@ public class SocialPanelUI : MonoBehaviour
         idRt.sizeDelta = new Vector2(700, 58);
         idRt.anchoredPosition = Vector2.zero;
 
-        _ownCodeText = MakeText(idPlate, "OwnCode", "SENİN ID'N: ...", 19,
+        _ownCodeText = MakeText(idPlate, "OwnCode", Loc.T("YOUR ID: ..."), 19,
             new Vector2(0.5f, 0.5f), new Vector2(480, 30), Color.white);
         _ownCodeText.alignment = TextAlignmentOptions.Left;
         _ownCodeText.rectTransform.anchoredPosition = new Vector2(-70, 0);
 
-        MakeRowButton(idPlate, "btn_copy", "KOPYALA", AccBlue, new Vector2(-80, 0), 140, OnCopyClicked);
+        MakeRowButton(idPlate, "btn_copy", Loc.T("COPY"), AccBlue, new Vector2(-80, 0), 140, OnCopyClicked);
 
         _copyToast = MakeText(_panelRoot, "CopyToast", "", 15,
             new Vector2(0.5f, 0.795f), new Vector2(300, 24), AccGreen);
 
         // ── Sekmeler ─────────────────────────────────────────────────────
-        _friendsTabImg  = MakeTabButton("tab_friends", "ARKADAŞLAR", new Vector2(0.36f, 0.745f),
+        _friendsTabImg  = MakeTabButton("tab_friends", Loc.T("FRIENDS"), new Vector2(0.36f, 0.745f),
             () => OnTabClicked(false));
-        _requestsTabImg = MakeTabButton("tab_requests", "DAVETLER", new Vector2(0.64f, 0.745f),
+        _requestsTabImg = MakeTabButton("tab_requests", Loc.T("REQUESTS"), new Vector2(0.64f, 0.745f),
             () => OnTabClicked(true));
 
         // Rozet (gelen istek sayısı)
@@ -403,9 +404,9 @@ public class SocialPanelUI : MonoBehaviour
         addRt.sizeDelta = new Vector2(700, 54);
         addRt.anchoredPosition = Vector2.zero;
 
-        _addInput = MakeInputField(_addRow, "addInput", "Arkadaşının ID'si (Ad#1234)",
+        _addInput = MakeInputField(_addRow, "addInput", Loc.T("Friend's ID (Name#1234)"),
             new Vector2(0.32f, 0.5f), new Vector2(420, 50));
-        MakeRowButton(_addRow, "btn_add", "EKLE", AccGreen, new Vector2(-40, 0), 150, OnAddClicked);
+        MakeRowButton(_addRow, "btn_add", Loc.T("ADD"), AccGreen, new Vector2(-40, 0), 150, OnAddClicked);
 
         _addStatusText = MakeText(_panelRoot, "AddStatus", "", 14,
             new Vector2(0.5f, 0.615f), new Vector2(700, 22), TextSec);
@@ -449,7 +450,7 @@ public class SocialPanelUI : MonoBehaviour
         _emptyText.gameObject.SetActive(false);
 
         // ── GERİ ─────────────────────────────────────────────────────────
-        var backBtn = MakeRowButton(_panelRoot, "btn_back", "GERİ",
+        var backBtn = MakeRowButton(_panelRoot, "btn_back", Loc.T("BACK"),
             new Color(0.30f, 0.30f, 0.45f, 1f), new Vector2(0, 0), 200, Hide);
         var backRt = backBtn.GetComponent<RectTransform>();
         backRt.anchorMin = backRt.anchorMax = new Vector2(0.5f, 0.05f);

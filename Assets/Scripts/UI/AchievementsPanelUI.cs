@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Achievements;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Ana menüdeki BAŞARIMLAR butonu → başarım listesi paneli.
@@ -89,7 +90,7 @@ public class AchievementsPanelUI : MonoBehaviour
         UiKit.Stroke(card, StrokeCol);
         UiKit.Pop(card);
 
-        var title = MakeTxt(card, "Title", "BAŞARIMLAR", 30, Color.white,
+        var title = MakeTxt(card, "Title", Loc.T("ACHIEVEMENTS"), 30, Color.white,
             new Vector2(0.5f, 0.925f), new Vector2(680, 46));
         title.fontStyle = FontStyles.Bold;
         title.color     = UnlockedGold;
@@ -171,8 +172,8 @@ public class AchievementsPanelUI : MonoBehaviour
 
         if (db == null || db.allAchievements == null || db.allAchievements.Count == 0)
         {
-            MakeEmptyRow("Henüz başarım tanımlanmadı.");
-            if (_statsText) _statsText.text = "0 / 0 tamamlandı";
+            MakeEmptyRow(Loc.T("No achievements defined yet."));
+            if (_statsText) _statsText.text = string.Format(Loc.T("{0} / {1} completed"), 0, 0);
             return;
         }
 
@@ -193,7 +194,7 @@ public class AchievementsPanelUI : MonoBehaviour
         }
 
         if (_statsText)
-            _statsText.text = $"{totalUnlocked} / {all.Count} başarım tamamlandı";
+            _statsText.text = string.Format(Loc.T("{0} / {1} completed"), totalUnlocked, all.Count);
     }
 
     // ── Satır: [İkon dairesi 72] [Ad+Açıklama flex] [Nadirlik 96] [Durum 130] ──
@@ -254,7 +255,7 @@ public class AchievementsPanelUI : MonoBehaviour
         infoVLG.childForceExpandHeight = false;
 
         string displayName = isSecret ? "???" : def.displayName;
-        string desc        = isSecret ? "Gizli başarım" : def.description;
+        string desc        = isSecret ? Loc.T("Secret achievement") : def.description;
 
         var nameTxt = MakeTxtLE(infoCol, "Name", displayName, 16,
             unlocked ? Color.white : LockedGray, TextAlignmentOptions.Left);
@@ -285,7 +286,7 @@ public class AchievementsPanelUI : MonoBehaviour
 
         if (unlocked)
         {
-            MakeTxtLE(statusCol, "StatusLbl", "AÇILDI", 14,
+            MakeTxtLE(statusCol, "StatusLbl", Loc.T("UNLOCKED"), 14,
                 UnlockedGold, TextAlignmentOptions.Center).fontStyle = FontStyles.Bold;
         }
         else if (def.triggerType == AchievementTriggerType.Cumulative && def.targetValue > 0)
@@ -299,7 +300,7 @@ public class AchievementsPanelUI : MonoBehaviour
         }
         else
         {
-            MakeTxtLE(statusCol, "StatusLbl", "Kilitli", 13,
+            MakeTxtLE(statusCol, "StatusLbl", Loc.T("Locked"), 13,
                 LockedGray, TextAlignmentOptions.Center);
         }
     }
@@ -454,11 +455,11 @@ public class AchievementsPanelUI : MonoBehaviour
 
     static string GetRarityLabel(AchievementRarity r) => r switch
     {
-        AchievementRarity.Common    => "Sıradan",
-        AchievementRarity.Rare      => "Nadir",
-        AchievementRarity.Epic      => "Epik",
-        AchievementRarity.Legendary => "Efsanevi",
-        _                           => "Sıradan"
+        AchievementRarity.Common    => Loc.T("COMMON"),
+        AchievementRarity.Rare      => Loc.T("RARE"),
+        AchievementRarity.Epic      => Loc.T("EPIC"),
+        AchievementRarity.Legendary => Loc.T("LEGENDARY"),
+        _                           => Loc.T("COMMON")
     };
 }
 

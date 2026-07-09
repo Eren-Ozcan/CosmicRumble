@@ -2,14 +2,105 @@
 
 Deferred work identified during the economy/achievement audit and fix pass. Not started unless noted.
 
+## YAYIN YOL HARİTASI — proje sonuna kadar kalan her şey (genel kontrol, 2026-07-09)
+
+Kod tabanının tamamı + bu backlog + master spec taranarak çıkarıldı. Çekirdek oyun, online
+multiplayer, ekonomi, başarımlar, kupa/leaderboard, cloud save, ses, mobil girdi, Brawl Stars UI
+ve sosyal sistem + tam ekran giriş bitmiş durumda — proje "yayına hazırlama" aşamasında.
+**Kritik yol:** Play Console kapalı test zorunluluğu (madde 4) takvimin darboğazı — önce o
+başlatılmalı; beklerken 1-3 ve 11-12 kapanmalı; kostümler (9) sanat işi olarak paralel yürümeli.
+Madde 5 (Gem fiyatlandırma) ve 21 (dil/localization) kod değil İŞ KARARI — kullanıcı verecek.
+
+### 1. Açık işin devamı (şimdi sırada)
+1. Google girişi Console/Dashboard kurulumu — aşağıdaki "Google Play Games GİRİŞİ" bölümündeki
+   7 adım. Kod hazır, bekliyor.
+2. Arkadaş/davet akışının iki cihazlı uçtan uca testi (istek gönder/kabul, presence, davet →
+   özel maç → maç sonu). Tek taraflı doğrulandı, iki taraflı hiç test edilmedi.
+3. İlk gerçek Android cihaz build testi — yeni giriş akışı, gerçek store IAP davranışı,
+   performans. Proje şu ana dek yalnız Editor + Device Simulator'da koştu.
+
+### 2. Yayın öncesi zorunlu — mağaza/hesap işleri (kod değil, uzun teslim süreli, paralel başlat)
+4. Google Play Console: uygulama kaydı, **kapalı testte 12 test kullanıcısı × 14 gün zorunluluğu**
+   (yeni bireysel hesaplar — yayın takvimini bu belirler), Data Safety formu, içerik
+   derecelendirme, mağaza görselleri/açıklama, AAB imzalama.
+5. IAP gerçek SKU'ları: `gem_pack_100..6000` Console'da birebir aynı ID'lerle; fiyat/tier'lar
+   placeholder — fiyatlandırma iş kararı olarak verilmedi.
+6. Başarım ID eşlemesi: Play Console'un ürettiği opak ID'ler (`CgkI...`) ↔ içsel id'ler
+   (`ROKETCI` vb.) için provider'a Dictionary (50 başarım Console'da oluşturulacak).
+7. Yasal: gizlilik politikası URL'i (UGS veri işliyor — şart), kullanım koşulları, KVKK/GDPR,
+   yaş derecelendirmesi.
+8. iOS hattı (Android'den sonra): Apple Developer hesabı, Mac/build pipeline,
+   `AppleGameCenterAuthProvider` stub'ının doldurulması (Apple.GameKit +
+   `SignInWithAppleGameCenterAsync`), App Privacy etiketi, TestFlight. Şu an iOS için hiçbir şey yok.
+
+### 3. Oyun içeriği eksikleri (spec'te var, başlanmadı)
+9. 150 kostüm (master spec Bölüm 4): **veri tarafı tamam** (2026-07-09) — 150 `CostumeDefinition` +
+   `CostumeDatabase` üretildi, `CostumeManager` bootstrap edildi, GARDIROP paneli (yalnızca sahip
+   olunanlar) çalışıyor ve play-test edildi. **Kalan: gerçek sprite yok**, tüm kostümler UI'da rarity
+   renkli daire + baş harf placeholder ile gösteriliyor. En büyük kalan içerik kalemi — tier başına
+   şablon + renk varyasyonuyla küçültülebilir.
+10. Harita/gezegen çeşitliliği: tek oynanış sahnesi (SampleScene); `LobbyData.MapName` kullanılmıyor.
+    En az 2-3 farklı gezegen düzeni (çok gezegenli sahneler yerçekiminin vitrini).
+11. Tutorial/onboarding: hiç yok — mobil ilk oturum kaybı için en kritik eksik; en azından ilk
+    maçta hareket/atış ipuçları.
+12. Bot AI: mevcut botlar hotseat kuklası; yerel maç menüden kalktığı için oyuncunun offline modu
+    kalmadı. Basit AI ile "Antrenman" modu (+ istenirse Quick Match'te rakip yoksa bot doldurma).
+13. Profil ikonları/avatar: harf rozeti yerine seçilebilir avatar seti (kostümlerle birleşebilir).
+
+### 4. Bilinen pürüzler / teknik borç
+14. SOSYAL kategorisi başarımları (10) yeni arkadaş sistemine bağlanmalı — davetli özel maçın
+    ilgili FireXxx event'lerini üretip üretmediği kontrol edilmeli.
+15. `ui_button_hover` klibi var ama hiçbir butonda pointer-enter wiring yok.
+16. Ölü kod: `AbilityController.cs`, `ObjectSpawnSkill.cs` (referanssız, eski mimari).
+17. Editor'da UGS timeout'ları (CloudSave local-only düşüşleri) — cihazda sorun değilse kalsın;
+    açılış yükleme ekranındaki timeout mesajı kibarlaştırılabilir.
+18. Davet köşe durumları: host davet gönderip uygulamayı kapatır/arka plana atarsa session
+    temizliği (OnApplicationPause'ta LeaveSession düşünülebilir).
+
+### 5. Yayın sonrası / opsiyonel
+19. Crash raporlama + analitik (Unity Cloud Diagnostics ücretsiz katman) — yayına yakın ekle.
+20. Push notification (sandık hazır / streak hatırlatma) — Dashboard'da servis var, kod yok.
+21. Localization: oyun tamamen Türkçe; global yayın için en az İngilizce
+    (`Resources/Localization` boş, sistem yok). Hedef yalnız TR ise atlanır — KARAR GEREKLİ.
+22. Sunucu tarafı doğrulama: ekonomi/CloudSave client-authoritative (hile açığı); IAP makbuz
+    doğrulama + kritik işlemler için Cloud Code — gelir başlayınca öncelik.
+23. Steam: bilinçli dondurulmuş (`STEAMWORKS_INSTALLED` hazır) — greenlight olursa App ID +
+    Steamworks kurulumu.
+24. Büyüme fikirleri (spec dışı): 2v2/4 oyuncu, sezonluk lig sıfırlama, battle pass.
+
 ## Costumes
-- 150 costumes from the master spec (`.claude/commands/CosmicRumble_MasterPrompt.md`, Section 4) are not
-  authored — `Assets/Resources/Costumes/` is empty (no `CostumeDefinition` assets, no `CostumeDatabase.asset`).
-- `CostumeManager` (`Assets/Scripts/Economy/Costumes/CostumeManager.cs`) is fully coded but not bootstrapped
-  into any scene — intentionally skipped for now.
-- No costume sprite/art assets exist anywhere in the project.
-- `Assets/Editor/CostumeAssetGenerator.cs` costume `displayName`/unlock-description strings (150 tuples) are
-  now translated to English, completing the English-language pass for this generator.
+Done (2026-07-09) — GARDIROP (Wardrobe) panel added, `CostumeManager` bootstrapped, 150-costume data
+generated. Data-complete; still needs real art (see below).
+
+- **`Assets/Scripts/UI/WardrobePanelUI.cs` (new)**: ana menüdeki yeni GARDIROP butonu (sol rayda, MARKET'in
+  üstünde) → sahip olunan kostümlerin paneli. KARAKTER/SİLAH sekmeleri, rarity renkli çerçeveli grid kartları
+  (sprite yoksa baş harfli rozet fallback — `previewSprite` null-safe), karta dokunmak `CostumeManager.Equip()`
+  çağırıp KUŞANILDI etiketini günceller. **Yalnızca sahip olunan kostümler listelenir** — kilitli/satın
+  alınmamış hiçbiri hiç görünmez (mağaza/kilit açma akışı kapsam dışı, ayrı bir iş). `QuestsPanelUI` ile aynı
+  UiKit programatik Canvas kalıbını izler.
+- **`CostumeManager` artık bootstrap ediliyor** (`MainMenuUI.EnsureProgressSingletons()`) — daha önce
+  kasıtlı olarak dahil edilmemişti (bkz. eski not), TODO.md yol haritasının 1. maddesiyle birlikte etkinleştirildi.
+  `Awake()`'e `GrantDefaultCostumes()` eklendi: `CostumeUnlock.Default` olan kostümler (ör. Gray Soldier,
+  Standard Blue) oyuncuya sessizce (ödül popup'ı tetiklemeden) baştan verilir — aksi halde gardırop hep boş
+  görünürdü, çünkü hiçbir yer "varsayılan" kostümleri otomatik sahiplendirmiyordu.
+- **150 kostüm verisi üretildi**: `CostumeAssetGenerator.cs` (`CosmicRumble/Economy/Generate Costume Assets`)
+  Editor menü komutu çalıştırıldı — `Assets/Resources/Costumes/*.asset` (150 `CostumeDefinition`) ve
+  `Assets/Resources/Economy/CostumeDatabase.asset` artık projede kalıcı. Rarity dağılımı master spec'e uygun
+  (Common/Uncommon/Rare/Epic/Legendary), unlock yöntemleri karışık (Default/ByLevel/ByGold/ByGem/ByChest/
+  ByAchievement). **Hâlâ eksik: hiçbir kostümün gerçek sprite'ı yok** (`previewSprite` hepsinde null) — UI
+  bunu rarity renkli daire + baş harf ile telafi ediyor, ama gerçek karakter/silah görselleri ayrı, büyük bir
+  sanat işi olarak duruyor (bkz. yol haritası madde 9).
+- **Play-tested end-to-end in the Unity Editor via Coplay MCP**: misafir girişiyle boot, GARDIROP panelini
+  açma, KARAKTER sekmesinde yalnızca 2 sahip olunan kostümün ("Gray Soldier", "Standard Blue", ikisi de
+  SIRADAN/Common) göründüğü ve "Sahip olunan: 2 / 86" sayacının doğru olduğu doğrulandı — kilitli 84 kostümün
+  hiçbiri listede görünmedi.
+- **Bir gerçek bug bulundu ve düzeltildi bu geçişte**: `WardrobePanelUI.Show()` ilk yazımda `Populate()`'ı
+  `_panelRoot.SetActive(true)`'dan ÖNCE çağırıyordu. Panel hâlâ inaktifken oluşturulan `TextMeshProUGUI`
+  objelerinde `UiKit.BrawlText()`'in `outlineWidth` setter'ı font materyali instance'ı oluşturmaya çalışıyor,
+  bu da TMP'nin `OnEnable()`'ının çalışmış olmasını gerektiriyor — inaktif hiyerarşide `OnEnable` ertelendiği
+  için `NullReferenceException` (Material.CreateWithMaterial, source null) fırlatıyordu, panel ilk açılışta
+  patlıyordu. Sıra değiştirildi (`SetActive(true)` önce, `Populate()` sonra) — düzeltmeden sonra hatasız
+  çalıştığı doğrulandı.
 
 ## Quests
 Done — full quest pool (14 assets: 8 daily / 4 weekly / 2 monthly), `QuestsPanelUI.cs` (Daily/Weekly/Monthly

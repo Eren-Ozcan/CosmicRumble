@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy.IAP;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Ana menüdeki MARKET butonu → Gem satın alma paneli. Modern mobil mağaza düzeni:
@@ -116,11 +117,11 @@ public class ShopPanelUI : MonoBehaviour
         cardRt.sizeDelta = new Vector2(1060, 560);
         cardRt.anchoredPosition = Vector2.zero;
 
-        var title = MakeText(card, "Title", "MARKET", 30,
+        var title = MakeText(card, "Title", Loc.T("SHOP"), 30,
             new Vector2(0.5f, 0.92f), new Vector2(500, 46), GemColor);
         title.fontStyle = FontStyles.Bold;
 
-        MakeText(card, "Subtitle", "Gem paketleri — kostüm ve sandıklar için", 14,
+        MakeText(card, "Subtitle", Loc.T("Gem packs — for costumes and chests"), 14,
             new Vector2(0.5f, 0.845f), new Vector2(600, 24), TextSec);
 
         UiKit.CloseButton(card, Hide);
@@ -159,8 +160,8 @@ public class ShopPanelUI : MonoBehaviour
         rt.anchoredPosition = pos;
 
         // Rozet (popüler / en iyi değer)
-        string badge = index == PopularPackIndex   ? "POPÜLER"
-                     : index == BestValuePackIndex ? "EN İYİ DEĞER" : null;
+        string badge = index == PopularPackIndex   ? Loc.T("POPULAR")
+                     : index == BestValuePackIndex ? Loc.T("BEST VALUE") : null;
         if (badge != null)
         {
             var badgeGO = new GameObject("Badge");
@@ -232,7 +233,7 @@ public class ShopPanelUI : MonoBehaviour
         _priceTexts[index].fontStyle = FontStyles.Bold;
         StretchFull(_priceTexts[index].rectTransform);
 
-        MakeText(cardGO, "BuyHint", "SATIN AL", 12,
+        MakeText(cardGO, "BuyHint", Loc.T("BUY"), 12,
             new Vector2(0.5f, 0f), new Vector2(140, 20), TextSec)
             .rectTransform.anchoredPosition = new Vector2(0, 16);
     }

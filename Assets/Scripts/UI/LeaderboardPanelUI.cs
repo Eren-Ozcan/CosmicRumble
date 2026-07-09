@@ -7,6 +7,7 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Leaderboards.Models;
 using CosmicRumble.Cloud;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Ana menüdeki LEADERBOARD butonu → global online galibiyet sıralaması paneli.
@@ -91,13 +92,13 @@ public class LeaderboardPanelUI : MonoBehaviour
         UiKit.Stroke(card, new Color(1f, 1f, 1f, 0.09f));
         UiKit.Pop(card);
 
-        var title = MakeTxt(card, "Title", "SIRALAMA", 30, GoldRank,
+        var title = MakeTxt(card, "Title", Loc.T("LEADERBOARD"), 30, GoldRank,
             new Vector2(0.5f, 0.925f), new Vector2(600, 46));
         title.fontStyle = FontStyles.Bold;
 
         UiKit.CloseButton(card, Hide);
 
-        MakeBtn(card, "btn_refresh", "YENİLE",
+        MakeBtn(card, "btn_refresh", Loc.T("REFRESH"),
             new Vector2(0.11f, 0.925f), new Vector2(120, 46),
             PrimaryBtn, PrimaryHover, () => { if (!_loading) _ = PopulateAsync(); });
 
@@ -167,14 +168,14 @@ public class LeaderboardPanelUI : MonoBehaviour
     {
         _loading = true;
         ClearRows();
-        if (_statusText) _statusText.text = "Yükleniyor...";
+        if (_statusText) _statusText.text = Loc.T("Loading...");
 
         var mgr = LeaderboardManager.Instance;
         if (mgr == null ||
             UnityServices.State != ServicesInitializationState.Initialized ||
             !AuthenticationService.Instance.IsSignedIn)
         {
-            MakeEmptyRow("Online servislere ulaşılamıyor — bağlantını kontrol et.");
+            MakeEmptyRow(Loc.T("Can't reach online services — check your connection."));
             if (_statusText) _statusText.text = "";
             _loading = false;
             return;
@@ -193,7 +194,7 @@ public class LeaderboardPanelUI : MonoBehaviour
 
         if (entries.Count == 0)
         {
-            MakeEmptyRow("Henüz kupa yok — burada görünmek için bir online maç oyna!");
+            MakeEmptyRow(Loc.T("No trophies yet — play an online match to show up here!"));
         }
         else
         {
@@ -205,8 +206,8 @@ public class LeaderboardPanelUI : MonoBehaviour
         if (_statusText)
         {
             _statusText.text = own != null
-                ? $"Sıralaman: #{own.Rank + 1}   •   {(int)own.Score} kupa   •   {LeaderboardManager.GetLeagueName((int)own.Score)}"
-                : $"Henüz dereceli kupan yok   •   Yerel: {mgr.Trophies} kupa";
+                ? string.Format(Loc.T("Your rank: #{0}   •   {1} trophies   •   {2}"), own.Rank + 1, (int)own.Score, LeaderboardManager.GetLeagueName((int)own.Score))
+                : string.Format(Loc.T("No ranked trophies yet   •   Local: {0} trophies"), mgr.Trophies);
         }
 
         _loading = false;
@@ -282,7 +283,7 @@ public class LeaderboardPanelUI : MonoBehaviour
     /// <summary>UGS anonim adlarındaki "#1234" ekini gizle; boş adlara yer tutucu ver.</summary>
     static string CleanName(string playerName)
     {
-        if (string.IsNullOrEmpty(playerName)) return "Oyuncu";
+        if (string.IsNullOrEmpty(playerName)) return Loc.T("Player");
         int hash = playerName.IndexOf('#');
         return hash > 0 ? playerName.Substring(0, hash) : playerName;
     }

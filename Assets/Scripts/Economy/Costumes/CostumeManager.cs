@@ -41,6 +41,27 @@ namespace CosmicRumble.Economy
             }
 
             Load();
+            GrantDefaultCostumes();
+        }
+
+        /// <summary>
+        /// unlockMethod == Default olan kostümler baştan sahiplidir ("Unlocked from start").
+        /// Sessizce eklenir — açılışta ödül popup'ı tetiklememek için OnCostumePurchased ateşlenmez.
+        /// </summary>
+        private void GrantDefaultCostumes()
+        {
+            if (_db == null) return;
+            bool changed = false;
+            foreach (var c in _db.allCostumes)
+            {
+                if (c != null && c.unlockMethod == CostumeUnlock.Default
+                    && !_data.ownedIds.Contains(c.costumeId))
+                {
+                    _data.ownedIds.Add(c.costumeId);
+                    changed = true;
+                }
+            }
+            if (changed) Save();
         }
 
         private void Start()

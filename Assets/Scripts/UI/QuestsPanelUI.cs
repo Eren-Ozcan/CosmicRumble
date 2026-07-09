@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Ana menüdeki GÖREVLER butonu → günlük/haftalık/aylık görev paneli.
@@ -113,7 +114,7 @@ public class QuestsPanelUI : MonoBehaviour
         UiKit.Stroke(card, StrokeCol);
         UiKit.Pop(card);
 
-        var title = MakeTxt(card, "Title", "GÖREVLER", 30, CompletedGr,
+        var title = MakeTxt(card, "Title", Loc.T("QUESTS"), 30, CompletedGr,
             new Vector2(0.5f, 0.925f), new Vector2(680, 46));
         title.fontStyle = FontStyles.Bold;
 
@@ -133,9 +134,9 @@ public class QuestsPanelUI : MonoBehaviour
     void BuildTabs(GameObject parent)
     {
         float y = 0.845f;
-        _tabDailyBtn   = MakeTabBtn(parent, "tab_daily",   "GÜNLÜK",   new Vector2(0.29f, y), () => SwitchTab(Tab.Daily));
-        _tabWeeklyBtn  = MakeTabBtn(parent, "tab_weekly",  "HAFTALIK", new Vector2(0.50f, y), () => SwitchTab(Tab.Weekly));
-        _tabMonthlyBtn = MakeTabBtn(parent, "tab_monthly", "AYLIK",    new Vector2(0.71f, y), () => SwitchTab(Tab.Monthly));
+        _tabDailyBtn   = MakeTabBtn(parent, "tab_daily",   Loc.T("DAILY"),   new Vector2(0.29f, y), () => SwitchTab(Tab.Daily));
+        _tabWeeklyBtn  = MakeTabBtn(parent, "tab_weekly",  Loc.T("WEEKLY"), new Vector2(0.50f, y), () => SwitchTab(Tab.Weekly));
+        _tabMonthlyBtn = MakeTabBtn(parent, "tab_monthly", Loc.T("MONTHLY"),    new Vector2(0.71f, y), () => SwitchTab(Tab.Monthly));
     }
 
     Button MakeTabBtn(GameObject parent, string name, string label, Vector2 anchor, UnityEngine.Events.UnityAction cb)
@@ -229,7 +230,7 @@ public class QuestsPanelUI : MonoBehaviour
         var mgr = QuestManager.Instance;
         if (mgr == null)
         {
-            MakeEmptyRow("Görev sistemi şu anda kullanılamıyor.");
+            MakeEmptyRow(Loc.T("The quest system is currently unavailable."));
             if (_resetText) _resetText.text = "";
             return;
         }
@@ -239,22 +240,22 @@ public class QuestsPanelUI : MonoBehaviour
         {
             case Tab.Weekly:
                 quests = mgr.GetActiveWeeklyQuests();
-                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextWeeklyReset())} kaldı";
+                _resetText.text = string.Format(Loc.T("Resets in {0}"), FormatRemaining(NextWeeklyReset()));
                 break;
             case Tab.Monthly:
                 var monthly = mgr.GetActiveMonthlyQuest();
                 quests = monthly != null ? new List<QuestDefinition> { monthly } : new List<QuestDefinition>();
-                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextMonthlyReset())} kaldı";
+                _resetText.text = string.Format(Loc.T("Resets in {0}"), FormatRemaining(NextMonthlyReset()));
                 break;
             default:
                 quests = mgr.GetActiveDailyQuests();
-                _resetText.text = $"Sıfırlanmasına {FormatRemaining(NextDailyReset())} kaldı";
+                _resetText.text = string.Format(Loc.T("Resets in {0}"), FormatRemaining(NextDailyReset()));
                 break;
         }
 
         if (quests == null || quests.Count == 0)
         {
-            MakeEmptyRow("Şu anda aktif görev yok.");
+            MakeEmptyRow(Loc.T("No active quests right now."));
             return;
         }
 
@@ -360,7 +361,7 @@ public class QuestsPanelUI : MonoBehaviour
 
         var countCol = ColFixed(barRowGO, "Count", 80);
         MakeTxt(countCol, "CountLbl",
-            completed ? "TAMAM" : $"{clamped}/{def.targetValue}",
+            completed ? Loc.T("DONE") : $"{clamped}/{def.targetValue}",
             13, completed ? CompletedGr : TextSec,
             new Vector2(0.5f, 0.5f), Vector2.zero)
             .rectTransform.Let(rt => StretchFull(rt));
@@ -420,8 +421,8 @@ public class QuestsPanelUI : MonoBehaviour
     static string FormatRemaining(TimeSpan span)
     {
         if (span.TotalDays >= 1)
-            return $"{(int)span.TotalDays}g {span.Hours}s";
-        return $"{span.Hours}s {span.Minutes}dk";
+            return string.Format(Loc.T("{0}d {1}h"), (int)span.TotalDays, span.Hours);
+        return string.Format(Loc.T("{0}h {1}m"), span.Hours, span.Minutes);
     }
 
     // ════════════════════════════════════════════════════════════════════

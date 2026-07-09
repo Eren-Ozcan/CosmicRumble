@@ -6,6 +6,7 @@ using CosmicRumble.Economy;
 using CosmicRumble.Economy.IAP;
 using CosmicRumble.Achievements;
 using CosmicRumble.Cloud;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// MenuScene'e boş bir GameObject ekle, bu scripti yapıştır — bitti.
@@ -110,7 +111,7 @@ public class MainMenuUI : MonoBehaviour
         EnsureCoreSingletons();
 
         // Açılış perdesi: sessiz giriş + bulut senkronu bitene kadar menü görünmez.
-        LoadingScreenUI.Instance?.Show("Bağlanılıyor...");
+        LoadingScreenUI.Instance?.Show(Loc.T("Connecting..."));
 
         // 1) Sessiz oturum kurtarma: session token bağlı hesabı geri yükler; Android'de
         //    ayrıca sessiz GPGS bağlama denenir. IsGuest/CurrentUsername kimliklerden dolar
@@ -132,11 +133,11 @@ public class MainMenuUI : MonoBehaviour
             while (!waitTask.IsCompleted) yield return null;
             // Not: Cosmic ID Login() sahneyi yeniden yükler — o durumda bu coroutine ölür ve
             // yeni bootstrap sessiz restore ile devam eder; buraya hiç dönülmez.
-            LoadingScreenUI.Instance?.Show("Bulut kaydı alınıyor...");
+            LoadingScreenUI.Instance?.Show(Loc.T("Fetching cloud save..."));
         }
         else
         {
-            LoadingScreenUI.Instance?.SetStatus("Bulut kaydı alınıyor...");
+            LoadingScreenUI.Instance?.SetStatus(Loc.T("Fetching cloud save..."));
         }
 
         // 3) Bulut senkronu — progress manager'lar oluşturulmadan ÖNCE bitmeli.
@@ -151,7 +152,7 @@ public class MainMenuUI : MonoBehaviour
             while (!guestTask.IsCompleted) yield return null;
         }
 
-        LoadingScreenUI.Instance?.SetStatus("Profil yükleniyor...");
+        LoadingScreenUI.Instance?.SetStatus(Loc.T("Loading profile..."));
         EnsureProgressSingletons();
 
         // UGS player name'i (Nova731#1234) erken eşitle — SOSYAL panelin arkadaş kodu ve
@@ -174,6 +175,7 @@ public class MainMenuUI : MonoBehaviour
 
     void EnsureCoreSingletons()
     {
+        if (LocalizationManager.Instance == null) new GameObject("LocalizationManager").AddComponent<LocalizationManager>();
         if (GameConfig.Instance      == null) new GameObject("GameConfig").AddComponent<GameConfig>();
         if (SceneFader.Instance      == null) new GameObject("SceneFader").AddComponent<SceneFader>();
         if (AuthManager.Instance     == null) new GameObject("AuthManager").AddComponent<AuthManager>();
@@ -189,8 +191,9 @@ public class MainMenuUI : MonoBehaviour
 
     void EnsureProgressSingletons()
     {
-        // Economy/achievement backend — CostumeManager kasıtlı olarak dahil edilmedi (bkz. TODO.md).
+        // Economy/achievement backend
         if (CurrencyManager.Instance    == null) new GameObject("CurrencyManager").AddComponent<CurrencyManager>();
+        if (CostumeManager.Instance     == null) new GameObject("CostumeManager").AddComponent<CostumeManager>();
         if (PlayerLevelManager.Instance == null) new GameObject("PlayerLevelManager").AddComponent<PlayerLevelManager>();
         if (UnlockManager.Instance      == null) new GameObject("UnlockManager").AddComponent<UnlockManager>();
         if (QuestManager.Instance       == null) new GameObject("QuestManager").AddComponent<QuestManager>();
@@ -215,6 +218,7 @@ public class MainMenuUI : MonoBehaviour
         if (SocialPanelUI.Instance       == null) new GameObject("SocialPanelUI").AddComponent<SocialPanelUI>();
         if (FriendLobbyPanelUI.Instance  == null) new GameObject("FriendLobbyPanelUI").AddComponent<FriendLobbyPanelUI>();
         if (InvitePopupUI.Instance       == null) new GameObject("InvitePopupUI").AddComponent<InvitePopupUI>();
+        if (WardrobePanelUI.Instance     == null) new GameObject("WardrobePanelUI").AddComponent<WardrobePanelUI>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -307,7 +311,7 @@ public class MainMenuUI : MonoBehaviour
         var subGO  = new GameObject("Subtitle");
         subGO.transform.SetParent(parent.transform, false);
         var sub    = subGO.AddComponent<TextMeshProUGUI>();
-        sub.text      = "Turn-based planetary warfare";
+        sub.text      = Loc.T("Turn-based planetary warfare");
         sub.fontSize  = 16;
         sub.fontStyle = FontStyles.Italic;
         sub.alignment = TextAlignmentOptions.Center;
@@ -410,7 +414,7 @@ public class MainMenuUI : MonoBehaviour
             new Vector2(280, -14), new Vector2(226, 64),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
-        MakeIconCircle(trophyPlate, AccGold, "K", new Vector2(30, 8));
+        MakeIconCircle(trophyPlate, AccGold, Loc.T("T"), new Vector2(30, 8));
 
         int trophies = CosmicRumble.Cloud.LeaderboardManager.Instance != null
             ? CosmicRumble.Cloud.LeaderboardManager.Instance.Trophies : 0;
@@ -549,16 +553,19 @@ public class MainMenuUI : MonoBehaviour
         var size = new Vector2(238, 70);
 
         // Sol kolon
-        MakeBrawlBtn(_mainPanel, "btn_shop", "MARKET", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(16, 118), size, 19, BrawlYellow, YellowEdge, AccGold, "M",
+        MakeBrawlBtn(_mainPanel, "btn_wardrobe", Loc.T("WARDROBE"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+            new Vector2(16, 204), size, 17, PlateDark, PlateEdge, AccPurple, "W",
+            () => { Click(); WardrobePanelUI.Instance?.Show(); });
+        MakeBrawlBtn(_mainPanel, "btn_shop", Loc.T("SHOP"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+            new Vector2(16, 118), size, 19, BrawlYellow, YellowEdge, AccGold, "$",
             () => { Click(); ShopPanelUI.Instance?.Show(); });
-        MakeBrawlBtn(_mainPanel, "btn_social", "SOSYAL", new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+        MakeBrawlBtn(_mainPanel, "btn_social", Loc.T("SOCIAL"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
             new Vector2(16, 32), size, 17, PlateDark, PlateEdge, AccCyan, "S",
             () => { Click(); SocialPanelUI.Instance?.Show(); });
 
         // Alt-sol: GÖREVLER
-        MakeBrawlBtn(_mainPanel, "btn_quests", "GÖREVLER", new Vector2(0f, 0f), new Vector2(0f, 0f),
-            new Vector2(16, 22), new Vector2(238, 74), 18, PlateDark, PlateEdge, AccGreen, "G",
+        MakeBrawlBtn(_mainPanel, "btn_quests", Loc.T("QUESTS"), new Vector2(0f, 0f), new Vector2(0f, 0f),
+            new Vector2(16, 22), new Vector2(238, 74), 18, PlateDark, PlateEdge, AccGreen, "Q",
             () => { Click(); QuestsPanelUI.Instance?.Show(); });
 
         // Sağ tarafta kalıcı buton yok — ikincil her şey ☰ çekmecesinde (BS kalıbı).
@@ -612,18 +619,18 @@ public class MainMenuUI : MonoBehaviour
                 new Vector2(-10, -8 - i * 82), size, 17, PlateDark, PlateEdge, icon, letter,
                 () => { Click(); SetDrawer(false); act(); });
         }
-        Item("dw_settings",     "AYARLAR",    new Color(0.55f, 0.58f, 0.66f, 1f), "A",
+        Item("dw_settings",     Loc.T("SETTINGS"),     new Color(0.55f, 0.58f, 0.66f, 1f), "S",
             () => ShowPanel(_settingsPanel));
-        Item("dw_leaderboard",  "SIRALAMA",   AccCyan, "S",
+        Item("dw_leaderboard",  Loc.T("LEADERBOARD"),  AccCyan, "L",
             () => LeaderboardPanelUI.Instance?.Show());
-        Item("dw_achievements", "BAŞARIMLAR", AccPurple, "B",
+        Item("dw_achievements", Loc.T("ACHIEVEMENTS"), AccPurple, "A",
             () => AchievementsPanelUI.Instance?.Show());
-        Item("dw_account",      "HESAP",      AccGreen, "H",
+        Item("dw_account",      Loc.T("ACCOUNT"),      AccGreen, "@",
             () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
 #if UNITY_EDITOR
         // Yerel/bot maçı menüden kaldırıldı (arkadaş davetli özel lobi yerini aldı) — offline
         // spawn yolu (GameInitializer/LobbyData) test için Editor'a kilitli girişle duruyor.
-        Item("dw_botmatch",     "BOT MAÇI (DEV)", AccBlue, "Y",
+        Item("dw_botmatch",     Loc.T("BOT MATCH (DEV)"), AccBlue, "B",
             () => LobbyPanelUI.Instance?.Show());
 #endif
         _drawerCol.sizeDelta = new Vector2(300, itemCount * 82 + 16);
@@ -674,11 +681,11 @@ public class MainMenuUI : MonoBehaviour
         var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
             new Vector2(0, 22), new Vector2(430, 66),
             () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
-        var modeTitle = MakeTxt(mode, "Title", "HIZLI EŞLEŞME", 19, FontStyles.Normal, Color.white,
+        var modeTitle = MakeTxt(mode, "Title", Loc.T("QUICK MATCH"), 19, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 26), new Vector2(0, 11));
         UiKit.BrawlText(modeTitle);
         modeTitle.raycastTarget = false;
-        var modeSub = MakeTxt(mode, "Sub", "Dereceli  •  Galibiyet +30 kupa", 12, FontStyles.Normal,
+        var modeSub = MakeTxt(mode, "Sub", Loc.T("Ranked  •  Win +30 Trophies"), 12, FontStyles.Normal,
             AccGold, TextAlignmentOptions.Center,
             new Vector2(0.5f, 0.5f), new Vector2(400, 18), new Vector2(0, -16));
         modeSub.raycastTarget = false;
@@ -719,12 +726,11 @@ public class MainMenuUI : MonoBehaviour
         btn.onClick.AddListener(() => { Click(); OnlineLobbyPanelUI.Instance?.ShowAndStartQuickMatch(); });
         UiKit.Pulse(go); // tek birincil eylem: sürekli çok hafif nefes (Press ile çakışmasın diye Press yok)
 
-        var mainLbl = MakeTxt(faceGO, "Label", "OYNA", 50, FontStyles.Normal, Color.white,
+        var mainLbl = MakeTxt(faceGO, "Label", Loc.T("PLAY"), 50, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 60), new Vector2(0, 10));
         UiKit.BrawlText(mainLbl);
         mainLbl.raycastTarget = false;
-        // Küçük harfli: Titan One'da büyük 'İ' glifi yok, fallback sırıtıyor
-        var subLbl = MakeTxt(faceGO, "Sub", "Hızlı Eşleşme  •  Dereceli", 14, FontStyles.Normal,
+        var subLbl = MakeTxt(faceGO, "Sub", Loc.T("Quick Match  •  Ranked"), 14, FontStyles.Normal,
             new Color(0.42f, 0.27f, 0.02f, 1f),
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 20), new Vector2(0, -34));
         subLbl.raycastTarget = false;
@@ -814,7 +820,7 @@ public class MainMenuUI : MonoBehaviour
         BuildPattern(backdropGO, 26);
 
         // Header — beyaz konturlu büyük başlık, üst-orta
-        var hdr = MakeTxt(_settingsPanel, "hdr_settings", "AYARLAR", 36, FontStyles.Normal, Color.white,
+        var hdr = MakeTxt(_settingsPanel, "hdr_settings", Loc.T("SETTINGS"), 36, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(420, 48), new Vector2(0, -36));
         UiKit.BrawlText(hdr);
 
@@ -824,10 +830,10 @@ public class MainMenuUI : MonoBehaviour
             new Vector2(0.5f, 0f), new Vector2(360, 20), new Vector2(0, 12));
 
         // ── Tab row ──────────────────────────────────────────────────────────
-        MakeTabBtn("tab_audio",     "SES",        -168, 170, () => ShowSettingsTab(_audioTab));
-        MakeTabBtn("tab_graphics",  "GRAFİK",      -56, 170, () => ShowSettingsTab(_graphicsTab));
-        MakeTabBtn("tab_controls",  "KONTROLLER",   56, 170, () => ShowSettingsTab(_controlsTab));
-        MakeTabBtn("tab_account",   "HESAP",       168, 170, () => ShowSettingsTab(_accountTab));
+        MakeTabBtn("tab_audio",     Loc.T("AUDIO"),    -168, 170, () => ShowSettingsTab(_audioTab));
+        MakeTabBtn("tab_graphics",  Loc.T("GRAPHICS"),  -56, 170, () => ShowSettingsTab(_graphicsTab));
+        MakeTabBtn("tab_controls",  Loc.T("CONTROLS"),   56, 170, () => ShowSettingsTab(_controlsTab));
+        MakeTabBtn("tab_account",   Loc.T("ACCOUNT"),   168, 170, () => ShowSettingsTab(_accountTab));
 
         MakeSeparator(_settingsPanel, new Vector2(0, 145));
 
@@ -843,7 +849,7 @@ public class MainMenuUI : MonoBehaviour
         BuildAccountTab(_accountTab);
 
         // Back button — always visible, outside the tabs
-        MakeBtn(_settingsPanel, "btn_back", "GERİ", -230,
+        MakeBtn(_settingsPanel, "btn_back", Loc.T("BACK"), -230,
             PlateDark, new Color(0.26f, 0.28f, 0.34f),
             () => { Click(); ShowPanel(_mainPanel); });
 
@@ -868,13 +874,13 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildAudioTab(GameObject parent)
     {
-        _masterSlider = MakeSliderRow(parent, "Ana Ses", 100);
-        _musicSlider  = MakeSliderRow(parent, "Müzik",    40);
-        _sfxSlider    = MakeSliderRow(parent, "Efektler", -20);
+        _masterSlider = MakeSliderRow(parent, Loc.T("Master Volume"), 100);
+        _musicSlider  = MakeSliderRow(parent, Loc.T("Music"),    40);
+        _sfxSlider    = MakeSliderRow(parent, Loc.T("Effects"), -20);
 
         MakeSeparator(parent, new Vector2(0, -60));
 
-        MakeTxt(parent, "lbl_fs", "Tam Ekran", 18, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_fs", Loc.T("Fullscreen"), 18, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(200, 28), new Vector2(-70, -95));
         _fsToggle = MakeToggle(parent, -95);
 
@@ -886,7 +892,7 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildGraphicsTab(GameObject parent)
     {
-        MakeTxt(parent, "lbl_res", "Çözünürlük", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_res", Loc.T("Resolution"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 100));
 
         var resolutions = Screen.resolutions;
@@ -902,7 +908,7 @@ public class MainMenuUI : MonoBehaviour
         _resolutionCycler = MakeCycler(parent, "res", 100, resOptions, startRes,
             idx => { if (GameConfig.Instance != null) GameConfig.Instance.ResolutionIndex = idx; });
 
-        MakeTxt(parent, "lbl_quality", "Kalite", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_quality", Loc.T("Quality"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 40));
 
         var qualityOptions = QualitySettings.names;
@@ -918,7 +924,7 @@ public class MainMenuUI : MonoBehaviour
         _vsyncToggle.isOn = cfg == null || cfg.VSync;
         _vsyncToggle.onValueChanged.AddListener(v => { if (GameConfig.Instance != null) GameConfig.Instance.VSync = v; });
 
-        MakeBtn(parent, "btn_apply_graphics", "UYGULA", -90,
+        MakeBtn(parent, "btn_apply_graphics", Loc.T("APPLY"), -90,
             AccGreen, AccGreenHov, () =>
             {
                 Click();
@@ -929,19 +935,19 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildControlsTab(GameObject parent)
     {
-        MakeTxt(parent, "lbl_move_left", "Sola Git", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_move_left", Loc.T("Move Left"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, 100));
         _btnMoveLeftLabel = MakeRebindBtn(parent, "btn_move_left", new Vector2(105, 100), () => BeginRebind("MoveLeft"));
 
-        MakeTxt(parent, "lbl_move_right", "Sağa Git", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_move_right", Loc.T("Move Right"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, 30));
         _btnMoveRightLabel = MakeRebindBtn(parent, "btn_move_right", new Vector2(105, 30), () => BeginRebind("MoveRight"));
 
-        MakeTxt(parent, "lbl_jump", "Zıpla", 17, FontStyles.Normal, TextPrimary,
+        MakeTxt(parent, "lbl_jump", Loc.T("Jump"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(180, 26), new Vector2(-115, -40));
         _btnJumpLabel = MakeRebindBtn(parent, "btn_jump", new Vector2(105, -40), () => BeginRebind("Jump"));
 
-        MakeTxt(parent, "lbl_hint", "Bir butona dokun, sonra yeni tuşa bas (iptal için Esc)", 13, FontStyles.Italic, TextDim,
+        MakeTxt(parent, "lbl_hint", Loc.T("Tap a button, then press a new key (Esc to cancel)"), 13, FontStyles.Italic, TextDim,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 24), new Vector2(0, -110));
 
         RefreshControlsLabels();
@@ -960,7 +966,7 @@ public class MainMenuUI : MonoBehaviour
         (_cosmicStatusText, _cosmicLinkBtn) = MakeProviderRow(parent, "row_cosmic", "COSMIC ID",
             new Vector2(0, -14), OnCosmicLinkClicked);
 
-        _logoutBtn = MakeSettingsButton(parent, "btn_logout", "ÇIKIŞ YAP", AccRed,
+        _logoutBtn = MakeSettingsButton(parent, "btn_logout", Loc.T("LOG OUT"), AccRed,
             new Vector2(0, -110), OnLogoutClicked);
 
         RefreshAccountTab();
@@ -983,9 +989,10 @@ public class MainMenuUI : MonoBehaviour
         KeyCode right = cfg != null ? cfg.MoveRightKey : KeyCode.D;
         KeyCode jump  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
 
-        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? "Bir tuşa bas…" : left.ToString();
-        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? "Bir tuşa bas…" : right.ToString();
-        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? "Bir tuşa bas…" : jump.ToString();
+        string waiting = Loc.T("Press a key…");
+        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? waiting : left.ToString();
+        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? waiting : right.ToString();
+        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? waiting : jump.ToString();
     }
 
     void Update()
@@ -1050,7 +1057,7 @@ public class MainMenuUI : MonoBehaviour
         var statusTxt = MakeTxt(row, "Status", "", 14, FontStyles.Normal, TextDim,
             TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(240, 40), new Vector2(320, 0));
 
-        var btnGO = MakeSettingsButton(row, "btn_link", "BAĞLA", AccBlue, Vector2.zero, onLink,
+        var btnGO = MakeSettingsButton(row, "btn_link", Loc.T("LINK"), AccBlue, Vector2.zero, onLink,
             new Vector2(130, 46));
         var btnRt = btnGO.GetComponent<RectTransform>();
         btnRt.anchorMin = btnRt.anchorMax = new Vector2(1f, 0.5f);
@@ -1100,13 +1107,13 @@ public class MainMenuUI : MonoBehaviour
     {
         Click();
         if (AuthManager.Instance == null) return;
-        if (_googleStatusText != null) _googleStatusText.text = "Bağlanılıyor...";
+        if (_googleStatusText != null) _googleStatusText.text = Loc.T("Connecting...");
 
         var (ok, error) = await AuthManager.Instance.SignInWithPlatformAsync(
             CosmicRumble.Auth.GooglePlayAuthProvider.Shared, silent: false);
 
         if (!ok && _googleStatusText != null)
-            _googleStatusText.text = error ?? "Bağlanamadı.";
+            _googleStatusText.text = error ?? Loc.T("Connection failed.");
         RefreshAccountTab();
         // Not: hesap değişimi gerektiyse (AccountAlreadyLinked) sahne zaten yeniden yüklenir.
     }
@@ -1132,8 +1139,8 @@ public class MainMenuUI : MonoBehaviour
         if (_accountStatusText != null)
         {
             _accountStatusText.text = named
-                ? $"Hesap: {auth.CurrentUsername}"
-                : $"{PlayerIdentity.Get()} — hesap bağlı değil.\nİlerlemeni korumak için hesabını bağla.";
+                ? string.Format(Loc.T("Account: {0}"), auth.CurrentUsername)
+                : string.Format(Loc.T("{0} — no account linked.\nLink an account to protect your progress."), PlayerIdentity.Get());
         }
 
         bool googleLinked = auth != null && auth.HasProvider(AuthManager.ProviderGooglePlayGames);
@@ -1141,12 +1148,12 @@ public class MainMenuUI : MonoBehaviour
 
         if (_googleStatusText != null)
         {
-            _googleStatusText.text = googleLinked ? $"Bağlı ({auth.CurrentUsername})" : "Bağlı değil";
+            _googleStatusText.text = googleLinked ? string.Format(Loc.T("Linked ({0})"), auth.CurrentUsername) : Loc.T("Not linked");
             _googleLinkBtn?.SetActive(!googleLinked);
         }
         if (_cosmicStatusText != null)
         {
-            _cosmicStatusText.text = cosmicLinked ? $"Bağlı ({auth.CurrentUsername})" : "Bağlı değil";
+            _cosmicStatusText.text = cosmicLinked ? string.Format(Loc.T("Linked ({0})"), auth.CurrentUsername) : Loc.T("Not linked");
             _cosmicLinkBtn?.SetActive(!cosmicLinked);
         }
 

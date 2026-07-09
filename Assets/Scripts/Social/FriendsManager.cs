@@ -14,7 +14,7 @@ namespace CosmicRumble.Social
     [Serializable]
     public class PresenceActivity
     {
-        public string status;   // "Menüde" / "Maçta"
+        public string status;   // "in_menu" / "in_match" — dile bağımsız protokol değeri, SocialPanelUI görüntüde çevirir
         public int    trophies;
     }
 
@@ -150,7 +150,7 @@ namespace CosmicRumble.Social
         }
 
         static string CurrentActivityStatus() =>
-            SceneManager.GetActiveScene().name == SceneNames.Game ? "Maçta" : "Menüde";
+            SceneManager.GetActiveScene().name == SceneNames.Game ? "in_match" : "in_menu";
 
         // ── Data access ──────────────────────────────────────────────────
 
