@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// SampleScene'e boş bir GameObject ekle, bu scripti yapıştır — bitti.
@@ -210,20 +211,20 @@ public class InGameMenu : MonoBehaviour
         _mainPanel = MakeCenteredPanel("MainPanel", 320, 340);
         _mainPanel.transform.SetParent(_root.transform, false);
 
-        MakeTitle(_mainPanel, "GAME MENU");
-        MakeBtn(_mainPanel, "Resume",             0,    OnResume,     _btnResume);
-        MakeBtn(_mainPanel, "Settings",         -70,  ShowSettings, _btnColor);
-        MakeBtn(_mainPanel, "Return to Main Menu", -140, OnQuitToMenu, _btnDanger);
+        MakeTitle(_mainPanel, Loc.T("GAME MENU"));
+        MakeBtn(_mainPanel, Loc.T("Resume"),             0,    OnResume,     _btnResume);
+        MakeBtn(_mainPanel, Loc.T("Settings"),         -70,  ShowSettings, _btnColor);
+        MakeBtn(_mainPanel, Loc.T("Return to Main Menu"), -140, OnQuitToMenu, _btnDanger);
 
         // ── Settings Panel ───────────────────────────────────────
         _settingsPanel = MakeCenteredPanel("SettingsPanel", 420, 560);
         _settingsPanel.transform.SetParent(_root.transform, false);
 
-        MakeTitle(_settingsPanel, "SETTINGS");
+        MakeTitle(_settingsPanel, Loc.T("SETTINGS"));
 
-        MakeTabBtn(_settingsPanel, "Audio",     -110, 200, () => ShowSettingsTab(_audioTab));
-        MakeTabBtn(_settingsPanel, "Graphics",     0, 200, () => ShowSettingsTab(_graphicsTab));
-        MakeTabBtn(_settingsPanel, "Controls",   110, 200, () => ShowSettingsTab(_controlsTab));
+        MakeTabBtn(_settingsPanel, Loc.T("Audio"),     -110, 200, () => ShowSettingsTab(_audioTab));
+        MakeTabBtn(_settingsPanel, Loc.T("Graphics"),     0, 200, () => ShowSettingsTab(_graphicsTab));
+        MakeTabBtn(_settingsPanel, Loc.T("Controls"),   110, 200, () => ShowSettingsTab(_controlsTab));
 
         _audioTab    = MakeRect(_settingsPanel, "AudioTab");
         _graphicsTab = MakeRect(_settingsPanel, "GraphicsTab");
@@ -236,7 +237,7 @@ public class InGameMenu : MonoBehaviour
         BuildGraphicsTab(_graphicsTab);
         BuildControlsTab(_controlsTab);
 
-        MakeBtn(_settingsPanel, "← Back", -240, () => {
+        MakeBtn(_settingsPanel, Loc.T("← Back"), -240, () => {
             GameConfig.Instance?.Save();
             ShowMain();
         }, _btnColor);
@@ -246,9 +247,9 @@ public class InGameMenu : MonoBehaviour
 
     void BuildAudioTab(GameObject parent)
     {
-        _masterSlider = MakeLabeledSlider(parent, "Master Volume", 0f, 1f, 0.8f, 110);
-        _musicSlider  = MakeLabeledSlider(parent, "Music",         0f, 1f, 0.7f,  40);
-        _sfxSlider    = MakeLabeledSlider(parent, "SFX",           0f, 1f, 1f,   -30);
+        _masterSlider = MakeLabeledSlider(parent, Loc.T("Master Volume"), 0f, 1f, 0.8f, 110);
+        _musicSlider  = MakeLabeledSlider(parent, Loc.T("Music"),         0f, 1f, 0.7f,  40);
+        _sfxSlider    = MakeLabeledSlider(parent, Loc.T("SFX"),           0f, 1f, 1f,   -30);
 
         _masterSlider.onValueChanged.AddListener(v => {
             if (GameConfig.Instance != null) GameConfig.Instance.MasterVolume = v; });
@@ -260,7 +261,7 @@ public class InGameMenu : MonoBehaviour
 
     void BuildGraphicsTab(GameObject parent)
     {
-        MakeTxt(parent, "Resolution", 110, 15, TextAlignmentOptions.Center, Color.white);
+        MakeTxt(parent, Loc.T("Resolution"), 110, 15, TextAlignmentOptions.Center, Color.white);
 
         var resolutions = Screen.resolutions;
         var resOptions  = new string[resolutions.Length];
@@ -275,7 +276,7 @@ public class InGameMenu : MonoBehaviour
         _resolutionCycler = MakeCycler(parent, "res", 80, resOptions, startRes,
             idx => { if (GameConfig.Instance != null) GameConfig.Instance.ResolutionIndex = idx; });
 
-        MakeTxt(parent, "Quality", 20, 15, TextAlignmentOptions.Center, Color.white);
+        MakeTxt(parent, Loc.T("Quality"), 20, 15, TextAlignmentOptions.Center, Color.white);
 
         var qualityOptions = QualitySettings.names;
         int startQuality = cfg != null
@@ -289,7 +290,7 @@ public class InGameMenu : MonoBehaviour
         _vsyncToggle.isOn = cfg == null || cfg.VSync;
         _vsyncToggle.onValueChanged.AddListener(v => { if (GameConfig.Instance != null) GameConfig.Instance.VSync = v; });
 
-        MakeBtn(parent, "Apply", -150, () => {
+        MakeBtn(parent, Loc.T("Apply"), -150, () => {
             GameConfig.Instance?.ApplyGraphics();
             GameConfig.Instance?.Save();
         }, _btnResume);
@@ -297,16 +298,16 @@ public class InGameMenu : MonoBehaviour
 
     void BuildControlsTab(GameObject parent)
     {
-        MakeTxt(parent, "Move Left", 110, 15, TextAlignmentOptions.Center, Color.white);
+        MakeTxt(parent, Loc.T("Move Left"), 110, 15, TextAlignmentOptions.Center, Color.white);
         _btnMoveLeftLabel = MakeRebindBtn(parent, 80, () => BeginRebind("MoveLeft"));
 
-        MakeTxt(parent, "Move Right", 20, 15, TextAlignmentOptions.Center, Color.white);
+        MakeTxt(parent, Loc.T("Move Right"), 20, 15, TextAlignmentOptions.Center, Color.white);
         _btnMoveRightLabel = MakeRebindBtn(parent, -10, () => BeginRebind("MoveRight"));
 
-        MakeTxt(parent, "Jump", -70, 15, TextAlignmentOptions.Center, Color.white);
+        MakeTxt(parent, Loc.T("Jump"), -70, 15, TextAlignmentOptions.Center, Color.white);
         _btnJumpLabel = MakeRebindBtn(parent, -100, () => BeginRebind("Jump"));
 
-        MakeTxt(parent, "Click a button, then press the new key (Esc to cancel)", -160, 12,
+        MakeTxt(parent, Loc.T("Click a button, then press the new key (Esc to cancel)"), -160, 12,
             TextAlignmentOptions.Center, new Color(0.75f, 0.78f, 0.88f));
 
         RefreshControlsLabels();
@@ -327,9 +328,10 @@ public class InGameMenu : MonoBehaviour
         KeyCode right = cfg != null ? cfg.MoveRightKey : KeyCode.D;
         KeyCode jump  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
 
-        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? "Press a key…" : left.ToString();
-        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? "Press a key…" : right.ToString();
-        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? "Press a key…" : jump.ToString();
+        string waiting = Loc.T("Press a key…");
+        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? waiting : left.ToString();
+        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? waiting : right.ToString();
+        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? waiting : jump.ToString();
     }
 
     void LoadSettingsValues()

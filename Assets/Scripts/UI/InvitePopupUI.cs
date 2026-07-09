@@ -4,6 +4,7 @@ using TMPro;
 using Unity.Netcode;
 using CosmicRumble.Networking;
 using CosmicRumble.Social;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Gelen maç daveti popup'ı — ekranın üst-ortasında küçük kart: "{isim} seni maça davet etti!"
@@ -65,8 +66,8 @@ public class InvitePopupUI : MonoBehaviour
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening) return;
 
         _pendingCode     = invite.code;
-        _pendingFromName = string.IsNullOrEmpty(invite.fromName) ? "Bir arkadaşın" : invite.fromName;
-        _messageText.text = $"{_pendingFromName} seni maça davet etti!";
+        _pendingFromName = string.IsNullOrEmpty(invite.fromName) ? Loc.T("A friend") : invite.fromName;
+        _messageText.text = string.Format(Loc.T("{0} invited you to a match!"), _pendingFromName);
         _busy = false;
         SetButtonsInteractable(true);
         _root.SetActive(true);
@@ -77,7 +78,7 @@ public class InvitePopupUI : MonoBehaviour
         if (_busy || string.IsNullOrEmpty(_pendingCode)) return;
         _busy = true;
         SetButtonsInteractable(false);
-        _messageText.text = "Bağlanılıyor...";
+        _messageText.text = Loc.T("Connecting...");
 
         bool ok = await NetworkBootstrap.Instance.JoinSessionAsync(_pendingCode);
         if (ok)
@@ -89,7 +90,7 @@ public class InvitePopupUI : MonoBehaviour
         {
             _busy = false;
             SetButtonsInteractable(true);
-            _messageText.text = "Davet artık geçerli değil.";
+            _messageText.text = Loc.T("This invite is no longer valid.");
             _pendingCode = null;
         }
     }
@@ -140,8 +141,8 @@ public class InvitePopupUI : MonoBehaviour
         _messageText = MakeText(_root, "Msg", "", 19,
             new Vector2(0.5f, 0.72f), new Vector2(520, 30), Color.white);
 
-        _joinBtn    = MakeButton(_root, "btn_join",    "KATIL",  AccGreen, new Vector2(0.30f, 0.28f), OnJoinClicked);
-        _declineBtn = MakeButton(_root, "btn_decline", "REDDET", AccRed,   new Vector2(0.70f, 0.28f), OnDeclineClicked);
+        _joinBtn    = MakeButton(_root, "btn_join",    Loc.T("JOIN"),    AccGreen, new Vector2(0.30f, 0.28f), OnJoinClicked);
+        _declineBtn = MakeButton(_root, "btn_decline", Loc.T("DECLINE"), AccRed,   new Vector2(0.70f, 0.28f), OnDeclineClicked);
     }
 
     static Button MakeButton(GameObject parent, string name, string label, Color color,

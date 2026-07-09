@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
 using CosmicRumble.Achievements;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Listens to Achievement/Level-Up/Prestige/Chest/Streak reward events and
@@ -63,25 +64,25 @@ public class RewardPopupManager : MonoBehaviour
     void HandleAchievementUnlocked(AchievementDefinition def)
     {
         string rewardLine = RewardLine(def.rewardXP, def.rewardGold, def.rewardGem);
-        ShowToast($"Achievement: {def.displayName}", rewardLine, AccAchievement);
+        ShowToast(string.Format(Loc.T("Achievement: {0}"), def.displayName), rewardLine, AccAchievement);
     }
 
     void HandleLevelUp(int oldLevel, int newLevel) =>
-        ShowToast("Level Up!", $"{oldLevel} → {newLevel}", AccLevel);
+        ShowToast(Loc.T("Level Up!"), $"{oldLevel} → {newLevel}", AccLevel);
 
     void HandlePrestige(int prestigeRank) =>
-        ShowToast("Prestige!", $"New prestige rank: {prestigeRank}", AccLevel);
+        ShowToast(Loc.T("Prestige!"), string.Format(Loc.T("New prestige rank: {0}"), prestigeRank), AccLevel);
 
     void HandleChestGranted(ChestType type, long gold, long gem, string costumeId)
     {
         string reward = RewardLine(0, gold, gem);
         if (!string.IsNullOrEmpty(costumeId))
-            reward += (reward.Length > 0 ? "  " : "") + "+ Costume";
-        ShowToast($"{type} Chest Opened", reward, AccChest);
+            reward += (reward.Length > 0 ? "  " : "") + Loc.T("+ Costume");
+        ShowToast(string.Format(Loc.T("{0} Chest Opened"), type), reward, AccChest);
     }
 
     void HandleStreakReward(int streak, long xp, long gold, long gem) =>
-        ShowToast($"{streak}-Day Login Streak!", RewardLine(xp, gold, gem), AccStreak);
+        ShowToast(string.Format(Loc.T("{0}-Day Login Streak!"), streak), RewardLine(xp, gold, gem), AccStreak);
 
     static string RewardLine(long xp, long gold, long gem)
     {

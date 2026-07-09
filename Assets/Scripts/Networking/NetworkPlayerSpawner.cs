@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using CosmicRumble.Localization;
 
 namespace CosmicRumble.Networking
 {
@@ -78,7 +79,7 @@ namespace CosmicRumble.Networking
                 if (_orphaned.TryGetValue(clientId, out var obj) && obj != null)
                 {
                     Debug.Log($"[NET] Reconnect window expired for former clientId={clientId} ({obj.name}) — despawning.");
-                    NetworkBootstrap.Instance?.ShowStatus("Rakip geri dönmedi, maç sona eriyor...");
+                    NetworkBootstrap.Instance?.ShowStatus(Loc.T("Opponent didn't return, match is ending..."));
                     obj.Despawn(true);
                 }
                 _orphaned.Remove(clientId);
@@ -171,7 +172,7 @@ namespace CosmicRumble.Networking
             _orphanedSince[clientId] = Time.time;
 
             Debug.Log($"[NET] clientId={clientId} koptu — {netObj.name} sahipsiz bırakıldı, {reconnectTimeout}s içinde geri dönülebilir.");
-            NetworkBootstrap.Instance?.ShowStatus("Rakip bağlantısı koptu, yeniden bağlanması bekleniyor...");
+            NetworkBootstrap.Instance?.ShowStatus(Loc.T("Opponent disconnected, waiting for reconnect..."));
 
             // NGO'nun disconnect'i sadece transport bağlantısını koparır -- UGS Session/Lobby'nin
             // kendi üyelik kaydı ayrı bir katman ve otomatik silinmiyor. Bunu açıkça temizlemezsek

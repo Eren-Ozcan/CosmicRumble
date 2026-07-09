@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Tam ekran giriş kapısı (popup DEĞİL). BootstrapSequence, adlı/platform hesabı olmayan
@@ -85,14 +86,14 @@ public class LoginScreenUI : MonoBehaviour
         if (_busy || AuthManager.Instance == null) return;
         _busy = true;
         SetButtonsInteractable(false);
-        ShowStatus("Google ile bağlanılıyor...");
+        ShowStatus(Loc.T("Connecting with Google..."));
 
         var (success, error) = await AuthManager.Instance.SignInWithPlatformAsync(
             CosmicRumble.Auth.GooglePlayAuthProvider.Shared, silent: false);
 
         _busy = false;
         SetButtonsInteractable(true);
-        if (!success) ShowError(error ?? "Google girişi başarısız oldu.");
+        if (!success) ShowError(error ?? Loc.T("Google sign-in failed."));
         // Başarı → OnSignedIn event'i HandleSignedIn'i tetikler (veya sahne yenilenir).
     }
 #endif
@@ -179,7 +180,7 @@ public class LoginScreenUI : MonoBehaviour
         var subGO = new GameObject("Sub");
         subGO.transform.SetParent(_root.transform, false);
         var sub = subGO.AddComponent<TextMeshProUGUI>();
-        sub.text      = "Devam etmek için hesabınla giriş yap";
+        sub.text      = Loc.T("Sign in with your account to continue");
         sub.fontSize  = 20;
         sub.alignment = TextAlignmentOptions.Center;
         sub.color     = TextDim;
@@ -192,17 +193,17 @@ public class LoginScreenUI : MonoBehaviour
         float y = 0.52f;
 
 #if UNITY_ANDROID && GPGS_INSTALLED
-        _googleBtn = MakeBigButton(_root, "btn_google", "GOOGLE İLE DEVAM ET",
+        _googleBtn = MakeBigButton(_root, "btn_google", Loc.T("CONTINUE WITH GOOGLE"),
             new Vector2(0.5f, y), GoogleWhite, new Color(0.15f, 0.15f, 0.18f, 1f), OnGoogleClicked);
         y -= 0.10f;
 #endif
 
-        _cosmicBtn = MakeBigButton(_root, "btn_cosmic", "COSMIC ID İLE GİRİŞ",
+        _cosmicBtn = MakeBigButton(_root, "btn_cosmic", Loc.T("SIGN IN WITH COSMIC ID"),
             new Vector2(0.5f, y), PlateDark, Color.white, OnCosmicIdClicked);
         y -= 0.10f;
 
 #if UNITY_EDITOR
-        MakeBigButton(_root, "btn_guest_test", "MİSAFİR OLARAK DEVAM (TEST)",
+        MakeBigButton(_root, "btn_guest_test", Loc.T("CONTINUE AS GUEST (TEST)"),
             new Vector2(0.5f, y), new Color(0.10f, 0.10f, 0.16f, 1f), TextDim, OnGuestClicked, 22);
         y -= 0.10f;
 #endif

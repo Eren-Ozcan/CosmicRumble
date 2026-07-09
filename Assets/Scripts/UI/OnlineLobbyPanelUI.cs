@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using TMPro;
 using Unity.Netcode;
 using CosmicRumble.Networking;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Online eşleşme paneli — tek akış: HIZLI EŞLEŞME (dereceli). Eski "KOD OLUŞTUR"/"KODA KATIL"
@@ -70,13 +71,13 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     async void OnQuickMatchClicked()
     {
-        _quickMatchStatusText.text = "Rakip aranıyor...";
+        _quickMatchStatusText.text = Loc.T("Searching for opponent...");
         _connectionActive = true;
         bool ok = await NetworkBootstrap.Instance.QuickMatchAsync();
 
         if (!ok)
         {
-            _quickMatchStatusText.text = "Eşleşme başarısız, tekrar dene.";
+            _quickMatchStatusText.text = Loc.T("Matchmaking failed, try again.");
             _connectionActive = false;
             return;
         }
@@ -86,7 +87,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             // Havuzda bekleyen kimse yoktu, kendi genel oturumumuzu kurduk — rakip bekliyoruz.
             // Katılım kodu bilerek GÖSTERİLMEZ: bu dereceli bir oturum, koda bir arkadaş katılırsa
             // taraflar maçın dereceli olup olmadığı konusunda uyuşmazdı.
-            _quickMatchStatusText.text = "Rakip bekleniyor...";
+            _quickMatchStatusText.text = Loc.T("Waiting for opponent...");
             _waitingForOpponent = true;
             _quickMatchCancelBtn.SetActive(true);
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -94,13 +95,13 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         else
         {
             // Bekleyen bir oturuma katıldık — host'un sahneyi yüklemesini bekliyoruz.
-            _quickMatchStatusText.text = "Rakip bulundu, başlatılıyor...";
+            _quickMatchStatusText.text = Loc.T("Opponent found, starting...");
         }
     }
 
     async void OnQuickMatchCancelClicked()
     {
-        _quickMatchStatusText.text = "İptal ediliyor...";
+        _quickMatchStatusText.text = Loc.T("Cancelling...");
         await CancelConnectionAsync();
         _quickMatchStatusText.text = "";
         _quickMatchCancelBtn.SetActive(false);
@@ -168,7 +169,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         BuildQuickMatchCard();
         BuildSocialHint();
 
-        MakeSmallButton(_panelRoot, "btn_back", "GERİ",
+        MakeSmallButton(_panelRoot, "btn_back", Loc.T("BACK"),
             new Vector2(0.5f, 0.06f), new Vector2(200, 56), OnBackClicked,
             new Color(0.30f, 0.30f, 0.45f, 1f));
 
@@ -180,18 +181,18 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.55f), new Vector2(560, 260));
 
-        MakeText(card, "hdr", "HIZLI EŞLEŞME — DERECELİ", 24, new Vector2(0.5f, 0.88f), new Vector2(500, 36), Color.white);
-        MakeText(card, "hint", "Galibiyet +30 kupa  •  Mağlubiyet −20 kupa", 14,
+        MakeText(card, "hdr", Loc.T("QUICK MATCH — RANKED"), 24, new Vector2(0.5f, 0.88f), new Vector2(500, 36), Color.white);
+        MakeText(card, "hint", Loc.T("Win +30 trophies  •  Loss −20 trophies"), 14,
             new Vector2(0.5f, 0.76f), new Vector2(500, 24), TextSec);
         // Birincil eylem: büyük, yeşil OYNA (mobil ana akış)
-        MakeSmallButton(card, "btn_quickmatch", "OYNA",
+        MakeSmallButton(card, "btn_quickmatch", Loc.T("PLAY"),
             new Vector2(0.5f, 0.54f), new Vector2(340, 72), OnQuickMatchClicked,
             new Color(0.13f, 0.72f, 0.35f, 1f));
 
         _quickMatchStatusText = MakeText(card, "status", "", 16,
             new Vector2(0.5f, 0.24f), new Vector2(500, 90), CodeColor);
 
-        _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", "İPTAL ET",
+        _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", Loc.T("CANCEL"),
             new Vector2(0.5f, 0.11f), new Vector2(220, 48), OnQuickMatchCancelClicked,
             new Color(0.30f, 0.30f, 0.45f, 1f));
         _quickMatchCancelBtn.SetActive(false);
@@ -203,10 +204,10 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         var card = MakeCard(_panelRoot, "SocialHint", new Vector2(0.5f, 0.26f), new Vector2(560, 120));
 
-        MakeText(card, "hint", "Arkadaşınla oynamak için SOSYAL panelinden\ndavet gönder — dostluk maçı, kupa değişmez.", 15,
+        MakeText(card, "hint", Loc.T("Send an invite from the SOCIAL panel to play\nwith a friend — friendly match, trophies unaffected."), 15,
             new Vector2(0.5f, 0.68f), new Vector2(520, 48), TextSec);
 
-        MakeSmallButton(card, "btn_social", "SOSYAL",
+        MakeSmallButton(card, "btn_social", Loc.T("SOCIAL"),
             new Vector2(0.5f, 0.24f), new Vector2(220, 48),
             () => { Hide(); SocialPanelUI.Instance?.Show(); },
             new Color(0.15f, 0.70f, 0.75f, 1f));

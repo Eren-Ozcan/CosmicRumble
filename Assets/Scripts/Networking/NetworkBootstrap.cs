@@ -7,6 +7,7 @@ using Unity.Services.Multiplayer;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CosmicRumble.Localization;
 
 namespace CosmicRumble.Networking
 {
@@ -268,7 +269,7 @@ namespace CosmicRumble.Networking
 
             for (int attempt = 1; attempt <= reconnectAttempts; attempt++)
             {
-                ShowStatus($"Bağlantı koptu, yeniden bağlanılıyor... (deneme {attempt}/{reconnectAttempts})");
+                ShowStatus(string.Format(Loc.T("Connection lost, reconnecting... (attempt {0}/{1})"), attempt, reconnectAttempts));
                 Debug.Log($"[NET] Reconnect attempt {attempt}/{reconnectAttempts} with code={codeToRetry}");
                 await Task.Delay(TimeSpan.FromSeconds(reconnectDelaySeconds));
 
@@ -285,7 +286,7 @@ namespace CosmicRumble.Networking
             }
 
             Debug.LogWarning("[NET] Reconnect failed after all attempts, giving up.");
-            ShowStatus("Bağlantı tamamen kesildi.");
+            ShowStatus(Loc.T("Connection lost completely."));
             await Task.Delay(TimeSpan.FromSeconds(2f));
             HideStatus();
             UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.Menu);

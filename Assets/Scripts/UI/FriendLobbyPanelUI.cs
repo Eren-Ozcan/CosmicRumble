@@ -5,6 +5,7 @@ using TMPro;
 using Unity.Netcode;
 using CosmicRumble.Networking;
 using CosmicRumble.Social;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// ÖZEL MAÇ lobisi — arkadaş davetiyle kurulan 2 kişilik dostluk maçı (kupa değişmez).
@@ -55,20 +56,20 @@ public class FriendLobbyPanelUI : MonoBehaviour
     {
         _isHost = true;
         OpenCommon(hostName: PlayerIdentity.Get(), guestName: null);
-        _statusText.text = "Oturum kuruluyor...";
+        _statusText.text = Loc.T("Setting up session...");
 
         string code = await NetworkBootstrap.Instance.HostSessionAsync();
         if (string.IsNullOrEmpty(code))
         {
-            _statusText.text = "Oturum kurulamadı, tekrar dene.";
+            _statusText.text = Loc.T("Couldn't set up the session, try again.");
             return;
         }
         _sessionActive = true;
 
         var (sent, error) = await FriendsManager.Instance.SendMatchInviteAsync(friendId, code);
         _statusText.text = sent
-            ? $"Davet gönderildi, {friendName} bekleniyor..."
-            : $"Davet gönderilemedi: {error}";
+            ? string.Format(Loc.T("Invite sent, waiting for {0}..."), friendName)
+            : string.Format(Loc.T("Couldn't send invite: {0}"), error);
         if (!sent) return;
 
         if (NetworkManager.Singleton != null)
@@ -85,7 +86,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
         _isHost = false;
         _sessionActive = true;
         OpenCommon(hostName: hostName, guestName: PlayerIdentity.Get());
-        _statusText.text = "Host'un başlatması bekleniyor...";
+        _statusText.text = Loc.T("Waiting for host to start...");
         // Sahne yüklemesi NGO üzerinden otomatik gelir — burada ek iş yok.
     }
 
@@ -101,7 +102,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
     {
         _panelRoot.SetActive(true);
         _hostSlotName.text  = hostName ?? "?";
-        _guestSlotName.text = string.IsNullOrEmpty(guestName) ? "Bekleniyor..." : guestName;
+        _guestSlotName.text = string.IsNullOrEmpty(guestName) ? Loc.T("Waiting...") : guestName;
         _guestSlotName.color = string.IsNullOrEmpty(guestName) ? TextSec : NameBlue;
         _startBtn.SetActive(_isHost);
         SetStartInteractable(false);
@@ -112,9 +113,9 @@ public class FriendLobbyPanelUI : MonoBehaviour
         if (!_isHost || NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer) return;
         if (NetworkManager.Singleton.ConnectedClientsIds.Count < 2) return;
 
-        _guestSlotName.text  = _guestSlotNamePending ?? "Rakip";
+        _guestSlotName.text  = _guestSlotNamePending ?? Loc.T("Opponent");
         _guestSlotName.color = NameBlue;
-        _statusText.text = "Hazır! Maçı başlatabilirsin.";
+        _statusText.text = Loc.T("Ready! You can start the match.");
         SetStartInteractable(true);
     }
 
@@ -137,7 +138,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
 
     async void OnCancelClicked()
     {
-        _statusText.text = "İptal ediliyor...";
+        _statusText.text = Loc.T("Cancelling...");
         UnsubscribeNetwork();
         if (_sessionActive)
         {
@@ -179,26 +180,26 @@ public class FriendLobbyPanelUI : MonoBehaviour
         overlayRt.anchorMax = Vector2.one;
         overlayRt.offsetMin = overlayRt.offsetMax = Vector2.zero;
 
-        var title = MakeText(_panelRoot, "Title", "ÖZEL MAÇ", 34,
+        var title = MakeText(_panelRoot, "Title", Loc.T("PRIVATE MATCH"), 34,
             new Vector2(0.5f, 0.88f), new Vector2(500, 48), AccGold);
         UiKit.BrawlText(title);
 
-        MakeText(_panelRoot, "Sub", "Dostluk maçı — kupa değişmez", 16,
+        MakeText(_panelRoot, "Sub", Loc.T("Friendly match — trophies unaffected"), 16,
             new Vector2(0.5f, 0.81f), new Vector2(500, 26), TextSec);
 
         _hostSlotName  = BuildSlot("HostSlot",  new Vector2(0.32f, 0.58f), "HOST");
-        _guestSlotName = BuildSlot("GuestSlot", new Vector2(0.68f, 0.58f), "RAKİP");
+        _guestSlotName = BuildSlot("GuestSlot", new Vector2(0.68f, 0.58f), Loc.T("OPPONENT"));
 
         _statusText = MakeText(_panelRoot, "Status", "", 17,
             new Vector2(0.5f, 0.38f), new Vector2(700, 30), AccGold);
 
-        _startBtn = MakeButton(_panelRoot, "btn_start", "BAŞLAT", AccGold,
+        _startBtn = MakeButton(_panelRoot, "btn_start", Loc.T("START"), AccGold,
             new Vector2(0.5f, 0.25f), new Vector2(340, 70), OnStartClicked);
         var startLbl = _startBtn.transform.Find("Lbl").GetComponent<TextMeshProUGUI>();
         startLbl.fontSize = 24;
         UiKit.BrawlText(startLbl);
 
-        MakeButton(_panelRoot, "btn_cancel", "İPTAL", new Color(0.30f, 0.30f, 0.45f, 1f),
+        MakeButton(_panelRoot, "btn_cancel", Loc.T("CANCEL"), new Color(0.30f, 0.30f, 0.45f, 1f),
             new Vector2(0.5f, 0.12f), new Vector2(220, 54), OnCancelClicked);
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnCancelClicked;

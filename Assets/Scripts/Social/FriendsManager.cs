@@ -7,6 +7,7 @@ using Unity.Services.Authentication;
 using Unity.Services.Friends;
 using Unity.Services.Friends.Models;
 using Unity.Services.Friends.Notifications;
+using CosmicRumble.Localization;
 
 namespace CosmicRumble.Social
 {
@@ -180,9 +181,9 @@ namespace CosmicRumble.Social
         /// isteği gönderir.</summary>
         public async Task<(bool success, string error)> AddFriendByCodeAsync(string code)
         {
-            if (!IsAvailable) return (false, "Arkadaş sistemi şu an kullanılamıyor.");
+            if (!IsAvailable) return (false, Loc.T("Friends system is currently unavailable."));
             code = code?.Trim();
-            if (string.IsNullOrEmpty(code)) return (false, "Bir ID gir.");
+            if (string.IsNullOrEmpty(code)) return (false, Loc.T("Enter an ID."));
 
             try
             {
@@ -196,7 +197,7 @@ namespace CosmicRumble.Social
 
         public async Task<(bool success, string error)> AcceptRequestAsync(string memberId)
         {
-            if (!IsAvailable) return (false, "Arkadaş sistemi şu an kullanılamıyor.");
+            if (!IsAvailable) return (false, Loc.T("Friends system is currently unavailable."));
             try
             {
                 // Gelen isteği kabul = karşı tarafı arkadaş eklemek
@@ -209,7 +210,7 @@ namespace CosmicRumble.Social
 
         public async Task<(bool success, string error)> DeclineRequestAsync(string memberId)
         {
-            if (!IsAvailable) return (false, "Arkadaş sistemi şu an kullanılamıyor.");
+            if (!IsAvailable) return (false, Loc.T("Friends system is currently unavailable."));
             try
             {
                 await FriendsService.Instance.DeleteIncomingFriendRequestAsync(memberId);
@@ -221,7 +222,7 @@ namespace CosmicRumble.Social
 
         public async Task<(bool success, string error)> RemoveFriendAsync(string memberId)
         {
-            if (!IsAvailable) return (false, "Arkadaş sistemi şu an kullanılamıyor.");
+            if (!IsAvailable) return (false, Loc.T("Friends system is currently unavailable."));
             try
             {
                 await FriendsService.Instance.DeleteFriendAsync(memberId);
@@ -234,7 +235,7 @@ namespace CosmicRumble.Social
         /// <summary>Arkadaşa maç daveti yollar (yalnızca ONLINE arkadaşlara ulaşır).</summary>
         public async Task<(bool success, string error)> SendMatchInviteAsync(string memberId, string sessionCode)
         {
-            if (!IsAvailable) return (false, "Arkadaş sistemi şu an kullanılamıyor.");
+            if (!IsAvailable) return (false, Loc.T("Friends system is currently unavailable."));
             try
             {
                 var msg = new MatchInviteMessage
@@ -273,10 +274,10 @@ namespace CosmicRumble.Social
         {
             string m = e.Message ?? "";
             if (m.Contains("not found") || m.Contains("NotFound"))
-                return "Bu ID ile bir oyuncu bulunamadı.";
+                return Loc.T("No player found with this ID.");
             if (m.Contains("already"))
-                return "Bu oyuncu zaten arkadaşın veya istek zaten gönderilmiş.";
-            return $"İşlem başarısız: {m}";
+                return Loc.T("This player is already your friend or a request was already sent.");
+            return string.Format(Loc.T("Action failed: {0}"), m);
         }
     }
 }

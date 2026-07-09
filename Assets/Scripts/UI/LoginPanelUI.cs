@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Cosmic ID form kartı (kullanıcı adı/şifre ile giriş/kayıt). Açılış kapısı rolü artık tam
@@ -74,10 +75,10 @@ public class LoginPanelUI : MonoBehaviour
 
         _closeBtn.SetActive(dismissable);
         _escListener.enabled = dismissable;
-        _titleText.text = dismissable ? "HESABINI BAĞLA" : "GİRİŞ";
+        _titleText.text = dismissable ? Loc.T("LINK YOUR ACCOUNT") : Loc.T("SIGN IN");
         _hintText.text  = dismissable
-            ? "Hesap bağlarsan ilerlemen hesabında saklanır ve\nbaşka cihazlardan da devam edebilirsin."
-            : "Devam etmek için hesabına gir\nveya yeni bir hesap oluştur.";
+            ? Loc.T("Linking an account keeps your progress saved and\nlets you continue from other devices.")
+            : Loc.T("Sign in to your account to continue\nor create a new one.");
     }
 
     public void Hide() => _root.SetActive(false);
@@ -125,7 +126,7 @@ public class LoginPanelUI : MonoBehaviour
         _card.sizeDelta = new Vector2(440, 540);
         _card.anchoredPosition = Vector2.zero;
 
-        _titleText = MakeText(cardGO, "Title", "GİRİŞ", 28,
+        _titleText = MakeText(cardGO, "Title", Loc.T("SIGN IN"), 28,
             new Vector2(0.5f, 0.90f), new Vector2(380, 42), Color.white);
         _titleText.fontStyle = FontStyles.Bold;
 
@@ -136,13 +137,13 @@ public class LoginPanelUI : MonoBehaviour
         _closeBtn = cardGO.transform.Find("btn_close").gameObject;
 
         // Username input
-        MakeLabel(cardGO, "lbl_user", "Kullanıcı adı", new Vector2(0.5f, 0.685f));
-        _userInput = MakeInputField(cardGO, "inp_user", "Kullanıcı adı",
+        MakeLabel(cardGO, "lbl_user", Loc.T("Username"), new Vector2(0.5f, 0.685f));
+        _userInput = MakeInputField(cardGO, "inp_user", Loc.T("Username"),
             new Vector2(0.5f, 0.60f), new Vector2(340, 50), false);
 
         // Password input
-        MakeLabel(cardGO, "lbl_pass", "Şifre", new Vector2(0.5f, 0.505f));
-        _passInput = MakeInputField(cardGO, "inp_pass", "Şifre",
+        MakeLabel(cardGO, "lbl_pass", Loc.T("Password"), new Vector2(0.5f, 0.505f));
+        _passInput = MakeInputField(cardGO, "inp_pass", Loc.T("Password"),
             new Vector2(0.5f, 0.42f), new Vector2(340, 50), true);
 
         // Error message
@@ -151,16 +152,16 @@ public class LoginPanelUI : MonoBehaviour
         _errorText.gameObject.SetActive(false);
 
         // Buttons
-        _loginBtn = MakeButton(cardGO, "btn_login", "GİRİŞ YAP", new Vector2(0.5f, 0.23f),
+        _loginBtn = MakeButton(cardGO, "btn_login", Loc.T("SIGN IN"), new Vector2(0.5f, 0.23f),
             new Vector2(340, 54), PrimaryBtn, OnLoginClicked);
-        _registerBtn = MakeButton(cardGO, "btn_register", "YENİ HESAP OLUŞTUR", new Vector2(0.5f, 0.115f),
+        _registerBtn = MakeButton(cardGO, "btn_register", Loc.T("CREATE NEW ACCOUNT"), new Vector2(0.5f, 0.115f),
             new Vector2(340, 54), RegisterBtn, OnRegisterClicked);
 
-        MakeText(cardGO, "RegisterHint", "Yeni hesap, bu cihazdaki ilerlemeni olduğu gibi devralır.", 12,
+        MakeText(cardGO, "RegisterHint", Loc.T("A new account inherits your progress on this device as-is."), 12,
             new Vector2(0.5f, 0.045f), new Vector2(400, 22), TextSecondary);
 
 #if UNITY_EDITOR
-        MakeButton(cardGO, "btn_fill_test", "TEST BİLGİLERİYLE DOLDUR", new Vector2(0.5f, -0.03f),
+        MakeButton(cardGO, "btn_fill_test", Loc.T("FILL TEST CREDENTIALS"), new Vector2(0.5f, -0.03f),
             new Vector2(340, 32), TextSecondary, FillTestCredentials);
 #endif
 
@@ -183,15 +184,15 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
+        if (AuthManager.Instance == null) { ShowError(Loc.T("AuthManager not found.")); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Kullanıcı adı ve şifre gerekli.");
+            ShowError(Loc.T("Username and password required."));
             StartCoroutine(Shake());
             return;
         }
 
-        await RunAuthAction(AuthManager.Instance.Login(user, pass), "Giriş yapılıyor...");
+        await RunAuthAction(AuthManager.Instance.Login(user, pass), Loc.T("Signing in..."));
     }
 
     async void OnRegisterClicked()
@@ -200,15 +201,15 @@ public class LoginPanelUI : MonoBehaviour
         string user = _userInput.text.Trim();
         string pass = _passInput.text;
 
-        if (AuthManager.Instance == null) { ShowError("AuthManager bulunamadı."); return; }
+        if (AuthManager.Instance == null) { ShowError(Loc.T("AuthManager not found.")); return; }
         if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pass))
         {
-            ShowError("Kullanıcı adı ve şifre gerekli.");
+            ShowError(Loc.T("Username and password required."));
             StartCoroutine(Shake());
             return;
         }
 
-        await RunAuthAction(AuthManager.Instance.Register(user, pass), "Hesap oluşturuluyor...");
+        await RunAuthAction(AuthManager.Instance.Register(user, pass), Loc.T("Creating account..."));
     }
 
     /// <summary>Login()/Register() ortak akışı: yükleniyor durumunu göster, sonucu bekle, başarı/hata işle.</summary>

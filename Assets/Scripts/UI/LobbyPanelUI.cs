@@ -205,8 +205,8 @@ public class LobbyPanelUI : MonoBehaviour
 
     string GetBotPreviewText() =>
         _botCount == 0
-            ? "Total: 1 player (bot yok)"
-            : $"Total: {_botCount + 1} players (1 human + {_botCount} test bot, hepsi kontrol edilebilir)";
+            ? "Total: 1 player (no bots)"
+            : $"Total: {_botCount + 1} players (1 human + {_botCount} test bot, all controllable)";
 
     void RefreshStartButton()
     {

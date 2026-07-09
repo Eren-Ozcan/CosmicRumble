@@ -143,6 +143,121 @@ namespace CosmicRumble.Localization
             ["REQUESTS"]         = new[] { "DAVETLER", "请求", "SOLICITUDES", "リクエスト", "요청", "ANFRAGEN" },
             ["Friend's ID (Name#1234)"] = new[] { "Arkadaşının ID'si (Ad#1234)", "好友ID（名字#1234）", "ID de tu amigo (Nombre#1234)", "フレンドのID（名前#1234）", "친구 ID (이름#1234)", "Freundes-ID (Name#1234)" },
             ["ADD"]              = new[] { "EKLE", "添加", "AÑADIR", "追加", "추가", "HINZUFÜGEN" },
+
+            // ── Login screen ─────────────────────────────────────────────────
+            ["Connecting with Google..."] = new[] { "Google ile bağlanılıyor...", "正在连接谷歌...", "Conectando con Google...", "Googleに接続中...", "Google에 연결 중...", "Verbindung mit Google wird hergestellt..." },
+            ["Google sign-in failed."] = new[] { "Google girişi başarısız oldu.", "谷歌登录失败。", "Error al iniciar sesión con Google.", "Googleログインに失敗しました。", "Google 로그인에 실패했습니다.", "Google-Anmeldung fehlgeschlagen." },
+            ["Sign in with your account to continue"] = new[] { "Devam etmek için hesabınla giriş yap", "登录你的账户以继续", "Inicia sesión con tu cuenta para continuar", "続けるにはアカウントでサインインしてください", "계속하려면 계정으로 로그인하세요", "Melde dich mit deinem Konto an, um fortzufahren" },
+            ["CONTINUE WITH GOOGLE"] = new[] { "GOOGLE İLE DEVAM ET", "使用谷歌继续", "CONTINUAR CON GOOGLE", "Googleで続ける", "Google로 계속하기", "MIT GOOGLE FORTFAHREN" },
+            ["SIGN IN WITH COSMIC ID"] = new[] { "COSMIC ID İLE GİRİŞ", "使用Cosmic ID登录", "INICIAR SESIÓN CON COSMIC ID", "Cosmic IDでサインイン", "Cosmic ID로 로그인", "MIT COSMIC ID ANMELDEN" },
+            ["CONTINUE AS GUEST (TEST)"] = new[] { "MİSAFİR OLARAK DEVAM (TEST)", "以访客身份继续（测试）", "CONTINUAR COMO INVITADO (PRUEBA)", "ゲストとして続ける（テスト）", "게스트로 계속하기 (테스트)", "ALS GAST FORTFAHREN (TEST)" },
+
+            // ── Login panel (Cosmic ID) ─────────────────────────────────────
+            ["LINK YOUR ACCOUNT"] = new[] { "HESABINI BAĞLA", "绑定账户", "VINCULAR TU CUENTA", "アカウントを連携", "계정 연결", "KONTO VERKNÜPFEN" },
+            ["SIGN IN"]          = new[] { "GİRİŞ", "登录", "INICIAR SESIÓN", "サインイン", "로그인", "ANMELDEN" },
+            ["Linking an account keeps your progress saved and\nlets you continue from other devices."] = new[] {
+                "Hesap bağlarsan ilerlemen hesabında saklanır ve\nbaşka cihazlardan da devam edebilirsin.",
+                "绑定账户可保存你的游戏进度，\n并支持在其他设备上继续游戏。",
+                "Vincular una cuenta guarda tu progreso y\nte permite continuar desde otros dispositivos.",
+                "アカウントを連携すると進行状況が保存され、\n他のデバイスからも続きをプレイできます。",
+                "계정을 연결하면 진행 상황이 저장되고\n다른 기기에서도 이어서 플레이할 수 있습니다.",
+                "Durch die Kontoverknüpfung wird dein Fortschritt gespeichert und\ndu kannst auf anderen Geräten fortfahren." },
+            ["Sign in to your account to continue\nor create a new one."] = new[] {
+                "Devam etmek için hesabına gir\nveya yeni bir hesap oluştur.",
+                "登录你的账户以继续，\n或创建一个新账户。",
+                "Inicia sesión en tu cuenta para continuar\no crea una nueva.",
+                "続けるにはアカウントにサインインするか、\n新しいアカウントを作成してください。",
+                "계속하려면 계정에 로그인하거나\n새 계정을 만드세요.",
+                "Melde dich an, um fortzufahren,\noder erstelle ein neues Konto." },
+            ["Username"]         = new[] { "Kullanıcı adı", "用户名", "Usuario", "ユーザー名", "사용자 이름", "Benutzername" },
+            ["Password"]         = new[] { "Şifre", "密码", "Contraseña", "パスワード", "비밀번호", "Passwort" },
+            ["CREATE NEW ACCOUNT"] = new[] { "YENİ HESAP OLUŞTUR", "创建新账户", "CREAR NUEVA CUENTA", "新規アカウント作成", "새 계정 만들기", "NEUES KONTO ERSTELLEN" },
+            ["A new account inherits your progress on this device as-is."] = new[] { "Yeni hesap, bu cihazdaki ilerlemeni olduğu gibi devralır.", "新账户将直接继承此设备上的游戏进度。", "Una cuenta nueva hereda tu progreso en este dispositivo tal cual.", "新しいアカウントは、このデバイスの進行状況をそのまま引き継ぎます。", "새 계정은 이 기기의 진행 상황을 그대로 이어받습니다.", "Ein neues Konto übernimmt deinen Fortschritt auf diesem Gerät unverändert." },
+            ["FILL TEST CREDENTIALS"] = new[] { "TEST BİLGİLERİYLE DOLDUR", "填充测试信息", "RELLENAR CREDENCIALES DE PRUEBA", "テスト情報を入力", "테스트 정보 입력", "TEST-ANMELDEDATEN AUSFÜLLEN" },
+            ["AuthManager not found."] = new[] { "AuthManager bulunamadı.", "未找到AuthManager。", "No se encontró AuthManager.", "AuthManagerが見つかりません。", "AuthManager를 찾을 수 없습니다.", "AuthManager nicht gefunden." },
+            ["Username and password required."] = new[] { "Kullanıcı adı ve şifre gerekli.", "需要用户名和密码。", "Se requiere usuario y contraseña.", "ユーザー名とパスワードが必要です。", "사용자 이름과 비밀번호가 필요합니다.", "Benutzername und Passwort erforderlich." },
+            ["Signing in..."]    = new[] { "Giriş yapılıyor...", "正在登录...", "Iniciando sesión...", "サインイン中...", "로그인 중...", "Anmeldung läuft..." },
+            ["Creating account..."] = new[] { "Hesap oluşturuluyor...", "正在创建账户...", "Creando cuenta...", "アカウントを作成中...", "계정 생성 중...", "Konto wird erstellt..." },
+
+            // ── Friend lobby (private match) ────────────────────────────────
+            ["Setting up session..."] = new[] { "Oturum kuruluyor...", "正在建立会话...", "Configurando sesión...", "セッションを準備中...", "세션 설정 중...", "Sitzung wird eingerichtet..." },
+            ["Couldn't set up the session, try again."] = new[] { "Oturum kurulamadı, tekrar dene.", "无法建立会话，请重试。", "No se pudo configurar la sesión, inténtalo de nuevo.", "セッションを準備できませんでした。もう一度お試しください。", "세션을 설정할 수 없습니다. 다시 시도하세요.", "Sitzung konnte nicht eingerichtet werden, versuche es erneut." },
+            ["Invite sent, waiting for {0}..."] = new[] { "Davet gönderildi, {0} bekleniyor...", "邀请已发送，正在等待 {0}...", "Invitación enviada, esperando a {0}...", "招待を送信しました。{0}を待っています...", "초대를 보냈습니다. {0}님을 기다리는 중...", "Einladung gesendet, warte auf {0}..." },
+            ["Couldn't send invite: {0}"] = new[] { "Davet gönderilemedi: {0}", "邀请发送失败：{0}", "No se pudo enviar la invitación: {0}", "招待を送信できませんでした: {0}", "초대를 보낼 수 없습니다: {0}", "Einladung konnte nicht gesendet werden: {0}" },
+            ["Waiting for host to start..."] = new[] { "Host'un başlatması bekleniyor...", "等待房主开始...", "Esperando a que el anfitrión inicie...", "ホストの開始を待っています...", "호스트가 시작하기를 기다리는 중...", "Warte darauf, dass der Host startet..." },
+            ["Waiting..."]       = new[] { "Bekleniyor...", "等待中...", "Esperando...", "待機中...", "대기 중...", "Warten..." },
+            ["Opponent"]         = new[] { "Rakip", "对手", "Oponente", "対戦相手", "상대", "Gegner" },
+            ["Ready! You can start the match."] = new[] { "Hazır! Maçı başlatabilirsin.", "准备就绪！你可以开始对战了。", "¡Listo! Puedes iniciar la partida.", "準備完了！対戦を開始できます。", "준비 완료! 대전을 시작할 수 있습니다.", "Bereit! Du kannst das Match starten." },
+            ["Cancelling..."]    = new[] { "İptal ediliyor...", "正在取消...", "Cancelando...", "キャンセル中...", "취소 중...", "Wird abgebrochen..." },
+            ["PRIVATE MATCH"]    = new[] { "ÖZEL MAÇ", "私人对战", "PARTIDA PRIVADA", "プライベートマッチ", "비공개 대전", "PRIVATES MATCH" },
+            ["Friendly match — trophies unaffected"] = new[] { "Dostluk maçı — kupa değişmez", "友谊赛 — 不影响奖杯", "Partida amistosa — no afecta a los trofeos", "フレンドリーマッチ — トロフィーは変動しません", "친선 경기 — 트로피에 영향 없음", "Freundschaftsspiel — Pokale bleiben unverändert" },
+            ["OPPONENT"]         = new[] { "RAKİP", "对手", "OPONENTE", "対戦相手", "상대", "GEGNER" },
+            ["START"]            = new[] { "BAŞLAT", "开始", "INICIAR", "開始", "시작", "START" },
+            ["CANCEL"]           = new[] { "İPTAL", "取消", "CANCELAR", "キャンセル", "취소", "ABBRECHEN" },
+
+            // ── Online lobby (Quick Match) ──────────────────────────────────
+            ["Searching for opponent..."] = new[] { "Rakip aranıyor...", "正在寻找对手...", "Buscando oponente...", "対戦相手を探しています...", "상대를 찾는 중...", "Suche nach Gegner..." },
+            ["Matchmaking failed, try again."] = new[] { "Eşleşme başarısız, tekrar dene.", "匹配失败，请重试。", "Error al emparejar, inténtalo de nuevo.", "マッチングに失敗しました。もう一度お試しください。", "매칭에 실패했습니다. 다시 시도하세요.", "Matchmaking fehlgeschlagen, versuche es erneut." },
+            ["Waiting for opponent..."] = new[] { "Rakip bekleniyor...", "等待对手中...", "Esperando oponente...", "対戦相手を待っています...", "상대를 기다리는 중...", "Warte auf Gegner..." },
+            ["Opponent found, starting..."] = new[] { "Rakip bulundu, başlatılıyor...", "已找到对手，正在开始...", "Oponente encontrado, iniciando...", "対戦相手が見つかりました。開始しています...", "상대를 찾았습니다. 시작하는 중...", "Gegner gefunden, wird gestartet..." },
+            ["QUICK MATCH — RANKED"] = new[] { "HIZLI EŞLEŞME — DERECELİ", "快速匹配 — 排位", "PARTIDA RÁPIDA — CLASIFICATORIA", "クイックマッチ — ランク戦", "빠른 대전 — 랭크전", "SCHNELLES SPIEL — GEWERTET" },
+            ["Win +30 trophies  •  Loss −20 trophies"] = new[] { "Galibiyet +30 kupa  •  Mağlubiyet −20 kupa", "胜利 +30 奖杯  •  失败 −20 奖杯", "Victoria +30 trofeos  •  Derrota −20 trofeos", "勝利で+30トロフィー  •  敗北で−20トロフィー", "승리 시 +30 트로피  •  패배 시 −20 트로피", "Sieg +30 Pokale  •  Niederlage −20 Pokale" },
+            ["Send an invite from the SOCIAL panel to play\nwith a friend — friendly match, trophies unaffected."] = new[] {
+                "Arkadaşınla oynamak için SOSYAL panelinden\ndavet gönder — dostluk maçı, kupa değişmez.",
+                "在社交面板中发送邀请即可\n与好友对战 — 友谊赛，不影响奖杯。",
+                "Envía una invitación desde el panel SOCIAL para jugar\ncon un amigo — partida amistosa, no afecta a los trofeos.",
+                "フレンドと遊ぶにはSOCIALパネルから\n招待を送ってください — フレンドリーマッチ、トロフィーは変動しません。",
+                "친구와 플레이하려면 소셜 패널에서\n초대를 보내세요 — 친선 경기, 트로피에 영향 없음.",
+                "Sende eine Einladung über das SOZIAL-Panel, um mit\neinem Freund zu spielen — Freundschaftsspiel, Pokale bleiben unverändert." },
+
+            // ── Invite popup ─────────────────────────────────────────────────
+            ["A friend"]         = new[] { "Bir arkadaşın", "一位好友", "Un amigo", "フレンド", "친구", "Ein Freund" },
+            ["{0} invited you to a match!"] = new[] { "{0} seni maça davet etti!", "{0} 邀请你进行对战！", "¡{0} te ha invitado a una partida!", "{0}があなたを対戦に招待しました！", "{0}님이 대전에 초대했습니다!", "{0} hat dich zu einem Match eingeladen!" },
+            ["This invite is no longer valid."] = new[] { "Davet artık geçerli değil.", "该邀请已失效。", "Esta invitación ya no es válida.", "この招待は無効になりました。", "이 초대는 더 이상 유효하지 않습니다.", "Diese Einladung ist nicht mehr gültig." },
+            ["JOIN"]             = new[] { "KATIL", "加入", "UNIRSE", "参加", "참가", "BEITRETEN" },
+
+            // ── In-game menu (ESC pause menu) ───────────────────────────────
+            ["GAME MENU"]        = new[] { "OYUN MENÜSÜ", "游戏菜单", "MENÚ DEL JUEGO", "ゲームメニュー", "게임 메뉴", "SPIELMENÜ" },
+            ["Resume"]           = new[] { "Devam Et", "继续", "Reanudar", "再開", "계속하기", "Fortsetzen" },
+            ["Settings"]         = new[] { "Ayarlar", "设置", "Ajustes", "設定", "설정", "Einstellungen" },
+            ["Return to Main Menu"] = new[] { "Ana Menüye Dön", "返回主菜单", "Volver al menú principal", "メインメニューに戻る", "메인 메뉴로 돌아가기", "Zurück zum Hauptmenü" },
+            ["Audio"]            = new[] { "Ses", "音频", "Audio", "サウンド", "오디오", "Audio" },
+            ["Graphics"]         = new[] { "Grafik", "画面", "Gráficos", "グラフィック", "그래픽", "Grafik" },
+            ["Controls"]         = new[] { "Kontroller", "操作", "Controles", "操作設定", "조작", "Steuerung" },
+            ["← Back"]           = new[] { "← Geri", "← 返回", "← Atrás", "← 戻る", "← 뒤로", "← Zurück" },
+            ["SFX"]              = new[] { "Efektler", "音效", "Efectos", "効果音", "효과음", "Effekte" },
+            ["Apply"]            = new[] { "Uygula", "应用", "Aplicar", "適用", "적용", "Übernehmen" },
+            ["Click a button, then press the new key (Esc to cancel)"] = new[] { "Bir butona tıkla, sonra yeni tuşa bas (iptal için Esc)", "点击一个按钮，然后按下新按键（按Esc取消）", "Haz clic en un botón y luego pulsa la nueva tecla (Esc para cancelar)", "ボタンをクリックしてから新しいキーを押してください（Escでキャンセル）", "버튼을 클릭한 후 새 키를 누르세요 (취소하려면 Esc)", "Klicke auf eine Schaltfläche und drücke dann die neue Taste (Esc zum Abbrechen)" },
+
+            // ── Reward toasts ────────────────────────────────────────────────
+            ["Achievement: {0}"] = new[] { "Başarım: {0}", "成就：{0}", "Logro: {0}", "実績: {0}", "업적: {0}", "Erfolg: {0}" },
+            ["Level Up!"]        = new[] { "Seviye Atladın!", "升级了！", "¡Subiste de nivel!", "レベルアップ！", "레벨 업!", "Level-Aufstieg!" },
+            ["Prestige!"]        = new[] { "Prestij!", "威望提升！", "¡Prestigio!", "プレステージ！", "프레스티지!", "Prestige!" },
+            ["New prestige rank: {0}"] = new[] { "Yeni prestij seviyesi: {0}", "新威望等级：{0}", "Nuevo rango de prestigio: {0}", "新しいプレステージランク: {0}", "새 프레스티지 등급: {0}", "Neuer Prestige-Rang: {0}" },
+            ["+ Costume"]        = new[] { "+ Kostüm", "+ 装扮", "+ Disfraz", "+ コスチューム", "+ 코스튬", "+ Kostüm" },
+            ["{0} Chest Opened"] = new[] { "{0} Sandık Açıldı", "{0}宝箱已开启", "Cofre {0} Abierto", "{0}チェストを開封", "{0} 상자 개봉", "{0}-Truhe geöffnet" },
+            ["{0}-Day Login Streak!"] = new[] { "{0} Günlük Giriş Serisi!", "连续登录{0}天！", "¡Racha de inicio de sesión de {0} días!", "{0}日連続ログイン！", "{0}일 연속 로그인!", "{0}-Tage-Login-Serie!" },
+
+            // ── Auth errors ──────────────────────────────────────────────────
+            ["Not available on this platform."] = new[] { "Bu platformda kullanılamıyor.", "此平台不可用。", "No disponible en esta plataforma.", "このプラットフォームでは利用できません。", "이 플랫폼에서는 사용할 수 없습니다.", "Auf dieser Plattform nicht verfügbar." },
+            ["Platform sign-in couldn't be completed."] = new[] { "Platform girişi tamamlanamadı.", "平台登录未能完成。", "No se pudo completar el inicio de sesión de la plataforma.", "プラットフォームサインインを完了できませんでした。", "플랫폼 로그인을 완료할 수 없습니다.", "Plattform-Anmeldung konnte nicht abgeschlossen werden." },
+            ["Couldn't switch accounts: {0}"] = new[] { "Hesap değiştirilemedi: {0}", "无法切换账户：{0}", "No se pudo cambiar de cuenta: {0}", "アカウントを切り替えられませんでした: {0}", "계정을 전환할 수 없습니다: {0}", "Konto konnte nicht gewechselt werden: {0}" },
+            ["Couldn't reach the server: {0}"] = new[] { "Sunucuya ulaşılamadı: {0}", "无法连接服务器：{0}", "No se pudo contactar con el servidor: {0}", "サーバーに接続できませんでした: {0}", "서버에 연결할 수 없습니다: {0}", "Server konnte nicht erreicht werden: {0}" },
+            ["Unexpected error: {0}"] = new[] { "Beklenmeyen hata: {0}", "意外错误：{0}", "Error inesperado: {0}", "予期しないエラー: {0}", "예기치 않은 오류: {0}", "Unerwarteter Fehler: {0}" },
+            ["Username must be 3-20 characters."] = new[] { "Kullanıcı adı 3-20 karakter olmalı.", "用户名长度必须为3-20个字符。", "El usuario debe tener entre 3 y 20 caracteres.", "ユーザー名は3〜20文字である必要があります。", "사용자 이름은 3~20자여야 합니다.", "Benutzername muss 3-20 Zeichen lang sein." },
+            ["Password must be 8-30 characters."] = new[] { "Şifre 8-30 karakter olmalı.", "密码长度必须为8-30个字符。", "La contraseña debe tener entre 8 y 30 caracteres.", "パスワードは8〜30文字である必要があります。", "비밀번호는 8~30자여야 합니다.", "Passwort muss 8-30 Zeichen lang sein." },
+
+            // ── Network status banner ───────────────────────────────────────
+            ["Connection lost, reconnecting... (attempt {0}/{1})"] = new[] { "Bağlantı koptu, yeniden bağlanılıyor... (deneme {0}/{1})", "连接已断开，正在重新连接...（第{0}/{1}次尝试）", "Conexión perdida, reconectando... (intento {0}/{1})", "接続が切断されました。再接続中...（試行 {0}/{1}）", "연결이 끊겼습니다. 재연결 중... (시도 {0}/{1})", "Verbindung verloren, erneute Verbindung wird hergestellt... (Versuch {0}/{1})" },
+            ["Connection lost completely."] = new[] { "Bağlantı tamamen kesildi.", "连接已完全中断。", "Se ha perdido la conexión por completo.", "接続が完全に切断されました。", "연결이 완전히 끊겼습니다.", "Verbindung vollständig unterbrochen." },
+            ["Opponent didn't return, match is ending..."] = new[] { "Rakip geri dönmedi, maç sona eriyor...", "对手未返回，对战即将结束...", "El oponente no regresó, la partida está terminando...", "対戦相手が戻りませんでした。対戦を終了します...", "상대가 돌아오지 않아 대전을 종료합니다...", "Gegner ist nicht zurückgekehrt, Match wird beendet..." },
+            ["Opponent disconnected, waiting for reconnect..."] = new[] { "Rakip bağlantısı koptu, yeniden bağlanması bekleniyor...", "对手已断线，等待重新连接...", "El oponente se desconectó, esperando reconexión...", "対戦相手の接続が切断されました。再接続を待っています...", "상대의 연결이 끊겼습니다. 재연결을 기다리는 중...", "Gegner getrennt, warte auf Wiederverbindung..." },
+
+            // ── Friends errors ───────────────────────────────────────────────
+            ["Enter an ID."]     = new[] { "Bir ID gir.", "请输入ID。", "Introduce un ID.", "IDを入力してください。", "ID를 입력하세요.", "Gib eine ID ein." },
+            ["No player found with this ID."] = new[] { "Bu ID ile bir oyuncu bulunamadı.", "未找到该ID对应的玩家。", "No se encontró ningún jugador con este ID.", "このIDのプレイヤーが見つかりません。", "이 ID를 가진 플레이어를 찾을 수 없습니다.", "Kein Spieler mit dieser ID gefunden." },
+            ["This player is already your friend or a request was already sent."] = new[] { "Bu oyuncu zaten arkadaşın veya istek zaten gönderilmiş.", "该玩家已是你的好友，或请求已发送。", "Este jugador ya es tu amigo o ya se envió una solicitud.", "このプレイヤーはすでにフレンドか、リクエストが送信済みです。", "이 플레이어는 이미 친구이거나 요청이 이미 전송되었습니다.", "Dieser Spieler ist bereits dein Freund oder eine Anfrage wurde bereits gesendet." },
+            ["Action failed: {0}"] = new[] { "İşlem başarısız: {0}", "操作失败：{0}", "Acción fallida: {0}", "操作に失敗しました: {0}", "작업 실패: {0}", "Aktion fehlgeschlagen: {0}" },
         };
     }
 }

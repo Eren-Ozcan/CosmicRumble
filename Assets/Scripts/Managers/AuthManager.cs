@@ -8,6 +8,7 @@ using Unity.Services.Authentication;
 using CosmicRumble.Achievements;
 using CosmicRumble.Auth;
 using CosmicRumble.Economy;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// UGS Authentication sarmalayıcısı — "Platform + Cosmic ID" modeli (Supercell ID benzeri):
@@ -187,7 +188,7 @@ public class AuthManager : MonoBehaviour
     public async Task<(bool success, string error)> SignInWithPlatformAsync(IPlatformAuthProvider provider, bool silent)
     {
         if (provider == null || !provider.IsAvailable)
-            return (false, silent ? null : "Bu platformda kullanılamıyor.");
+            return (false, silent ? null : Loc.T("Not available on this platform."));
 
         string credential;
         try
@@ -204,7 +205,7 @@ public class AuthManager : MonoBehaviour
         catch (Exception e) { return (false, silent ? null : e.Message); }
 
         if (string.IsNullOrEmpty(credential))
-            return (false, silent ? null : "Platform girişi tamamlanamadı.");
+            return (false, silent ? null : Loc.T("Platform sign-in couldn't be completed."));
 
         try
         {
@@ -239,11 +240,11 @@ public class AuthManager : MonoBehaviour
             catch (Exception e2)
             {
                 await RefreshFromSessionAsync();
-                return (false, silent ? null : $"Hesap değiştirilemedi: {e2.Message}");
+                return (false, silent ? null : string.Format(Loc.T("Couldn't switch accounts: {0}"), e2.Message));
             }
         }
-        catch (RequestFailedException e) { return (false, silent ? null : $"Sunucuya ulaşılamadı: {e.Message}"); }
-        catch (Exception e)              { return (false, silent ? null : $"Beklenmeyen hata: {e.Message}"); }
+        catch (RequestFailedException e) { return (false, silent ? null : string.Format(Loc.T("Couldn't reach the server: {0}"), e.Message)); }
+        catch (Exception e)              { return (false, silent ? null : string.Format(Loc.T("Unexpected error: {0}"), e.Message)); }
     }
 
     /// <summary>Mevcut (genelde anonim) oturuma username/password kimlik bilgisi ekler —
@@ -273,15 +274,15 @@ public class AuthManager : MonoBehaviour
             return (true, null);
         }
         catch (AuthenticationException e) { return (false, e.Message); }
-        catch (RequestFailedException e)  { return (false, $"Couldn't reach the server: {e.Message}"); }
-        catch (Exception e)               { return (false, $"Unexpected error: {e.Message}"); }
+        catch (RequestFailedException e)  { return (false, string.Format(Loc.T("Couldn't reach the server: {0}"), e.Message)); }
+        catch (Exception e)               { return (false, string.Format(Loc.T("Unexpected error: {0}"), e.Message)); }
     }
 
     /// <summary>Var olan farklı bir hesaba (farklı Player ID) giriş yapar.</summary>
     public async Task<(bool success, string error)> Login(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return (false, "Username and password are required.");
+            return (false, Loc.T("Username and password required."));
 
         // Yeni hesaba geçmeden önce eski oturumdan çıkılıyor — bu SignInWithUsernamePasswordAsync
         // başarısız olsa bile geri alınamıyor (credentials zaten temizlendi). Bu yüzden hata
@@ -310,8 +311,8 @@ public class AuthManager : MonoBehaviour
             return (true, null);
         }
         catch (AuthenticationException e) { ResetIfSessionLost(hadActiveSession); return (false, e.Message); }
-        catch (RequestFailedException e)  { ResetIfSessionLost(hadActiveSession); return (false, $"Couldn't reach the server: {e.Message}"); }
-        catch (Exception e)               { ResetIfSessionLost(hadActiveSession); return (false, $"Unexpected error: {e.Message}"); }
+        catch (RequestFailedException e)  { ResetIfSessionLost(hadActiveSession); return (false, string.Format(Loc.T("Couldn't reach the server: {0}"), e.Message)); }
+        catch (Exception e)               { ResetIfSessionLost(hadActiveSession); return (false, string.Format(Loc.T("Unexpected error: {0}"), e.Message)); }
     }
 
     /// <summary>Hesap açmadan misafir olarak oynar. Zaten anonim bir oturum varsa (normal durum
@@ -458,11 +459,11 @@ public class AuthManager : MonoBehaviour
     static string ValidateCredentials(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
-            return "Username and password are required.";
+            return Loc.T("Username and password required.");
         if (username.Length < 3 || username.Length > 20)
-            return "Username must be 3-20 characters.";
+            return Loc.T("Username must be 3-20 characters.");
         if (password.Length < 8 || password.Length > 30)
-            return "Password must be 8-30 characters.";
+            return Loc.T("Password must be 8-30 characters.");
         return null;
     }
 }
