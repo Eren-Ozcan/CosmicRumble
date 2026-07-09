@@ -305,6 +305,7 @@ public class LobbyPanelUI : MonoBehaviour
             fadeDuration     = 0.1f
         };
         btn.onClick.AddListener(callback);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
@@ -334,6 +335,7 @@ public class LobbyPanelUI : MonoBehaviour
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(callback);
+        UiKit.Hover(go);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;

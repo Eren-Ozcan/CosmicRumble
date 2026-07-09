@@ -383,6 +383,7 @@ public class LoginPanelUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(normal);
         btn.onClick.AddListener(callback);
         UiKit.Press(go);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;

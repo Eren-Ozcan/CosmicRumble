@@ -149,6 +149,7 @@ public class QuestsPanelUI : MonoBehaviour
         btn.targetGraphic = img;
         btn.onClick.AddListener(cb);
         UiKit.Press(go);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta        = new Vector2(164, 44);

@@ -252,6 +252,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(cb);
         UiKit.Press(go);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;

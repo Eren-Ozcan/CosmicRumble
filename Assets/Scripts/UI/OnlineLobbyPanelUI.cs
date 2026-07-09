@@ -273,6 +273,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         btn.targetGraphic = img;
         btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(callback);
+        UiKit.Hover(go);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;

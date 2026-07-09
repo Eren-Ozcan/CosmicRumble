@@ -471,6 +471,7 @@ public class SocialPanelUI : MonoBehaviour
         btn.transition = Selectable.Transition.None;
         btn.onClick.AddListener(cb);
         UiKit.Press(go, 0.96f);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = new Vector2(260, 52);
@@ -494,6 +495,7 @@ public class SocialPanelUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(cb);
         UiKit.Press(go, 0.95f);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
         rt.pivot = new Vector2(1f, 0.5f);

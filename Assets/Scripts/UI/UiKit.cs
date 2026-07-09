@@ -188,6 +188,12 @@ public static class UiKit
         fx.pressedScale = scale;
     }
 
+    /// <summary>İmleç butonun üzerine geldiğinde `ui_button_hover` SFX'ini çalar (mouse/masaüstü test).</summary>
+    public static void Hover(GameObject go)
+    {
+        go.AddComponent<UiHoverSound>();
+    }
+
     /// <summary>Panel/kart açılışında ölçek+alfa pop animasyonu (her SetActive(true)'da oynar).</summary>
     public static void Pop(GameObject go, float duration = 0.16f)
     {
@@ -247,6 +253,7 @@ public static class UiKit
         btn.colors = ButtonColors(CloseRed);
         btn.onClick.AddListener(onClose);
         Press(go);
+        Hover(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
@@ -412,6 +419,20 @@ public class UiPressScale : MonoBehaviour, IPointerDownHandler, IPointerUpHandle
     void Restore()
     {
         if (_captured) transform.localScale = _baseScale;
+    }
+}
+
+/// <summary>Hover'da `ui_button_hover` SFX'i çalar; devre dışı (Selectable.interactable == false) butonlarda sessiz kalır. UiKit.Hover ile eklenir.</summary>
+public class UiHoverSound : MonoBehaviour, IPointerEnterHandler
+{
+    Selectable _selectable;
+
+    void Awake() => _selectable = GetComponent<Selectable>();
+
+    public void OnPointerEnter(PointerEventData e)
+    {
+        if (_selectable != null && !_selectable.IsInteractable()) return;
+        AudioManager.Instance?.PlayHover();
     }
 }
 

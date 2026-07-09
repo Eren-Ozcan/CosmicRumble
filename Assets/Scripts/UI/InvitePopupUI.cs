@@ -158,6 +158,7 @@ public class InvitePopupUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(cb);
         UiKit.Press(go, 0.95f);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = new Vector2(200, 52);

@@ -422,6 +422,7 @@ public class MainMenuUI : MonoBehaviour
         var editBadgeBtn = editBadgeGO.AddComponent<Button>();
         editBadgeBtn.targetGraphic = editBadgeImg;
         editBadgeBtn.onClick.AddListener(() => { Click(); AvatarPickerUI.Instance?.Show(); });
+        UiKit.Hover(editBadgeGO);
         var editBadgeRt = editBadgeImg.rectTransform;
         editBadgeRt.anchorMin = editBadgeRt.anchorMax = new Vector2(1f, 0f);
         editBadgeRt.sizeDelta = new Vector2(20, 20);
@@ -501,6 +502,7 @@ public class MainMenuUI : MonoBehaviour
             btn.colors = UiKit.ButtonColors(PlateDark);
             btn.onClick.AddListener(callback);
             UiKit.Press(go, 0.96f);
+            UiKit.Hover(go);
         }
 
         var rt = img.rectTransform;
@@ -806,6 +808,7 @@ public class MainMenuUI : MonoBehaviour
         // ekstra bir "OYNA" tıklaması daha istemiyoruz).
         btn.onClick.AddListener(() => { Click(); OnlineLobbyPanelUI.Instance?.ShowAndStartQuickMatch(); });
         UiKit.Pulse(go); // tek birincil eylem: sürekli çok hafif nefes (Press ile çakışmasın diye Press yok)
+        UiKit.Hover(go);
 
         var mainLbl = MakeTxt(faceGO, "Label", Loc.T("PLAY"), 50, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 60), new Vector2(0, 10));
@@ -858,6 +861,7 @@ public class MainMenuUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(plateColor);
         btn.onClick.AddListener(callback);
         UiKit.Press(go);
+        UiKit.Hover(go);
 
         // İkon rozeti
         if (!string.IsNullOrEmpty(iconLetter))
@@ -1189,6 +1193,7 @@ public class MainMenuUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(onClick);
         UiKit.Press(go);
+        UiKit.Hover(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1285,6 +1290,7 @@ public class MainMenuUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(SettingsBtn);
         btn.onClick.AddListener(() => { Click(); cb(); });
         UiKit.Press(go);
+        UiKit.Hover(go);
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1337,6 +1343,7 @@ public class MainMenuUI : MonoBehaviour
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.onClick.AddListener(() => { Click(); cb(); });
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(28, 26);
@@ -1372,6 +1379,7 @@ public class MainMenuUI : MonoBehaviour
             fadeDuration     = 0.10f
         };
         btn.onClick.AddListener(() => { Click(); cb(); });
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(140, 34);
@@ -1551,6 +1559,7 @@ public class MainMenuUI : MonoBehaviour
         btn.targetGraphic = img;
         btn.colors = UiKit.ButtonColors(normal);
         btn.onClick.AddListener(callback);
+        UiKit.Hover(go);
 
         var rt = img.rectTransform;
         rt.anchorMin        = new Vector2(0.5f, 0.5f);

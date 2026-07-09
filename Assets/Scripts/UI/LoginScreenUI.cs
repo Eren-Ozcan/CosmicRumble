@@ -236,6 +236,7 @@ public class LoginScreenUI : MonoBehaviour
         btn.colors = UiKit.ButtonColors(bg);
         btn.onClick.AddListener(callback);
         UiKit.Press(go);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = new Vector2(460, 72);

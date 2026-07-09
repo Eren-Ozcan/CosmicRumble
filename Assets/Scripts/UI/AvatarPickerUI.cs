@@ -182,6 +182,7 @@ public class AvatarPickerUI : MonoBehaviour
             AvatarManager.Instance?.Select(id); // OnAvatarChanged -> Populate
         });
         UiKit.Press(cell, 0.96f);
+        UiKit.Hover(cell);
 
         var iconGO = new GameObject("Icon");
         iconGO.transform.SetParent(cell.transform, false);

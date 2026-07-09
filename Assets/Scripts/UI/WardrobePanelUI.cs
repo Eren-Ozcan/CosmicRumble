@@ -153,6 +153,7 @@ public class WardrobePanelUI : MonoBehaviour
         btn.targetGraphic = img;
         btn.onClick.AddListener(cb);
         UiKit.Press(go);
+        UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta        = new Vector2(164, 44);
@@ -309,6 +310,7 @@ public class WardrobePanelUI : MonoBehaviour
             CostumeManager.Instance.Equip(id); // OnCostumeEquipped → Populate
         });
         UiKit.Press(cell, 0.96f);
+        UiKit.Hover(cell);
 
         // Önizleme: sprite varsa göster, yoksa rarity renkli daire + baş harf rozeti
         if (def.previewSprite != null)

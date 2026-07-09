@@ -223,6 +223,7 @@ public class ShopPanelUI : MonoBehaviour
         string productId = pack.productId;
         buyBtn.onClick.AddListener(() => IAPManager.Instance?.BuyGemPack(productId));
         UiKit.Press(buyGO);
+        UiKit.Hover(buyGO);
         var buyRt = buyImg.rectTransform;
         buyRt.anchorMin = buyRt.anchorMax = new Vector2(0.5f, 0f);
         buyRt.sizeDelta = new Vector2(size.x - 28f, 58);
