@@ -10,7 +10,7 @@ ve sosyal sistem + tam ekran giriş bitmiş durumda — proje "yayına hazırlam
 **Kritik yol:** Play Console kapalı test zorunluluğu (madde 4) takvimin darboğazı — önce o
 başlatılmalı; beklerken 1-3 ve 11-12 kapanmalı; kostümler (9) sanat işi olarak paralel yürümeli.
 Madde 5 (Gem fiyatlandırma) kod değil İŞ KARARI — kullanıcı verecek. Madde 21 (localization) artık
-kod tarafı tamam (2026-07-10), kalan yalnız CJK font asset'i tedariki.
+tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin diğer 6 dile çevrilmesi.
 
 ### 1. Açık işin devamı (şimdi sırada)
 1. Google girişi Console/Dashboard kurulumu — aşağıdaki "Google Play Games GİRİŞİ" bölümündeki
@@ -61,10 +61,10 @@ kod tarafı tamam (2026-07-10), kalan yalnız CJK font asset'i tedariki.
 ### 5. Yayın sonrası / opsiyonel
 19. Crash raporlama + analitik (Unity Cloud Diagnostics ücretsiz katman) — yayına yakın ekle.
 20. Push notification (sandık hazır / streak hatırlatma) — Dashboard'da servis var, kod yok.
-21. Localization: **kod tarafı tamam** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
-    tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var. **Kalan: CJK font
-    yok** (Çince/Japonca/Korece boş kare gösterir — bkz. aşağıdaki "Localization" bölümü), 150 kostüm
-    ismi henüz yalnız İngilizce.
+21. Localization: **tamamen bitti** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
+    tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var, CJK font (Noto
+    Sans SC/JP/KR) kuruldu ve play-test edildi. **Kalan: yalnız** 150 kostüm ismi henüz İngilizce
+    (diğer 6 dile çevrilmedi, düşük öncelik).
 22. Sunucu tarafı doğrulama: ekonomi/CloudSave client-authoritative (hile açığı); IAP makbuz
     doğrulama + kritik işlemler için Cloud Code — gelir başlayınca öncelik.
 23. Steam: bilinçli dondurulmuş (`STEAMWORKS_INSTALLED` hazır) — greenlight olursa App ID +
@@ -181,15 +181,23 @@ after weighing population-based vs. mobile-game-industry-standard language sets;
   used for Resolution/Quality (`MainMenuUI.MakeCycler`) — picks from `LocalizationManager.DisplayName()`
   per language (each shown in its own script, e.g. "Türkçe", "简体中文", "日本語"), calls `SetLanguage()`
   on change.
-- **Known gap: no CJK-capable font asset exists in the project.** `TitanOne SDF` (used for all
-  Brawl-Stars-style headers/buttons via `UiKit.BrawlText`) and `LiberationSans SDF` (TMP's default
-  fallback) are both Latin-only font families — neither has Han/Hiragana/Katakana/Hangul glyphs.
-  **Chinese, Japanese, and Korean text will render as blank tofu-box glyphs until a real CJK font is
-  sourced and wired into TMP as a fallback font asset** (e.g. Noto Sans SC/JP/KR, OFL-licensed, free
-  for commercial redistribution — do NOT ship Windows system fonts like Microsoft YaHei/Malgun Gothic,
-  they are not licensed for redistribution in a shipped game). The translation *data* for these three
-  languages is correct and complete; this is purely a missing rendering asset, same class of gap as
-  the missing costume sprites and Play Console achievement IDs elsewhere in this file.
+- **CJK font gap closed (2026-07-10).** Downloaded Noto Sans SC/JP/KR (OFL-licensed, free for
+  commercial redistribution — source: `google/fonts` GitHub repo, the canonical distribution point;
+  license files kept alongside the source `.ttf`s at `Assets/Fonts/CJK_Source/OFL_*.txt` for
+  compliance record-keeping) and generated three **Dynamic-atlas** TMP Font Assets
+  (`Assets/Fonts/NotoSansSC SDF.asset`, `NotoSansJP SDF.asset`, `NotoSansKR SDF.asset` — Dynamic mode
+  because pre-baking a static atlas for the full CJK glyph set, tens of thousands of characters, isn't
+  practical; glyphs are added to the atlas on first use at runtime instead). Added all three to the
+  `fallbackFontAssetTable` of both `TitanOne SDF` (headers/buttons, `UiKit.BrawlText`) and
+  `LiberationSans SDF` (TMP's default body-text fallback) so any text component picks up CJK glyphs
+  regardless of which font it's assigned. **Play-tested end-to-end in the Unity Editor**: switched
+  language to Chinese, Japanese, and Korean in turn (via `LocalizationManager.SetLanguage`) and
+  screenshotted the main menu each time — real Han/Hiragana-Katakana/Hangul characters render
+  correctly (衣橱/ワードローブ/옷장 for Wardrobe, 商店/ショップ/상점 for Shop, etc.), no tofu-box glyphs,
+  no console errors beyond the pre-existing benign ones (Coplay's own screenshot-capture artifact,
+  NetworkManager scene-reload cleanup). Did NOT use Windows system fonts (Microsoft YaHei/Malgun
+  Gothic/Yu Gothic) — those aren't licensed for redistribution in a shipped game, which is why this
+  was flagged as needing real sourcing rather than a quick local substitution.
 - **Known gap: 150 costume `displayName` strings are English-only**, not yet translated into the other
   6 languages (already wrapped in `Loc.T()` in `WardrobePanelUI.cs`, so this is purely missing table
   entries, not missing code — falls back to English cleanly in the meantime). Deprioritized behind
