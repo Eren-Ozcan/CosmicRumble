@@ -17,6 +17,7 @@ namespace CosmicRumble.Achievements
         public static event Action<int>    OnTurnCompleted;
         public static event Action<int>    OnPlayerCountInMatch;
         public static event Action<string> OnPlayerDefeated;
+        public static event Action<string> OnDamagedTarget; // her isabette hedef kimliği — HERKESE_MEYDAN gibi "N farklı oyuncu" başarımları için
 
         // Additional events for complex achievements
         public static event Action<int>    OnBlackHolePulled;     // enemies pulled count
@@ -44,6 +45,7 @@ namespace CosmicRumble.Achievements
         public static void FireTurnCompleted(int turnCount)      => OnTurnCompleted?.Invoke(turnCount);
         public static void FirePlayerCountInMatch(int count)     => OnPlayerCountInMatch?.Invoke(count);
         public static void FirePlayerDefeated(string id)         => OnPlayerDefeated?.Invoke(id);
+        public static void FireDamagedTarget(string id)          => OnDamagedTarget?.Invoke(id);
         public static void FireBlackHolePulled(int count)        => OnBlackHolePulled?.Invoke(count);
         public static void FireRpgMultiHit(int count)            => OnRpgMultiHit?.Invoke(count);
         public static void FireGrenadeMultiHit(int count)        => OnGrenadeMultiHit?.Invoke(count);

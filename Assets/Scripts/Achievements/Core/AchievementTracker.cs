@@ -26,6 +26,7 @@ namespace CosmicRumble.Achievements
         private long _totalGrenadeShots;
         private long _totalTeleportUses;
         private long _shieldBlockedDamage;
+        private long _totalDuelWins;
 
         // ── Per-match state ──
         private int  _matchShotsFired;
@@ -40,6 +41,7 @@ namespace CosmicRumble.Achievements
         private readonly HashSet<string> _weaponsUsedInMatch   = new HashSet<string>();
         private readonly HashSet<string> _uniqueOpponents      = new HashSet<string>();
         private readonly HashSet<string> _abilitiesUsedInMatch = new HashSet<string>();
+        private readonly HashSet<string> _matchDamagedTargets  = new HashSet<string>();
 
         private void Awake()
         {
@@ -67,6 +69,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnTurnCompleted       += HandleTurnCompleted;
             AchievementEvents.OnPlayerCountInMatch  += HandlePlayerCount;
             AchievementEvents.OnPlayerDefeated      += HandlePlayerDefeated;
+            AchievementEvents.OnDamagedTarget       += HandleDamagedTarget;
             AchievementEvents.OnBlackHolePulled     += HandleBlackHolePulled;
             AchievementEvents.OnRpgMultiHit         += HandleRpgMultiHit;
             AchievementEvents.OnGrenadeMultiHit     += HandleGrenadeMultiHit;
@@ -94,6 +97,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnTurnCompleted       -= HandleTurnCompleted;
             AchievementEvents.OnPlayerCountInMatch  -= HandlePlayerCount;
             AchievementEvents.OnPlayerDefeated      -= HandlePlayerDefeated;
+            AchievementEvents.OnDamagedTarget       -= HandleDamagedTarget;
             AchievementEvents.OnBlackHolePulled     -= HandleBlackHolePulled;
             AchievementEvents.OnRpgMultiHit         -= HandleRpgMultiHit;
             AchievementEvents.OnGrenadeMultiHit     -= HandleGrenadeMultiHit;
@@ -119,6 +123,7 @@ namespace CosmicRumble.Achievements
             _consecutiveShotgunVictims = 0;
             _weaponsUsedInMatch.Clear();
             _abilitiesUsedInMatch.Clear();
+            _matchDamagedTargets.Clear();
         }
 
         // ── Handlers ─────────────────────────────────────────────────────────
@@ -144,6 +149,12 @@ namespace CosmicRumble.Achievements
 
             if (_matchPlayerCount >= 8)
                 am.UnlockAchievement("SAMPIYONLAR");
+
+            if (_matchPlayerCount == 2)
+            {
+                _totalDuelWins++;
+                am.UpdateProgress("DUELLO_SAMPIYONU", (int)_totalDuelWins);
+            }
 
             if (_weaponsUsedInMatch.Count >= 5)
                 am.UnlockAchievement("TAM_CEPHANE");
@@ -271,6 +282,13 @@ namespace CosmicRumble.Achievements
         {
             _uniqueOpponents.Add(playerId);
             AchievementManager.Instance?.UpdateProgress("SOSYAL_KELEBEK", _uniqueOpponents.Count);
+        }
+
+        private void HandleDamagedTarget(string targetId)
+        {
+            _matchDamagedTargets.Add(targetId);
+            if (_matchDamagedTargets.Count >= 7)
+                AchievementManager.Instance?.UnlockAchievement("HERKESE_MEYDAN");
         }
 
         private void HandleBlackHolePulled(int count)

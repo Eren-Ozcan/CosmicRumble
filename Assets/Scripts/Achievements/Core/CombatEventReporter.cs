@@ -8,13 +8,25 @@ namespace CosmicRumble.Achievements
     /// </summary>
     public static class CombatEventReporter
     {
-        /// <summary>Ayrık bir isabeti (hasar + varsa headshot) raporlar. impactPoint dünya koordinatında olmalı.</summary>
+        /// <summary>
+        /// Ayrık bir isabeti (hasar + varsa headshot + hedef kimliği + varsa öldürme) raporlar.
+        /// impactPoint dünya koordinatında olmalı. Çağrı sırası önemli: her çağıran zaten
+        /// target.TakeDamage(amount)'ı BUNDAN ÖNCE çağırıyor, bu yüzden GetCurrentHealth() burada
+        /// isabet SONRASI değeri yansıtır — "öldürücü darbe miydi" kontrolü buradan güvenilir.
+        /// </summary>
         public static void ReportHit(IDamageable target, float amount, Vector2 impactPoint)
         {
             AchievementEvents.FireDamageDealt(Mathf.Max(0, Mathf.RoundToInt(amount)));
 
-            if (target is CharacterHealth ch && IsHeadshot(ch.transform, impactPoint))
-                AchievementEvents.FireHeadshotLanded();
+            if (target is CharacterHealth ch)
+            {
+                if (IsHeadshot(ch.transform, impactPoint))
+                    AchievementEvents.FireHeadshotLanded();
+
+                AchievementEvents.FireDamagedTarget(ch.gameObject.name);
+                if (ch.GetCurrentHealth() <= 0f)
+                    AchievementEvents.FirePlayerDefeated(ch.gameObject.name);
+            }
         }
 
         /// <summary>Konum bilgisi olmayan sürekli hasar (DoT vb.) için — headshot kontrolü yapmaz.</summary>
