@@ -315,7 +315,7 @@ public class QuestsPanelUI : MonoBehaviour
         topHLG.childControlWidth = true; topHLG.childControlHeight = true;
         topHLG.childForceExpandWidth = true; topHLG.childForceExpandHeight = false;
 
-        var nameTxt = MakeTxtLE(topRowGO, "Name", def.displayName, 16,
+        var nameTxt = MakeTxtLE(topRowGO, "Name", Loc.T(def.displayName), 16,
             completed ? CompletedGr : Color.white, TextAlignmentOptions.Left);
         nameTxt.fontStyle = FontStyles.Bold;
 
@@ -324,7 +324,7 @@ public class QuestsPanelUI : MonoBehaviour
             TextAlignmentOptions.Right);
 
         // Açıklama
-        MakeTxtLE(row, "Desc", def.description, 12, TextSec, TextAlignmentOptions.Left);
+        MakeTxtLE(row, "Desc", Loc.T(def.description), 12, TextSec, TextAlignmentOptions.Left);
 
         // Progress bar + sayı
         var barRowGO = new GameObject("BarRow");

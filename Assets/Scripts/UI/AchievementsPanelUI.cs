@@ -254,8 +254,8 @@ public class AchievementsPanelUI : MonoBehaviour
         infoVLG.childForceExpandWidth  = true;
         infoVLG.childForceExpandHeight = false;
 
-        string displayName = isSecret ? "???" : def.displayName;
-        string desc        = isSecret ? Loc.T("Secret achievement") : def.description;
+        string displayName = isSecret ? "???" : Loc.T(def.displayName);
+        string desc        = isSecret ? Loc.T("Secret achievement") : Loc.T(def.description);
 
         var nameTxt = MakeTxtLE(infoCol, "Name", displayName, 16,
             unlocked ? Color.white : LockedGray, TextAlignmentOptions.Left);

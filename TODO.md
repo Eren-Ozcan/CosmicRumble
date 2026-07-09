@@ -9,7 +9,8 @@ multiplayer, ekonomi, başarımlar, kupa/leaderboard, cloud save, ses, mobil gir
 ve sosyal sistem + tam ekran giriş bitmiş durumda — proje "yayına hazırlama" aşamasında.
 **Kritik yol:** Play Console kapalı test zorunluluğu (madde 4) takvimin darboğazı — önce o
 başlatılmalı; beklerken 1-3 ve 11-12 kapanmalı; kostümler (9) sanat işi olarak paralel yürümeli.
-Madde 5 (Gem fiyatlandırma) ve 21 (dil/localization) kod değil İŞ KARARI — kullanıcı verecek.
+Madde 5 (Gem fiyatlandırma) kod değil İŞ KARARI — kullanıcı verecek. Madde 21 (localization) artık
+kod tarafı tamam (2026-07-10), kalan yalnız CJK font asset'i tedariki.
 
 ### 1. Açık işin devamı (şimdi sırada)
 1. Google girişi Console/Dashboard kurulumu — aşağıdaki "Google Play Games GİRİŞİ" bölümündeki
@@ -60,8 +61,10 @@ Madde 5 (Gem fiyatlandırma) ve 21 (dil/localization) kod değil İŞ KARARI —
 ### 5. Yayın sonrası / opsiyonel
 19. Crash raporlama + analitik (Unity Cloud Diagnostics ücretsiz katman) — yayına yakın ekle.
 20. Push notification (sandık hazır / streak hatırlatma) — Dashboard'da servis var, kod yok.
-21. Localization: oyun tamamen Türkçe; global yayın için en az İngilizce
-    (`Resources/Localization` boş, sistem yok). Hedef yalnız TR ise atlanır — KARAR GEREKLİ.
+21. Localization: **kod tarafı tamam** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
+    tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var. **Kalan: CJK font
+    yok** (Çince/Japonca/Korece boş kare gösterir — bkz. aşağıdaki "Localization" bölümü), 150 kostüm
+    ismi henüz yalnız İngilizce.
 22. Sunucu tarafı doğrulama: ekonomi/CloudSave client-authoritative (hile açığı); IAP makbuz
     doğrulama + kritik işlemler için Cloud Code — gelir başlayınca öncelik.
 23. Steam: bilinçli dondurulmuş (`STEAMWORKS_INSTALLED` hazır) — greenlight olursa App ID +
@@ -139,6 +142,58 @@ play-tested.
 - Play-tested end-to-end in the Unity Editor via MCP: bootstrap creates all managers, opening the quest panel
   from the main menu shows real quest names/progress/rewards per tab (3 daily / 2 weekly / 1 monthly), tab
   switching works, no runtime errors.
+
+## Localization
+Done (2026-07-10) — 7-language system built and wired through every player-facing screen: English
+default + Turkish, Chinese (Simplified), Spanish, Japanese, Korean, German. Decision made by the user
+after weighing population-based vs. mobile-game-industry-standard language sets; chose the latter
+(EN/TR + the 5 languages with the largest mobile-game player bases/revenue).
+
+- **`Assets/Scripts/Localization/LocalizationManager.cs`**: `Language` enum (English, Turkish,
+  ChineseSimplified, Spanish, Japanese, Korean, German), singleton with PlayerPrefs persistence,
+  defaults to English. `SetLanguage()` reloads the active scene so every programmatically-built UI
+  (this project has no prefab-based text, everything is built in code) retranslates on next `BuildUI()`
+  pass — same pattern already used for account-switch reloads, not a new mechanism.
+- **`Loc.T(string english)`**: the call-site convention across the whole codebase. The English string
+  literal itself is the lookup key (no separate ID scheme to keep in sync) — e.g. `Loc.T("QUESTS")`.
+  Falls back to English automatically if a translation is missing for the current language, so a
+  partially-translated string never renders blank/broken.
+- **`LocStrings.cs`** (~150 UI strings) and **`LocContentStrings.cs`** (achievement + quest
+  name/description pairs) hold the actual `[tr, zh, es, ja, ko, de]` translation arrays, keyed by
+  English text. Split into two files by source (UI code call sites vs. `.asset` data content) —
+  `Loc.T()` checks both tables.
+- **Converted every UI file** in `Assets/Scripts/UI/` and `Assets/Scripts/Menu/` from hardcoded
+  Turkish strings to `Loc.T()` — verified via a project-wide grep sweep for Turkish-only string
+  literals (only `[Header]`/`[Tooltip]` Inspector labels and `Debug.Log` diagnostics remain
+  Turkish, both developer-only, never player-visible). Also caught and fixed player-visible error/
+  status strings living outside UI files: `AuthManager` sign-in/register errors, `FriendsManager`
+  friend-request errors, `NetworkBootstrap`/`NetworkPlayerSpawner` reconnect status banner.
+- **Found and fixed a real bug along the way**: `FriendsManager.PresenceActivity.status` used the
+  literal display strings `"Maçta"`/`"Menüde"` as an internal wire-protocol value shared between
+  clients via UGS Friends presence — i.e. the network protocol was coupled to Turkish display text.
+  Changed to language-neutral `"in_match"`/`"in_menu"` markers; `SocialPanelUI` now maps these to a
+  `Loc.T()`-translated display string instead of comparing against/showing the raw value.
+- **Achievement (50) and Quest (14) data was already fully in English** in the `.asset` files before
+  this pass (an earlier, undocumented translation pass had already happened, discovered while
+  auditing content for this work) — no English authoring needed, only added TR/ZH/ES/JA/KO/DE
+  translations keyed by the existing English `displayName`/`description` text.
+- **Settings → Account tab** gained a Language row using the same prev/next cycler control already
+  used for Resolution/Quality (`MainMenuUI.MakeCycler`) — picks from `LocalizationManager.DisplayName()`
+  per language (each shown in its own script, e.g. "Türkçe", "简体中文", "日本語"), calls `SetLanguage()`
+  on change.
+- **Known gap: no CJK-capable font asset exists in the project.** `TitanOne SDF` (used for all
+  Brawl-Stars-style headers/buttons via `UiKit.BrawlText`) and `LiberationSans SDF` (TMP's default
+  fallback) are both Latin-only font families — neither has Han/Hiragana/Katakana/Hangul glyphs.
+  **Chinese, Japanese, and Korean text will render as blank tofu-box glyphs until a real CJK font is
+  sourced and wired into TMP as a fallback font asset** (e.g. Noto Sans SC/JP/KR, OFL-licensed, free
+  for commercial redistribution — do NOT ship Windows system fonts like Microsoft YaHei/Malgun Gothic,
+  they are not licensed for redistribution in a shipped game). The translation *data* for these three
+  languages is correct and complete; this is purely a missing rendering asset, same class of gap as
+  the missing costume sprites and Play Console achievement IDs elsewhere in this file.
+- **Known gap: 150 costume `displayName` strings are English-only**, not yet translated into the other
+  6 languages (already wrapped in `Loc.T()` in `WardrobePanelUI.cs`, so this is purely missing table
+  entries, not missing code — falls back to English cleanly in the meantime). Deprioritized behind
+  core UI/achievement/quest text since costume names are decorative flavor text, not functional UI.
 
 ## Audio
 Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop

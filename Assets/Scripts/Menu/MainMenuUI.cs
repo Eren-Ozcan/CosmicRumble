@@ -969,7 +969,33 @@ public class MainMenuUI : MonoBehaviour
         _logoutBtn = MakeSettingsButton(parent, "btn_logout", Loc.T("LOG OUT"), AccRed,
             new Vector2(0, -110), OnLogoutClicked);
 
+        BuildLanguageRow(parent);
+
         RefreshAccountTab();
+    }
+
+    /// <summary>Dil seçici — Kaynak/Kalite cycler'ıyla aynı ok-ile-gez kalıbı. Değişiklik anında
+    /// LocalizationManager.SetLanguage üzerinden sahneyi yeniden yükler (Loc.T build-time seçildiği
+    /// için canlı retranslate yerine bu daha güvenilir).</summary>
+    void BuildLanguageRow(GameObject parent)
+    {
+        MakeTxt(parent, "lbl_lang", Loc.T("Language"), 17, FontStyles.Normal, TextPrimary,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, -180));
+
+        var languages = (Language[])System.Enum.GetValues(typeof(Language));
+        var langOptions = new string[languages.Length];
+        for (int i = 0; i < languages.Length; i++)
+            langOptions[i] = LocalizationManager.DisplayName(languages[i]);
+
+        int startIdx = 0;
+        if (LocalizationManager.Instance != null)
+            startIdx = System.Array.IndexOf(languages, LocalizationManager.Instance.CurrentLanguage);
+
+        MakeCycler(parent, "lang", -180, langOptions, Mathf.Max(0, startIdx), idx =>
+        {
+            if (LocalizationManager.Instance != null)
+                LocalizationManager.Instance.SetLanguage(languages[idx]);
+        });
     }
 
     // ────────────────────────────────────────────────────────────────────────

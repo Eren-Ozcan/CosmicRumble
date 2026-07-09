@@ -331,14 +331,15 @@ public class WardrobePanelUI : MonoBehaviour
             prevImg.raycastTarget = false;
             PlacePreview(prevImg.rectTransform);
 
-            string letter = string.IsNullOrEmpty(def.displayName) ? "?" : def.displayName.Substring(0, 1).ToUpperInvariant();
+            string localizedName = Loc.T(def.displayName);
+            string letter = string.IsNullOrEmpty(localizedName) ? "?" : localizedName.Substring(0, 1).ToUpperInvariant();
             var lbl = MakeTxt(prevGO, "Lbl", letter, 40, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);
             UiKit.BrawlText(lbl);
             lbl.raycastTarget = false;
             StretchFull(lbl.rectTransform);
         }
 
-        var nameTxt = MakeTxt(cell, "Name", def.displayName, 14, Color.white,
+        var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 14, Color.white,
             new Vector2(0.5f, 0f), new Vector2(168, 20));
         nameTxt.rectTransform.anchoredPosition = new Vector2(0, 74);
         nameTxt.fontStyle     = FontStyles.Bold;

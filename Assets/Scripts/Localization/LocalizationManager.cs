@@ -65,13 +65,15 @@ namespace CosmicRumble.Localization
     {
         public static string T(string english)
         {
+            if (string.IsNullOrEmpty(english)) return english;
             var mgr = LocalizationManager.Instance;
             var lang = mgr != null ? mgr.CurrentLanguage : Language.English;
             if (lang == Language.English) return english;
 
-            if (LocStrings.Table.TryGetValue(english, out var translations))
+            int idx = (int)lang - 1; // Turkish=0, ChineseSimplified=1, Spanish=2, Japanese=3, Korean=4, German=5
+            if (LocStrings.Table.TryGetValue(english, out var translations)
+                || LocContentStrings.Table.TryGetValue(english, out translations))
             {
-                int idx = (int)lang - 1; // Turkish=0, ChineseSimplified=1, Spanish=2, Japanese=3, Korean=4, German=5
                 if (idx >= 0 && idx < translations.Length && !string.IsNullOrEmpty(translations[idx]))
                     return translations[idx];
             }

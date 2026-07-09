@@ -64,7 +64,7 @@ public class RewardPopupManager : MonoBehaviour
     void HandleAchievementUnlocked(AchievementDefinition def)
     {
         string rewardLine = RewardLine(def.rewardXP, def.rewardGold, def.rewardGem);
-        ShowToast(string.Format(Loc.T("Achievement: {0}"), def.displayName), rewardLine, AccAchievement);
+        ShowToast(string.Format(Loc.T("Achievement: {0}"), Loc.T(def.displayName)), rewardLine, AccAchievement);
     }
 
     void HandleLevelUp(int oldLevel, int newLevel) =>

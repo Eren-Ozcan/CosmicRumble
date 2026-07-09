@@ -258,6 +258,9 @@ namespace CosmicRumble.Localization
             ["No player found with this ID."] = new[] { "Bu ID ile bir oyuncu bulunamadı.", "未找到该ID对应的玩家。", "No se encontró ningún jugador con este ID.", "このIDのプレイヤーが見つかりません。", "이 ID를 가진 플레이어를 찾을 수 없습니다.", "Kein Spieler mit dieser ID gefunden." },
             ["This player is already your friend or a request was already sent."] = new[] { "Bu oyuncu zaten arkadaşın veya istek zaten gönderilmiş.", "该玩家已是你的好友，或请求已发送。", "Este jugador ya es tu amigo o ya se envió una solicitud.", "このプレイヤーはすでにフレンドか、リクエストが送信済みです。", "이 플레이어는 이미 친구이거나 요청이 이미 전송되었습니다.", "Dieser Spieler ist bereits dein Freund oder eine Anfrage wurde bereits gesendet." },
             ["Action failed: {0}"] = new[] { "İşlem başarısız: {0}", "操作失败：{0}", "Acción fallida: {0}", "操作に失敗しました: {0}", "작업 실패: {0}", "Aktion fehlgeschlagen: {0}" },
+
+            // ── Language selector ────────────────────────────────────────────
+            ["Language"]         = new[] { "Dil", "语言", "Idioma", "言語", "언어", "Sprache" },
         };
     }
 }
