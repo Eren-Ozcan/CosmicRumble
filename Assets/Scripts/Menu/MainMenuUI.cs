@@ -68,6 +68,9 @@ public class MainMenuUI : MonoBehaviour
     TextMeshProUGUI _googleStatusText, _cosmicStatusText;
     GameObject _googleLinkBtn, _cosmicLinkBtn, _logoutBtn;
 
+    Image           _avatarImg;
+    TextMeshProUGUI _avatarInitialTxt;
+
     /// <summary>Simple prev/next value cycler used for Resolution/Quality settings rows.</summary>
     class CyclerControl
     {
@@ -220,6 +223,8 @@ public class MainMenuUI : MonoBehaviour
         if (FriendLobbyPanelUI.Instance  == null) new GameObject("FriendLobbyPanelUI").AddComponent<FriendLobbyPanelUI>();
         if (InvitePopupUI.Instance       == null) new GameObject("InvitePopupUI").AddComponent<InvitePopupUI>();
         if (WardrobePanelUI.Instance     == null) new GameObject("WardrobePanelUI").AddComponent<WardrobePanelUI>();
+        if (AvatarManager.Instance       == null) new GameObject("AvatarManager").AddComponent<AvatarManager>();
+        if (AvatarPickerUI.Instance      == null) new GameObject("AvatarPickerUI").AddComponent<AvatarPickerUI>();
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -388,22 +393,45 @@ public class MainMenuUI : MonoBehaviour
 
         var avatarGO = new GameObject("Avatar");
         avatarGO.transform.SetParent(profile.transform, false);
-        var avatarImg = avatarGO.AddComponent<Image>();
-        avatarImg.sprite = UiKit.RoundedSprite;
-        avatarImg.type = Image.Type.Sliced;
-        avatarImg.pixelsPerUnitMultiplier = 1.6f;
-        avatarImg.color = AccBlue;
-        avatarImg.raycastTarget = false;
-        var avatarRt = avatarImg.rectTransform;
+        _avatarImg = avatarGO.AddComponent<Image>();
+        _avatarImg.raycastTarget = false;
+        var avatarRt = _avatarImg.rectTransform;
         avatarRt.anchorMin = avatarRt.anchorMax = new Vector2(0f, 0.5f);
         avatarRt.sizeDelta = new Vector2(48, 48);
         avatarRt.anchoredPosition = new Vector2(32, 0);
-        var initial = MakeTxt(avatarGO, "Initial",
-            playerName.Length > 0 ? playerName.Substring(0, 1).ToUpperInvariant() : "?",
+        _avatarInitialTxt = MakeTxt(avatarGO, "Initial", "",
             24, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(48, 48), Vector2.zero);
-        UiKit.BrawlText(initial);
-        initial.raycastTarget = false;
+        UiKit.BrawlText(_avatarInitialTxt);
+        _avatarInitialTxt.raycastTarget = false;
+        ApplyAvatarVisuals(AvatarManager.Instance?.GetSelected(), playerName);
+
+        if (AvatarManager.Instance != null)
+        {
+            AvatarManager.Instance.OnAvatarChanged -= OnAvatarChangedForTopBar;
+            AvatarManager.Instance.OnAvatarChanged += OnAvatarChangedForTopBar;
+        }
+
+        // Avatar köşesinde küçük "düzenle" rozeti — kendi Button/raycast hedefi, plakanın geri
+        // kalanı (Sıralama açan tıklama) etkilenmez, yalnızca bu küçük alan avatar seçiciyi açar.
+        var editBadgeGO = new GameObject("btn_edit_avatar");
+        editBadgeGO.transform.SetParent(avatarGO.transform, false);
+        var editBadgeImg = editBadgeGO.AddComponent<Image>();
+        editBadgeImg.sprite = UiKit.CircleSprite;
+        editBadgeImg.color  = new Color(0.12f, 0.12f, 0.18f, 1f);
+        var editBadgeBtn = editBadgeGO.AddComponent<Button>();
+        editBadgeBtn.targetGraphic = editBadgeImg;
+        editBadgeBtn.onClick.AddListener(() => { Click(); AvatarPickerUI.Instance?.Show(); });
+        var editBadgeRt = editBadgeImg.rectTransform;
+        editBadgeRt.anchorMin = editBadgeRt.anchorMax = new Vector2(1f, 0f);
+        editBadgeRt.sizeDelta = new Vector2(20, 20);
+        editBadgeRt.anchoredPosition = new Vector2(-2, 2);
+        var editBadgeLbl = MakeTxt(editBadgeGO, "Lbl", "+", 13, FontStyles.Bold, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        editBadgeLbl.raycastTarget = false;
+        editBadgeLbl.rectTransform.anchorMin = Vector2.zero;
+        editBadgeLbl.rectTransform.anchorMax = Vector2.one;
+        editBadgeLbl.rectTransform.offsetMin = editBadgeLbl.rectTransform.offsetMax = Vector2.zero;
 
         var nameTxt = MakeTxt(profile, "Name", playerName, 19, FontStyles.Normal, NameBlue,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(180, 30), new Vector2(42, 0));
@@ -539,6 +567,38 @@ public class MainMenuUI : MonoBehaviour
     {
         if (CurrencyManager.Instance != null)
             CurrencyManager.Instance.OnCurrencyChanged -= OnCurrencyChangedForTopBar;
+        if (AvatarManager.Instance != null)
+            AvatarManager.Instance.OnAvatarChanged -= OnAvatarChangedForTopBar;
+    }
+
+    /// <summary>Avatar seçici içindeyken bile üst bardaki daireyi canlı günceller — panel yeniden
+    /// kurulmadan (menü sahnesi reload olmadan) seçim anında yansır.</summary>
+    void OnAvatarChangedForTopBar(AvatarDefinition def) => ApplyAvatarVisuals(def, PlayerIdentity.Get());
+
+    void ApplyAvatarVisuals(AvatarDefinition def, string fallbackName)
+    {
+        if (_avatarImg == null || _avatarInitialTxt == null) return;
+
+        bool hasIcon = def != null && def.icon != null;
+        if (hasIcon)
+        {
+            _avatarImg.sprite = def.icon;
+            _avatarImg.type   = Image.Type.Simple;
+            _avatarImg.preserveAspect = true;
+            _avatarImg.color  = Color.white;
+        }
+        else
+        {
+            _avatarImg.sprite = UiKit.RoundedSprite;
+            _avatarImg.type   = Image.Type.Sliced;
+            _avatarImg.pixelsPerUnitMultiplier = 1.6f;
+            _avatarImg.color  = def != null ? def.placeholderColor : AccBlue;
+        }
+
+        string letter = def != null && !string.IsNullOrEmpty(def.displayName)
+            ? def.displayName.Substring(0, 1).ToUpperInvariant()
+            : (!string.IsNullOrEmpty(fallbackName) ? fallbackName.Substring(0, 1).ToUpperInvariant() : "?");
+        _avatarInitialTxt.text = hasIcon ? "" : letter;
     }
 
     /// <summary>

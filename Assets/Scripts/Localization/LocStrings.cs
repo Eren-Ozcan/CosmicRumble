@@ -264,6 +264,10 @@ namespace CosmicRumble.Localization
 
             // ── Training mode ────────────────────────────────────────────────
             ["TRAINING"]         = new[] { "ANTRENMAN", "训练", "ENTRENAMIENTO", "トレーニング", "훈련", "TRAINING" },
+
+            // ── Avatar picker ────────────────────────────────────────────────
+            ["CHOOSE AVATAR"]    = new[] { "AVATAR SEÇ", "选择头像", "ELEGIR AVATAR", "アバターを選択", "아바타 선택", "AVATAR WÄHLEN" },
+            ["SELECTED"]         = new[] { "SEÇİLİ", "已选择", "SELECCIONADO", "選択中", "선택됨", "AUSGEWÄHLT" },
         };
     }
 }

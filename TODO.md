@@ -8,7 +8,8 @@ Kod tabanının tamamı + bu backlog + master spec taranarak çıkarıldı. Çek
 multiplayer, ekonomi, başarımlar, kupa/leaderboard, cloud save, ses, mobil girdi, Brawl Stars UI
 ve sosyal sistem + tam ekran giriş bitmiş durumda — proje "yayına hazırlama" aşamasında.
 **Kritik yol:** Play Console kapalı test zorunluluğu (madde 4) takvimin darboğazı — önce o
-başlatılmalı; beklerken 1-3 ve 11-12 kapanmalı; kostümler (9) sanat işi olarak paralel yürümeli.
+başlatılmalı; beklerken 1-3 kapanmalı; kostümler (9) + avatar ikonları (13) sanat işi olarak
+paralel yürümeli (ikisi de veri/kod tarafı tamam, yalnız gerçek görsel bekliyor).
 Madde 5 (Gem fiyatlandırma) kod değil İŞ KARARI — kullanıcı verecek. Madde 21 (localization) artık
 tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin diğer 6 dile çevrilmesi.
 
@@ -48,7 +49,9 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     "ANTRENMAN" butonu, doğrudan Game sahnesini 2 tamamen pasif botla açar (hiç hareket/ateş
     etmezler — bkz. "Antrenman Modu" bölümü). Quick Match'te rakip yoksa bot doldurma hâlâ yapılmadı
     (ayrı, opsiyonel iş).
-13. Profil ikonları/avatar: harf rozeti yerine seçilebilir avatar seti (kostümlerle birleşebilir).
+13. Profil ikonları/avatar: **tamam** (2026-07-10) — seçilebilir 16 avatarlık sistem çalışıyor,
+    üst bar canlı güncelleniyor. **Kalan: gerçek ikon görselleri yok** (bkz. "Profil Avatarları"
+    bölümü) — sonraki iş listesine eklendi, şimdilik renk+baş harf placeholder.
 
 ### 4. Bilinen pürüzler / teknik borç
 14. SOSYAL kategorisi başarımları (10) yeni arkadaş sistemine bağlanmalı — davetli özel maçın
@@ -231,6 +234,37 @@ her build'de çalışır.
 - Ödül/XP/Gold/başarım verilmiyor (bilinçli): `TriggerGameOver` hiç çağrılmadığı için maç
   tamamlama event'leri ateşlenmiyor — bu, diğer mobil oyunlardaki "antrenman modu ilerleme
   vermez" kuralıyla tutarlı, ayrıca özel bir kısıtlama kodu gerektirmedi (yan etki olarak geldi).
+
+## Profil Avatarları
+Done (2026-07-10) — kostüm sistemiyle aynı desende (`Assets/Scripts/Economy/Avatars/`), ama daha
+basit: kostümlerin aksine tüm avatarlar baştan açık (unlock/rarity yok), yalnızca "hangisi seçili"
+kalıcı. **Gerçek ikon görseli yok** — 150 kostüm/avatar sprite'ı ile birlikte SONRA YAPILACAK
+listesine eklendi (aşağıda), şimdilik renk + baş harf placeholder (`AvatarDefinition.icon` null-safe,
+UI önceliği zaten ikona veriyor — sprite eklenince otomatik geçiş, kod değişikliği gerekmez).
+
+- **`AvatarDefinition`/`AvatarDatabase`/`AvatarManager`** (kostüm üçlüsüyle birebir aynı kalıp):
+  `AvatarManager.Select(id)` seçimi `avatar.json`'a kaydeder (CostumeManager'ın `costumes.json`'ı
+  gibi), `OnAvatarChanged` event'i yayınlar.
+- **`Assets/Editor/AvatarAssetGenerator.cs`**: uzay temalı 16 avatar (Nova, Comet, Blaze, Nebula,
+  Pulsar, Quasar, Meteor, Orbit, Solstice, Eclipse, Vortex, Cosmos, Photon, Asteroid, Aurora,
+  Zenith), her biri ayrı placeholder renkte — `CostumeAssetGenerator.cs`'in küçük ölçekli eşdeğeri.
+- **`AvatarPickerUI.cs`**: `WardrobePanelUI`/`QuestsPanelUI` ile aynı grid kalıbı, 4 sütunlu ızgara,
+  seçili avatar yeşil kontur + "SEÇİLİ" etiketiyle işaretli.
+- **Üst bar entegrasyonu**: `MainMenuUI`'daki profil plakasının avatar dairesi artık oyuncu adının
+  ilk harfi yerine seçili avatarın rengini/harfini gösteriyor; dairenin köşesine kendi
+  Button/raycast hedefi olan küçük bir "+" rozeti eklendi (plakanın geri kalanı hâlâ Sıralama'yı
+  açıyor, yalnızca bu küçük alan `AvatarPickerUI.Show()` çağırıyor) — çakışan tıklama bölgesi riski
+  olmadan iki farklı eylem aynı plakada bir arada.
+- **Canlı güncelleme düzgün bağlandı**: ilk yazımda üst bar yalnızca `BuildUI()` sırasında bir kez
+  kuruluyordu, seçim değiştiğinde menü yeniden açılana kadar güncellenmiyordu — fark edilip
+  `MainMenuUI.OnAvatarChangedForTopBar` + `ApplyAvatarVisuals()` eklendi (`AvatarManager.OnAvatarChanged`'a
+  abone), artık seçim anında (sahne reload'u olmadan) yansıyor.
+- **Play-tested end-to-end in the Unity Editor**: misafir girişiyle menüye ulaşıldı, varsayılan
+  avatar (Nova, kırmızı/pembe "N") üst barda doğrulandı, avatar seçici açılıp "Meteor" seçildi,
+  seçicideki SEÇİLİ rozeti Nova'dan Meteor'a taşındığı doğrulandı, üst bardaki `Initial.text`
+  ve `Avatar.Image.color`'ın `get_game_object_info` ile Meteor'un tanımlı değerleriyle
+  (`"M"`, `RGB(0.85, 0.25, 0.55)`) birebir eşleştiği doğrulandı — canlı güncelleme çalışıyor.
+  Hata/uyarı yok (yalnızca bilinen zararsız Coplay/NetworkManager artifact'leri).
 
 ## Audio
 Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop
