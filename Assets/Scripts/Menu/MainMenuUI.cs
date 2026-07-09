@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 using CosmicRumble.Economy;
 using CosmicRumble.Economy.IAP;
@@ -627,6 +628,8 @@ public class MainMenuUI : MonoBehaviour
             () => AchievementsPanelUI.Instance?.Show());
         Item("dw_account",      Loc.T("ACCOUNT"),      AccGreen, "@",
             () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
+        Item("dw_training",     Loc.T("TRAINING"),     AccGold, "T",
+            StartTrainingMatch);
 #if UNITY_EDITOR
         // Yerel/bot maçı menüden kaldırıldı (arkadaş davetli özel lobi yerini aldı) — offline
         // spawn yolu (GameInitializer/LobbyData) test için Editor'a kilitli girişle duruyor.
@@ -636,6 +639,24 @@ public class MainMenuUI : MonoBehaviour
         _drawerCol.sizeDelta = new Vector2(300, itemCount * 82 + 16);
 
         _drawerRoot.SetActive(false);
+    }
+
+    /// <summary>
+    /// Antrenman modu: 2 pasif bot (asla hareket/ateş etmez — sadece nişan tahtası; bkz.
+    /// LobbyData.IsTraining + GameInitializer + TurnManager.isTrainingMode) ile doğrudan
+    /// Game sahnesini açar. Lobi ekranı yok — pratik amaçlı, tek tıkla başlar.
+    /// </summary>
+    void StartTrainingMatch()
+    {
+        LobbyData.IsTraining = true;
+        LobbyData.BotCount   = 2;
+        LobbyData.MapName    = "CosmicArena";
+        LobbyData.GameMode   = "Deathmatch";
+
+        GameConfig.Instance?.Save();
+
+        if (SceneFader.Instance != null) SceneFader.Instance.FadeToScene(SceneNames.Game);
+        else                             SceneManager.LoadScene(SceneNames.Game);
     }
 
     void SetDrawer(bool open)

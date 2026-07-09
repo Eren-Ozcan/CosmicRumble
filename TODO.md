@@ -44,8 +44,10 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     En az 2-3 farklı gezegen düzeni (çok gezegenli sahneler yerçekiminin vitrini).
 11. Tutorial/onboarding: hiç yok — mobil ilk oturum kaybı için en kritik eksik; en azından ilk
     maçta hareket/atış ipuçları.
-12. Bot AI: mevcut botlar hotseat kuklası; yerel maç menüden kalktığı için oyuncunun offline modu
-    kalmadı. Basit AI ile "Antrenman" modu (+ istenirse Quick Match'te rakip yoksa bot doldurma).
+12. Bot AI: **Antrenman modu tamam** (2026-07-10) — ana menü ☰ çekmecesinde gerçek oyunculara açık
+    "ANTRENMAN" butonu, doğrudan Game sahnesini 2 tamamen pasif botla açar (hiç hareket/ateş
+    etmezler — bkz. "Antrenman Modu" bölümü). Quick Match'te rakip yoksa bot doldurma hâlâ yapılmadı
+    (ayrı, opsiyonel iş).
 13. Profil ikonları/avatar: harf rozeti yerine seçilebilir avatar seti (kostümlerle birleşebilir).
 
 ### 4. Bilinen pürüzler / teknik borç
@@ -202,6 +204,33 @@ after weighing population-based vs. mobile-game-industry-standard language sets;
   6 languages (already wrapped in `Loc.T()` in `WardrobePanelUI.cs`, so this is purely missing table
   entries, not missing code — falls back to English cleanly in the meantime). Deprioritized behind
   core UI/achievement/quest text since costume names are decorative flavor text, not functional UI.
+
+## Antrenman Modu
+Done (2026-07-10) — gerçek oyunculara açık, doğrudan erişilebilir pratik modu. Eski "BOT MAÇI (DEV)"
+girişi Editor'a kilitli kaldı (bot sayısı seçilebilen, geliştirici test aracı); bu YENİ giriş ayrı ve
+her build'de çalışır.
+
+- **`LobbyData.IsTraining`** (yeni flag) + **`TurnManager.isTrainingMode`**: antrenmanda botlar
+  `TurnManager.characters` rotasyonuna HİÇ eklenmiyor. `GravityBody.isActive` varsayılan olarak
+  `false` (`NetworkVariable<bool>(false, ...)`) ve yalnız `TurnManager.ActivateCharacter()` onu
+  `true` yapıyor — rotasyona hiç girmeyen bir karakterde bu asla olmadığı için botlar tasarım
+  gereği kalıcı olarak pasif kalıyor (ayrıca "ateş etmeyi engelle" kodu YAZILMADI, zaten var olan
+  input-gate deseni yeterli). `TurnManager.CheckGameOver()` normalde `characters.Count <= 1`
+  olduğunda maçı bitirir (kazanan ilan eder) — antrenmanda insan tek başına kayıtlı olduğu için bu
+  bypass edilmezse maç ilk frame'de biterdi; `isTrainingMode` bayrağı bu kontrolü atlıyor.
+- **`MainMenuUI`**: ☰ çekmecesine yeni "ANTRENMAN"/"TRAINING" girişi (`dw_training`,
+  `StartTrainingMatch()`) — `LobbyData.IsTraining=true`, `BotCount=2` set edip lobi ekranı
+  olmadan doğrudan Game sahnesine geçiyor (tek tıkla pratik, `LobbyPanelUI`'ın aksine).
+- **Play-tested end-to-end in the Unity Editor**: misafir girişiyle ana menüye ulaşıp ANTRENMAN'a
+  tıklandı, Game sahnesi insan (`Pulsar630`) + `Bot_1` + `Bot_2` ile açıldı, `GameOverPanel`
+  inaktif kaldı (maç bitmedi — `isTrainingMode` bypass'ı doğrulandı), ~15 saniye sonra `Bot_1`'in
+  pozisyonu birebir aynı ölçüldü (x=18.2469711, y=-10.5347147 → değişmedi, bot hiç hareket etmedi).
+  Hata/uyarı yok.
+- Antrenmandan çıkış mevcut `InGameMenu` ESC menüsündeki "Ana Menüye Dön" ile — ayrı bir çıkış
+  mantığı yazılmadı, zaten var olan yol kullanılıyor.
+- Ödül/XP/Gold/başarım verilmiyor (bilinçli): `TriggerGameOver` hiç çağrılmadığı için maç
+  tamamlama event'leri ateşlenmiyor — bu, diğer mobil oyunlardaki "antrenman modu ilerleme
+  vermez" kuralıyla tutarlı, ayrıca özel bir kısıtlama kodu gerektirmedi (yan etki olarak geldi).
 
 ## Audio
 Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop

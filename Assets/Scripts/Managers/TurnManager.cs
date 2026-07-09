@@ -18,6 +18,10 @@ public class TurnManager : NetworkBehaviour
     [Tooltip("Sıra değişim tuşu")]
     public KeyCode nextTurnKey = KeyCode.Tab;
 
+    /// <summary>Antrenman modu: maç, karakter sayısı 1'e düştüğünde (botlar characters'a hiç
+    /// eklenmediği için başlangıçtan itibaren 1'dir) bitmez — GameInitializer set eder.</summary>
+    public bool isTrainingMode = false;
+
     [Header("Tur Süresi Ayarları")]
     [Tooltip("Her karakterin tur süresi (saniye cinsinden)")]
     public float turnDuration = 15f;
@@ -256,6 +260,7 @@ public class TurnManager : NetworkBehaviour
     /// </summary>
     private bool CheckGameOver()
     {
+        if (isTrainingMode) return false; // botlar characters'a hiç eklenmez, tek karakterle bitmesin
         if (characters.Count > 1) return false;
 
         GravityBody winner = characters.Count == 1 ? characters[0] : null;

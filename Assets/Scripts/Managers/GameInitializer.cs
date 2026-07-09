@@ -100,6 +100,9 @@ public class GameInitializer : MonoBehaviour
         }
 
         // ── 4. Test botlarını spawn et (slot 1..n) ───────────────────────
+        // Antrenman modunda botlar TurnManager.characters'a EKLENMEZ — GravityBody.isActive
+        // varsayılan false kaldığı için (TurnManager hiç dokunmuyor) hareket/ateş etmeleri
+        // zaten mümkün olmuyor, sadece hedef tahtası olarak sahnede dururlar.
         if (_botSpawner != null)
         {
             var spawnedBots = _botSpawner.SpawnBots(slots, humanSlotIndex: 0);
@@ -108,6 +111,7 @@ public class GameInitializer : MonoBehaviour
                 if (botGO == null) continue;
                 AddNameTag(botGO, botGO.name);
                 AddHealthBar(botGO);
+                if (LobbyData.IsTraining) continue; // pasif hedef — sıra rotasyonuna girmesin
                 var gb = botGO.GetComponent<GravityBody>();
                 if (gb != null) allPlayers.Add(gb);
             }
@@ -117,6 +121,7 @@ public class GameInitializer : MonoBehaviour
         var turnManager = FindFirstObjectByType<TurnManager>();
         if (turnManager != null)
         {
+            turnManager.isTrainingMode = LobbyData.IsTraining;
             turnManager.RegisterPlayers(allPlayers);
             #if UNITY_EDITOR
             Debug.Log($"[GameInitializer] TurnManager'a {allPlayers.Count} karakter kaydedildi.");

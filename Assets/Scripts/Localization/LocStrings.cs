@@ -261,6 +261,9 @@ namespace CosmicRumble.Localization
 
             // ── Language selector ────────────────────────────────────────────
             ["Language"]         = new[] { "Dil", "语言", "Idioma", "言語", "언어", "Sprache" },
+
+            // ── Training mode ────────────────────────────────────────────────
+            ["TRAINING"]         = new[] { "ANTRENMAN", "训练", "ENTRENAMIENTO", "トレーニング", "훈련", "TRAINING" },
         };
     }
 }
