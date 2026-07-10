@@ -26,6 +26,12 @@ public class CharacterNameTag : MonoBehaviour
         if (_label != null) _label.text = characterName;
     }
 
+    /// <summary>Takım rengini uygular (GravityBody.teamId) — outline sabit kalır, sadece dolgu rengi değişir.</summary>
+    public void SetColor(Color color)
+    {
+        if (_label != null) _label.color = color;
+    }
+
     // ── Build ─────────────────────────────────────────────────────────────
 
     void BuildTag()

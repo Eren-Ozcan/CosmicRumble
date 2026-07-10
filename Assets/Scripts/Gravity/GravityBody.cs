@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using CosmicRumble.Utilities;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class GravityBody : NetworkBehaviour
@@ -11,6 +12,15 @@ public class GravityBody : NetworkBehaviour
     // bağımsız normal bir bool gibi davranır, hiçbir NetworkManager/spawn gerektirmez.
     public NetworkVariable<bool> isActive =
         new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // Takım kimliği — takımsız modlarda (Duel1v1/Ffa) her oyuncuya kendi tekil değeri atanır
+    // (0..N-1), takım modlarında (2v2, 3v3, ...) aynı takımdaki karakterler aynı değeri paylaşır.
+    // isActive ile aynı desen: yalnızca server yazar, offline hotseat'te (IsSpawned=false) spawn
+    // gerektirmeden düz bir int gibi davranır. Spawn sırasında GameInitializer/NetworkPlayerSpawner
+    // tarafından set edilir (bkz. TeamColors, TurnManager.CheckGameOver).
+    public NetworkVariable<int> teamId =
+        new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
     [HideInInspector] public bool movementLocked = false;
 
@@ -101,6 +111,24 @@ public class GravityBody : NetworkBehaviour
     {
         isActive.OnValueChanged += (oldValue, newValue) =>
             Debug.Log($"[TURN] {name} isActive {oldValue}->{newValue} IsOwner={IsOwner} frame={Time.frameCount}");
+
+        // Geç katılan/spectator client'lar teamId'nin senkron değerini spawn sonrası alır —
+        // renk o an uygulanmalı. Host/server tarafında teamId zaten spawn öncesi set edildiği
+        // için burada bir kez de anında uygulanır (OnValueChanged ilk değişimi kaçırmasın diye).
+        teamId.OnValueChanged += (oldValue, newValue) => ApplyTeamColor();
+        ApplyTeamColor();
+    }
+
+    /// <summary>teamId.Value'ya göre isim etiketini renklendirir. Atayan taraf (GameInitializer
+    /// offline / NetworkPlayerSpawner online) teamId.Value'yu set ettikten hemen sonra da
+    /// doğrudan çağırabilir — offline hotseat'te OnNetworkSpawn hiç tetiklenmediği için bu tek
+    /// güvenilir uygulama noktasıdır. Not: gövde SpriteRenderer'ı BİLEREK boyanmıyor —
+    /// ShieldSkill.cs aynı SpriteRenderer.color'ı kalkan efekti için kullanıyor
+    /// (shielded ? mavi : Color.white), ikisi çakışırsa kalkan kapanınca takım rengi silinirdi.</summary>
+    public void ApplyTeamColor()
+    {
+        var tag = GetComponent<CharacterNameTag>();
+        if (tag != null) tag.SetColor(TeamColors.Get(teamId.Value));
     }
 
     private void Update()

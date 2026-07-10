@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Localization;
+using CosmicRumble.Data;
 
 namespace CosmicRumble.Networking
 {
@@ -102,11 +103,18 @@ namespace CosmicRumble.Networking
             while (slots.Count < clientIds.Count)
                 slots.Add(new SpawnPositioning.SpawnSlot { position = Vector3.up * 3f, upDir = Vector3.up });
 
+            // Takım modlarında (2v2 vb.) katılım sırasına göre round-robin dağıtılır (i % TeamCount)
+            // — host'un lobide seçtiği spesifik eşleştirmeleri (kim kiminle aynı takımda) uygulamak
+            // clientId↔PlayerId eşlemesi gerektirir ki bu henüz yok (bkz. PartyLobbyPanelUI notu);
+            // takımsız modlarda (Duel1v1/Ffa) zaten her oyuncu kendi tekil takımıdır, davranış değişmez.
+            GameModeCatalog.All.TryGetValue(LobbyData.SelectedMode, out var modeDef);
+            bool isTeamMode = modeDef.IsTeamMode;
+
             var allPlayers = new List<GravityBody>();
             int i = 0;
             foreach (var clientId in clientIds)
             {
-                var s = slots[i++];
+                var s = slots[i];
                 var go = Instantiate(playerPrefab, s.position, Quaternion.identity);
                 go.name = $"Player_{clientId}";
                 go.transform.up = s.upDir;
@@ -116,15 +124,22 @@ namespace CosmicRumble.Networking
                 {
                     Debug.LogError("[NetworkPlayerSpawner] playerPrefab'ta NetworkObject yok!");
                     Destroy(go);
+                    i++;
                     continue;
                 }
                 netObj.SpawnAsPlayerObject(clientId);
                 _playerObjects[clientId] = netObj;
 
                 var gb = go.GetComponent<GravityBody>();
-                if (gb != null) allPlayers.Add(gb);
+                if (gb != null)
+                {
+                    gb.teamId.Value = isTeamMode ? (i % modeDef.TeamCount) : i;
+                    gb.ApplyTeamColor();
+                    allPlayers.Add(gb);
+                }
 
                 Debug.Log($"[NET] Spawned player for clientId={clientId} at {s.position}");
+                i++;
             }
 
             TurnManager.Instance?.RegisterPlayers(allPlayers);

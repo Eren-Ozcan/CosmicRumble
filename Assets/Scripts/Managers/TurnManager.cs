@@ -257,18 +257,34 @@ public class TurnManager : NetworkBehaviour
 
     /// <summary>
     /// Oyun sona erdi mi kontrol eder. Bittiyse TriggerGameOver çağırır ve true döner.
+    /// Takım-farkında: hayatta kalan karakterlerin FARKLI teamId sayısı baz alınır — takımsız
+    /// modlarda (Duel1v1/Ffa) her oyuncunun kendi tekil teamId'si olduğu için bu, eski
+    /// "characters.Count &lt;= 1" davranışıyla birebir aynı sonucu verir; takım modlarında
+    /// (2v2, 3v3, 2v2v2v2, 3v3v3) aynı takımdaki hayatta kalanlar tek grup sayılır.
     /// </summary>
     private bool CheckGameOver()
     {
         if (isTrainingMode) return false; // botlar characters'a hiç eklenmez, tek karakterle bitmesin
-        if (characters.Count > 1) return false;
 
-        GravityBody winner = characters.Count == 1 ? characters[0] : null;
-        TriggerGameOver(winner);
+        var survivingTeams = new HashSet<int>();
+        foreach (var gb in characters)
+            if (gb != null) survivingTeams.Add(gb.teamId.Value);
+
+        if (survivingTeams.Count > 1) return false;
+
+        List<GravityBody> winningTeam = null;
+        if (survivingTeams.Count == 1)
+        {
+            int winningTeamId = 0;
+            foreach (int t in survivingTeams) winningTeamId = t; // tek eleman var
+            winningTeam = characters.FindAll(gb => gb != null && gb.teamId.Value == winningTeamId);
+        }
+
+        TriggerGameOver(winningTeam);
         return true;
     }
 
-    private void TriggerGameOver(GravityBody winner)
+    private void TriggerGameOver(List<GravityBody> winningTeam)
     {
         gameOver = true;
         turnTimer = 0f;
@@ -277,7 +293,10 @@ public class TurnManager : NetworkBehaviour
         foreach (var gb in characters)
             if (gb != null) gb.isActive.Value = false;
 
-        string winnerName = winner != null ? winner.gameObject.name : null;
+        bool hasWinner = winningTeam != null && winningTeam.Count > 0;
+        string winnerName = hasWinner
+            ? string.Join(", ", winningTeam.ConvertAll(gb => gb.gameObject.name))
+            : null;
         #if UNITY_EDITOR
         Debug.Log($"[TurnManager] Game over — Winner: {winnerName ?? "None (Draw)"}");
         #endif
@@ -289,27 +308,35 @@ public class TurnManager : NetworkBehaviour
             // Online: TriggerGameOver yalnızca server'da çalışır — game-over UI'ı, ödüller,
             // başarımlar ve kupa değişimi HER makinede kendi yerel sonucuna göre RPC içinde
             // işlenir (ClientRpc host'ta da çalışır, bu yüzden burada ayrıca YAPILMAZ; yoksa
-            // host çift ödül alırdı, client ise hiçbir şey görmezdi).
-            ulong winnerClientId = winner != null ? winner.OwnerClientId : ulong.MaxValue;
-            AnnounceMatchResultClientRpc(winnerClientId, winnerName ?? "", matchDuration, _totalShots);
+            // host çift ödül alırdı, client ise hiçbir şey görmezdi). Takım modlarında kazanan
+            // takımın TÜM üyelerinin OwnerClientId'si taşınır, her client kendi id'sinin listede
+            // olup olmadığına bakarak "takımım kazandı mı"yı belirler.
+            ulong[] winnerClientIds = hasWinner
+                ? winningTeam.ConvertAll(gb => gb.OwnerClientId).ToArray()
+                : Array.Empty<ulong>();
+            AnnounceMatchResultClientRpc(winnerClientIds, winnerName ?? "", matchDuration, _totalShots);
         }
         else
         {
-            // Offline hotseat: eski davranış — "biri kazandıysa" kazanan akışı (bkz. eski not:
-            // yerel oyuncu/bot ayrımı yapılmaz). Hotseat hiçbir zaman dereceli değildir.
-            FinishMatchLocally(winner != null, winnerName, matchDuration, _totalShots, ranked: false);
+            // Offline hotseat: eski davranış — "biri/bir takım kazandıysa" kazanan akışı.
+            // Hotseat hiçbir zaman dereceli değildir.
+            FinishMatchLocally(hasWinner, winnerName, matchDuration, _totalShots, ranked: false);
         }
     }
 
     [ClientRpc]
-    private void AnnounceMatchResultClientRpc(ulong winnerClientId, string winnerName, float matchDuration, int totalShots)
+    private void AnnounceMatchResultClientRpc(ulong[] winnerClientIds, string winnerName, float matchDuration, int totalShots)
     {
         gameOver = true;
 
-        bool isDraw   = winnerClientId == ulong.MaxValue;
-        bool localWon = !isDraw &&
-                        NetworkManager.Singleton != null &&
-                        NetworkManager.Singleton.LocalClientId == winnerClientId;
+        bool isDraw   = winnerClientIds == null || winnerClientIds.Length == 0;
+        bool localWon = false;
+        if (!isDraw && NetworkManager.Singleton != null)
+        {
+            ulong localId = NetworkManager.Singleton.LocalClientId;
+            foreach (var id in winnerClientIds)
+                if (id == localId) { localWon = true; break; }
+        }
 
         // Kupa yalnızca DERECELİ (Quick Match) maçlarda değişir — arkadaş koduyla kurulan
         // maçlar dostluk maçıdır, beraberlikte de değişim yok (Clash Royale kuralları).

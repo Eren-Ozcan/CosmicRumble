@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using CosmicRumble.Data;
 
 /// <summary>
 /// GameScene yüklenince çalışır.
@@ -117,6 +118,14 @@ public class GameInitializer : MonoBehaviour
             }
         }
 
+        // ── 4b. Takım ataması ──────────────────────────────────────────────
+        // teamId varsayılan olarak 0'da kalır (GravityBody alan tanımı) — bu, birden fazla
+        // karakter varken CheckGameOver'ın "tek takım" sanıp maçı ilk frame'de bitirmesine yol
+        // açar. Takımsız modlarda (Duel1v1/Ffa) her karaktere kendi tekil id'si, takım
+        // modlarında (2v2 vb.) sırayla dönen takım id'si atanır. CharacterNameTag zaten yukarıda
+        // eklendiği için ApplyTeamColor() burada güvenle çağrılabilir.
+        AssignTeams(allPlayers, LobbyData.SelectedMode);
+
         // ── 5. TurnManager'a kaydet ───────────────────────────────────────
         var turnManager = FindFirstObjectByType<TurnManager>();
         if (turnManager != null)
@@ -155,6 +164,23 @@ public class GameInitializer : MonoBehaviour
     }
 
     // ── Yardımcı ──────────────────────────────────────────────────────────
+
+    /// <summary>Her karaktere teamId atar: takımsız modlarda (Duel1v1/Ffa) kendi tekil indeksi,
+    /// takım modlarında (2v2, 3v3, 4v4, 2v2v2v2, 3v3v3) sırayla dönen takım id'si (i % TeamCount).
+    /// Mod bulunamazsa (savunma) takımsız davranışa düşer.</summary>
+    static void AssignTeams(List<GravityBody> players, GameModeType mode)
+    {
+        GameModeCatalog.All.TryGetValue(mode, out var def);
+        bool isTeamMode = def.IsTeamMode;
+
+        for (int i = 0; i < players.Count; i++)
+        {
+            if (players[i] == null) continue;
+            int teamId = isTeamMode ? (i % def.TeamCount) : i;
+            players[i].teamId.Value = teamId;
+            players[i].ApplyTeamColor();
+        }
+    }
 
     static void AddNameTag(GameObject go, string characterName)
     {

@@ -218,9 +218,9 @@ public class LobbyPanelUI : MonoBehaviour
     void OnStartClicked()
     {
         // LobbyData doldur
-        LobbyData.BotCount = _botCount;
-        LobbyData.MapName  = "CosmicArena";
-        LobbyData.GameMode = "Deathmatch";
+        LobbyData.BotCount     = _botCount;
+        LobbyData.MapName      = "CosmicArena";
+        LobbyData.SelectedMode = CosmicRumble.Data.GameModeType.Duel1v1;
 
         if (GameConfig.Instance != null) GameConfig.Instance.Save();
 

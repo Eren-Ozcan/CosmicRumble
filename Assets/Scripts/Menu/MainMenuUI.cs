@@ -729,10 +729,10 @@ public class MainMenuUI : MonoBehaviour
     /// </summary>
     void StartTrainingMatch()
     {
-        LobbyData.IsTraining = true;
-        LobbyData.BotCount   = 2;
-        LobbyData.MapName    = "CosmicArena";
-        LobbyData.GameMode   = "Deathmatch";
+        LobbyData.IsTraining  = true;
+        LobbyData.BotCount    = 2;
+        LobbyData.MapName     = "CosmicArena";
+        LobbyData.SelectedMode = CosmicRumble.Data.GameModeType.Duel1v1;
 
         GameConfig.Instance?.Save();
 

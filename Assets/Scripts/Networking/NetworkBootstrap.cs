@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Localization;
+using CosmicRumble.Data;
 
 namespace CosmicRumble.Networking
 {
@@ -71,9 +72,11 @@ namespace CosmicRumble.Networking
 
         /// <summary>
         /// Bir Relay oturumu oluşturur, host olarak başlar. Başarılıysa katılım kodunu döner.
-        /// Belirli bir arkadaşı davet etmek içindir — <c>IsPrivate = true</c>, yani
-        /// <see cref="QuickMatchAsync"/>'in genel havuzunda hiç görünmez, sadece bu kodu bilen biri
-        /// katılabilir.
+        /// Arkadaş/parti daveti içindir — <c>IsPrivate = true</c>, yani <see cref="QuickMatchAsync"/>'in
+        /// genel (dereceli, hep 1v1) havuzunda hiç görünmez, sadece bu kodu bilen biri katılabilir.
+        /// MaxPlayers, host'un lobide seçtiği moda göre değişir (LobbyData.SelectedMode) — 1v1'den
+        /// 3v3v3'e (9 oyuncu) kadar; host mod seçimini oturumu açmadan ÖNCE yapmış olmalı
+        /// (bkz. PartyLobbyPanelUI).
         /// </summary>
         public async Task<string> HostSessionAsync()
         {
@@ -82,7 +85,8 @@ namespace CosmicRumble.Networking
             {
                 await EnsureUgsReadyAsync();
 
-                var options = new SessionOptions { MaxPlayers = 2, IsPrivate = true }.WithRelayNetwork();
+                int totalPlayers = GameModeCatalog.ResolveTotalPlayers(LobbyData.SelectedMode, LobbyData.FfaPlayerCount);
+                var options = new SessionOptions { MaxPlayers = totalPlayers, IsPrivate = true }.WithRelayNetwork();
                 var session = await MultiplayerService.Instance.CreateSessionAsync(options);
                 _session = session;
 
