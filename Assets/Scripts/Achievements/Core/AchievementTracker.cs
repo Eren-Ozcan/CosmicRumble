@@ -73,6 +73,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnPlayerCountInMatch  += HandlePlayerCount;
             AchievementEvents.OnPlayerDefeated      += HandlePlayerDefeated;
             AchievementEvents.OnDamagedTarget       += HandleDamagedTarget;
+            AchievementEvents.OnDefeatedBy           += HandleDefeatedBy;
             AchievementEvents.OnBlackHolePulled     += HandleBlackHolePulled;
             AchievementEvents.OnRpgMultiHit         += HandleRpgMultiHit;
             AchievementEvents.OnGrenadeMultiHit     += HandleGrenadeMultiHit;
@@ -104,6 +105,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnPlayerCountInMatch  -= HandlePlayerCount;
             AchievementEvents.OnPlayerDefeated      -= HandlePlayerDefeated;
             AchievementEvents.OnDamagedTarget       -= HandleDamagedTarget;
+            AchievementEvents.OnDefeatedBy           -= HandleDefeatedBy;
             AchievementEvents.OnBlackHolePulled     -= HandleBlackHolePulled;
             AchievementEvents.OnRpgMultiHit         -= HandleRpgMultiHit;
             AchievementEvents.OnGrenadeMultiHit     -= HandleGrenadeMultiHit;
@@ -187,15 +189,21 @@ namespace CosmicRumble.Achievements
         private void HandleMatchLost(string winnerName)
         {
             _totalMatchesPlayed++;
+            // INTIKAM'ın hedef ataması artık burada değil, HandleDefeatedBy'da — maçın nihai
+            // kazananı FFA/takım modlarında "beni öldüren kişi" ile aynı olmayabilir (bkz. o
+            // metodun yorumu). 1v1'de ikisi zaten hep aynı kişiye denk gelir, davranış değişmez.
+        }
 
-            // INTIKAM: bir sonraki maçta bizi yenen kişiyi yenersek tetiklenecek — 1v1 olduğu için
-            // "kim" sorusu her zaman tek bir rakip, saldırgan kimliğini projectile boru hattına
-            // taşımaya gerek yok (bkz. HandlePlayerDefeated'daki aynı yaklaşım/SOSYAL_KELEBEK notu).
-            if (!string.IsNullOrEmpty(winnerName))
-            {
-                PlayerPrefs.SetString(RevengeTargetPrefKey, winnerName);
-                PlayerPrefs.Save();
-            }
+        /// <summary>INTIKAM: "beni kim öldürdü" — CombatEventReporter'ın öldürücü darbe anında
+        /// yaydığı gerçek saldırgan kimliği (maç kazananı değil). Yalnızca KENDİ karakterimiz
+        /// öldürüldüyse hedefi kaydeder; başka bir oyuncunun ölümü bizi ilgilendirmez.</summary>
+        private void HandleDefeatedBy(string victimName, string attackerName)
+        {
+            if (victimName != PlayerIdentity.Get()) return;
+            if (string.IsNullOrEmpty(attackerName) || attackerName == victimName) return; // kendine isabet hedef sayılmaz
+
+            PlayerPrefs.SetString(RevengeTargetPrefKey, attackerName);
+            PlayerPrefs.Save();
         }
 
         private void HandleDamageDealt(int amount)

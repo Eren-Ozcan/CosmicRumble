@@ -414,6 +414,13 @@ public class PartyLobbyPanelUI : MonoBehaviour
             var (sent, error) = await FriendsManager.Instance.SendMatchInviteAsync(memberId, code);
             var lbl = btnGo != null ? btnGo.transform.Find("Lbl")?.GetComponent<TextMeshProUGUI>() : null;
             if (lbl != null) lbl.text = sent ? Loc.T("SENT") : Loc.T("FAILED");
+
+            // KOZMIK_EKIP: hâlâ tek arkadaş id'si takip ediyor (bkz. LobbyData.FriendOpponentId
+            // yorumu) — parti modunda birden fazla arkadaş davet edilebildiği için "gerçek grup"
+            // kavramı yok, en azından İLK davet edilen arkadaş için ilerleme sayılsın diye
+            // henüz boşsa dolduruluyor. Tam grup takibi ayrı bir iş (bkz. TODO.md).
+            if (sent && string.IsNullOrEmpty(LobbyData.FriendOpponentId))
+                LobbyData.FriendOpponentId = memberId;
         });
     }
 

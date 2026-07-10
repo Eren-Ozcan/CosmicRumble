@@ -33,6 +33,17 @@ namespace CosmicRumble.Achievements
                     if (ch.GetCurrentHealth() <= 0f)
                         AchievementEvents.FirePlayerDefeated(ch.gameObject.name);
                 }
+
+                // INTIKAM: "beni kim öldürdü" — maçın nihai kazananı DEĞİL, doğrudan öldürücü
+                // darbeyi vuran kişi (FFA/takım modlarında bunlar farklı kişiler olabilir).
+                // Dostane ateş/kendine isabet de dahil raporlanır (kim öldürdüğü her zaman
+                // doğru olmalı); AchievementTracker kendi karakterimiz mi diye ayrıca süzer.
+                if (ch.GetCurrentHealth() <= 0f)
+                {
+                    var shooter = TurnManager.Instance != null ? TurnManager.Instance.CurrentShooter : null;
+                    if (shooter != null)
+                        AchievementEvents.FireDefeatedBy(ch.gameObject.name, shooter.gameObject.name);
+                }
             }
         }
 
