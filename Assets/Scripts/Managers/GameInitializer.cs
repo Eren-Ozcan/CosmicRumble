@@ -142,6 +142,16 @@ public class GameInitializer : MonoBehaviour
             AuthManager.Instance.CurrentProfile.matchesPlayed++;
             AuthManager.Instance.CurrentProfile.Save();
         }
+
+        // ── 7. İlk maç onboarding: bu cihazda daha önce görülmediyse hareket/atış
+        //    ipuçlarını göster (offline hotseat + Antrenman — online akış bilerek dışarıda,
+        //    bkz. TutorialManager doc yorumu). Turn/timer'ı etkilemez, sadece bir kez tetiklenir.
+        if (!CosmicRumble.Tutorial.TutorialManager.HasSeenTutorial)
+        {
+            if (CosmicRumble.Tutorial.TutorialManager.Instance == null)
+                new GameObject("TutorialManager").AddComponent<CosmicRumble.Tutorial.TutorialManager>();
+            CosmicRumble.Tutorial.TutorialManager.Instance.ShowIfFirstTime();
+        }
     }
 
     // ── Yardımcı ──────────────────────────────────────────────────────────

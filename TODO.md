@@ -43,8 +43,17 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
    şablon + renk varyasyonuyla küçültülebilir.
 10. Harita/gezegen çeşitliliği: tek oynanış sahnesi (SampleScene); `LobbyData.MapName` kullanılmıyor.
     En az 2-3 farklı gezegen düzeni (çok gezegenli sahneler yerçekiminin vitrini).
-11. Tutorial/onboarding: hiç yok — mobil ilk oturum kaybı için en kritik eksik; en azından ilk
-    maçta hareket/atış ipuçları.
+11. **Tamam (2026-07-10)** — Tutorial/onboarding: `Assets/Scripts/Tutorial/TutorialManager.cs`
+    (yeni). Bu cihazda oynanan ilk offline maçta (hotseat veya Antrenman — `GameInitializer`'ın
+    spawn ettiği yerel karakter) 3 ipucu kartını sırayla gösterir ("A/D ile hareket et", "SPACE ile
+    zıpla", "Bir silah seç, fareyle nişan al, ateş et"), her biri 4.5s, ✕ ile atlanabilir, son
+    karttan sonra otomatik kapanır. Tek seferlik: `PlayerPrefs["cr_tutorial_seen"]` kalıcı, bir daha
+    gösterilmez. Tam ekran blok değil — küçük üst-orta kart, hareket/ateş kontrollerini kaplamaz,
+    turn timer'ı etkilemez. Online (Quick Match/özel maç) akışına bilerek bağlanmadı — oraya
+    ulaşan oyuncu zaten en az bir offline maç oynamış olur. Play-tested: Editor'da `cr_tutorial_seen`
+    temizlenip misafir girişiyle ANTRENMAN'a girildi, 3 kart sırayla doğru dilde (o an ayarlı olan
+    İspanyolca) göründü, otomatik kapandı, `PlayerPrefs` değeri 1 olarak doğrulandı, konsolda hata
+    yok.
 12. Bot AI: **Antrenman modu tamam** (2026-07-10) — ana menü ☰ çekmecesinde gerçek oyunculara açık
     "ANTRENMAN" butonu, doğrudan Game sahnesini 2 tamamen pasif botla açar (hiç hareket/ateş
     etmezler — bkz. "Antrenman Modu" bölümü). Quick Match'te rakip yoksa bot doldurma hâlâ yapılmadı

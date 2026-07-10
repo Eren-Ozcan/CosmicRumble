@@ -19,6 +19,11 @@ namespace CosmicRumble.Localization
             ["Loading profile..."]    = new[] { "Profil yükleniyor...", "正在加载个人资料...", "Cargando perfil...", "プロフィールを読み込み中...", "프로필 로딩 중...", "Profil wird geladen..." },
             ["Playing offline"]       = new[] { "Çevrimdışı oynanıyor", "离线游戏中", "Jugando sin conexión", "オフラインでプレイ中", "오프라인으로 플레이 중", "Offline spielen" },
 
+            // ── Tutorial / onboarding ───────────────────────────────────────
+            ["Move with A/D"] = new[] { "A/D ile hareket et", "使用A/D移动", "Muévete con A/D", "A/Dで移動", "A/D로 이동", "Bewege dich mit A/D" },
+            ["Jump with SPACE"] = new[] { "SPACE ile zıpla", "按空格键跳跃", "Salta con ESPACIO", "SPACEでジャンプ", "SPACE로 점프", "Springe mit LEERTASTE" },
+            ["Pick a weapon, aim with the mouse, then fire"] = new[] { "Bir silah seç, fareyle nişan al, ateş et", "选择武器，用鼠标瞄准后开火", "Elige un arma, apunta con el ratón y dispara", "武器を選び、マウスで狙って撃つ", "무기를 선택하고 마우스로 조준한 뒤 발사", "Wähle eine Waffe, ziele mit der Maus und feuere" },
+
             // ── Main menu ────────────────────────────────────────────────────
             ["Turn-based planetary warfare"] = new[] { "Sıra tabanlı gezegenler arası savaş", "回合制星球战争", "Guerra planetaria por turnos", "ターン制惑星戦争", "턴제 행성 전쟁", "Rundenbasierter Planetenkrieg" },
             ["T"] = new[] { "K", "杯", "T", "T", "T", "T" }, // kupa rozeti tek harf
