@@ -105,7 +105,24 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     misafir girişiyle `AnalyticsManager` singleton'ının kurulduğu, `AnalyticsService.Instance`'ın
     gerçek user/session ID döndürdüğü ve `RecordMatchCompleted` çağrısının hatasız çalıştığı
     doğrulandı.
-20. Push notification (sandık hazır / streak hatırlatma) — Dashboard'da servis var, kod yok.
+20. **Tamam (2026-07-10), cihaz testi hariç** — Push notification. Gerçek sunucu-tetikli UGS Push
+    Notifications DEĞİL — bu oyunun ekonomisi client-authoritative ve hatırlatmaların ihtiyaç duyduğu
+    tek veri (login streak, günlük sandık hakkı) zaten cihazda, sunucu tetikleyicisi gerekmiyor;
+    standart mobil oyun deseni olan **local (cihazda zamanlanan) notification** ile yapıldı
+    (`com.unity.mobile.notifications` 2.4.3 kuruldu). Yeni
+    `Assets/Scripts/Notifications/LocalNotificationManager.cs`: `MainMenuUI.EnsureCoreSingletons`'ta
+    bootstrap edilip `NotificationCenter.Initialize` çağrılıyor; `OnApplicationPause(true)`'da (oyuncu
+    arka plana atınca) `LoginStreakManager.GetCurrentStreak() > 0` ise ~20 saat sonrasına "Serini
+    kaybetme!" bildirimi, `ChestManager.GetRemainingChests() > 0` ise ~4 saat sonrasına "Sandıklar
+    seni bekliyor!" bildirimi zamanlanıyor; `OnApplicationPause(false)`'da (geri dönünce) ikisi de
+    iptal ediliyor. Tüm SDK çağrıları `#if UNITY_ANDROID || UNITY_IOS` ile korunuyor — paketin birleşik
+    API assembly'si (`Unity.Notifications.Unified`) yalnızca Android/iOS/Editor için derleniyor, Windows
+    Standalone (online test için kullanılan DevClient build'i) dışarıda kalıyor, bu yüzden
+    `STEAMWORKS_INSTALLED`/`GPGS_INSTALLED` ile aynı korumalı-derleme deseni kullanıldı.
+    **Cihaz/platform testi yapılamadı**: Editor şu an StandaloneWindows64 build target'ında
+    (`UNITY_ANDROID` bu oturumda hiç tanımlı değildi), gerçek bildirim zamanlama/tetikleme davranışı
+    yalnızca build target Android'e çevrilip gerçek cihazda/emülatörde denenince doğrulanabilir — aynı
+    GPGS/Steamworks entegrasyonlarında olduğu gibi. Derleme (Editor, mevcut Standalone hedefinde) temiz.
 21. Localization: **tamamen bitti** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
     tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var, CJK font (Noto
     Sans SC/JP/KR) kuruldu ve play-test edildi. **Kalan: yalnız** 150 kostüm ismi henüz İngilizce

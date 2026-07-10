@@ -24,6 +24,12 @@ namespace CosmicRumble.Localization
             ["Jump with SPACE"] = new[] { "SPACE ile zıpla", "按空格键跳跃", "Salta con ESPACIO", "SPACEでジャンプ", "SPACE로 점프", "Springe mit LEERTASTE" },
             ["Pick a weapon, aim with the mouse, then fire"] = new[] { "Bir silah seç, fareyle nişan al, ateş et", "选择武器，用鼠标瞄准后开火", "Elige un arma, apunta con el ratón y dispara", "武器を選び、マウスで狙って撃つ", "무기를 선택하고 마우스로 조준한 뒤 발사", "Wähle eine Waffe, ziele mit der Maus und feuere" },
 
+            // ── Local notifications ─────────────────────────────────────────
+            ["Don't lose your streak!"] = new[] { "Serini kaybetme!", "不要失去连胜！", "¡No pierdas tu racha!", "連勝を失わないで！", "연승 기록을 잃지 마세요!", "Verliere deine Serie nicht!" },
+            ["Play a match today to keep your login streak alive."] = new[] { "Serini korumak için bugün bir maç oyna.", "今天玩一局比赛以保持连胜记录。", "Juega una partida hoy para mantener tu racha.", "連勝を維持するために今日試合をプレイしよう。", "연승 기록을 유지하려면 오늘 경기를 플레이하세요.", "Spiele heute ein Match, um deine Serie zu erhalten." },
+            ["Chests are waiting!"] = new[] { "Sandıklar seni bekliyor!", "宝箱在等着你！", "¡Los cofres te esperan!", "宝箱が待っています！", "상자가 기다리고 있어요!", "Truhen warten auf dich!" },
+            ["You still have chests to earn today — jump into a match."] = new[] { "Bugün kazanabileceğin sandıklar var — hemen bir maça katıl.", "你今天还有宝箱可以赢取——快去参加一场比赛吧。", "Todavía puedes ganar cofres hoy — únete a una partida.", "今日獲得できる宝箱がまだあります — 試合に参加しよう。", "오늘 획득할 수 있는 상자가 남아 있어요 — 지금 경기에 참여하세요.", "Du kannst heute noch Truhen verdienen — nimm an einem Match teil." },
+
             // ── Main menu ────────────────────────────────────────────────────
             ["Turn-based planetary warfare"] = new[] { "Sıra tabanlı gezegenler arası savaş", "回合制星球战争", "Guerra planetaria por turnos", "ターン制惑星戦争", "턴제 행성 전쟁", "Rundenbasierter Planetenkrieg" },
             ["T"] = new[] { "K", "杯", "T", "T", "T", "T" }, // kupa rozeti tek harf

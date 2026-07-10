@@ -202,6 +202,8 @@ public class MainMenuUI : MonoBehaviour
         if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
         if (CosmicRumble.Analytics.AnalyticsManager.Instance == null)
             new GameObject("AnalyticsManager").AddComponent<CosmicRumble.Analytics.AnalyticsManager>();
+        if (CosmicRumble.Notifications.LocalNotificationManager.Instance == null)
+            new GameObject("LocalNotificationManager").AddComponent<CosmicRumble.Notifications.LocalNotificationManager>();
         if (CosmicRumble.Social.FriendsManager.Instance == null)
             new GameObject("FriendsManager").AddComponent<CosmicRumble.Social.FriendsManager>();
 
