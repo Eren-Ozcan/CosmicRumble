@@ -296,8 +296,8 @@ public class TurnManager : NetworkBehaviour
         else
         {
             // Offline hotseat: eski davranış — "biri kazandıysa" kazanan akışı (bkz. eski not:
-            // yerel oyuncu/bot ayrımı yapılmaz).
-            FinishMatchLocally(winner != null, winnerName, matchDuration, _totalShots);
+            // yerel oyuncu/bot ayrımı yapılmaz). Hotseat hiçbir zaman dereceli değildir.
+            FinishMatchLocally(winner != null, winnerName, matchDuration, _totalShots, ranked: false);
         }
     }
 
@@ -319,19 +319,29 @@ public class TurnManager : NetworkBehaviour
             CosmicRumble.Cloud.LeaderboardManager.Instance?.ReportOnlineMatchResult(localWon);
 
         FinishMatchLocally(localWon, string.IsNullOrEmpty(winnerName) ? null : winnerName,
-                           matchDuration, totalShots);
+                           matchDuration, totalShots, ranked && !isDraw);
     }
 
     /// <summary>
     /// Maç sonu yerel işlemleri: başarım event'leri, ses, XP/Gold/sandık ödülleri ve game-over
     /// ekranı. Offline'da server yolundan, online'da her makinede kendi RPC'sinden çağrılır.
     /// </summary>
-    private void FinishMatchLocally(bool isWinner, string winnerName, float matchDuration, int totalShots)
+    private void FinishMatchLocally(bool isWinner, string winnerName, float matchDuration, int totalShots, bool ranked)
     {
         AchievementEvents.FireMatchCompleted(totalShots);
         if (isWinner) AchievementEvents.FireMatchWon();
-        else          AchievementEvents.FireMatchLost();
+        else          AchievementEvents.FireMatchLost(winnerName);
         AudioManager.Instance?.PlaySfx(isWinner ? "match_win" : "match_lose");
+
+        if (ranked) AchievementEvents.FireRankedMatchCompleted();
+
+        // KOZMIK_EKIP: bu maç bir arkadaş daveti ile kuruldu mu (bkz. FriendLobbyPanelUI) —
+        // maç türünden bağımsız (kazan/kaybet fark etmez), tek seferlik tüketilir.
+        if (!string.IsNullOrEmpty(LobbyData.FriendOpponentId))
+        {
+            AchievementEvents.FireFriendMatchCompleted(LobbyData.FriendOpponentId);
+            LobbyData.FriendOpponentId = null;
+        }
 
         long xp   = MatchRewardCalculator.CalculateMatchXP(isWinner, matchDuration);
         long gold = MatchRewardCalculator.CalculateMatchGold(isWinner, matchDuration);

@@ -28,6 +28,7 @@ public class InvitePopupUI : MonoBehaviour
     Button          _joinBtn, _declineBtn;
     string          _pendingCode;
     string          _pendingFromName;
+    string          _pendingFromId;
     bool            _busy;
 
     void Awake()
@@ -67,6 +68,7 @@ public class InvitePopupUI : MonoBehaviour
 
         _pendingCode     = invite.code;
         _pendingFromName = string.IsNullOrEmpty(invite.fromName) ? Loc.T("A friend") : invite.fromName;
+        _pendingFromId   = senderId;
         _messageText.text = string.Format(Loc.T("{0} invited you to a match!"), _pendingFromName);
         _busy = false;
         SetButtonsInteractable(true);
@@ -84,7 +86,7 @@ public class InvitePopupUI : MonoBehaviour
         if (ok)
         {
             _root.SetActive(false);
-            FriendLobbyPanelUI.Instance?.ShowAsClient(_pendingFromName);
+            FriendLobbyPanelUI.Instance?.ShowAsClient(_pendingFromName, _pendingFromId);
         }
         else
         {

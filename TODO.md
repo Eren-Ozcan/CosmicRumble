@@ -63,10 +63,11 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     bölümü) — sonraki iş listesine eklendi, şimdilik renk+baş harf placeholder.
 
 ### 4. Bilinen pürüzler / teknik borç
-14. SOSYAL kategorisi başarımları: **kısmen tamam** (2026-07-10) — 3/10 çalışır durumda
-    (`SOSYAL_KELEBEK` dead-event bug'ı düzeltildi, `HERKESE_MEYDAN` + `DUELLO_SAMPIYONU` yeni bağlandı,
-    bkz. "Sosyal Başarımlar" bölümü). Kalan 6'sı ayrı alt sistemler gerektiriyor (maçlar arası kalıcı
-    state, leaderboard rank API, tutorial sistemi) — bilinçli olarak bu geçişte yapılmadı.
+14. SOSYAL kategorisi başarımları: **8/10 çalışır durumda** (2026-07-10) — `SOSYAL_KELEBEK`,
+    `HERKESE_MEYDAN`, `DUELLO_SAMPIYONU` (önceki geçiş) + `INTIKAM`, `REKABETCI`, `KOZMIK_EKIP`,
+    `BIR_NUMARA`, `KOZMIK_AVCI` (bu geçiş) bağlandı, bkz. "Sosyal Başarımlar" bölümü. Yalnızca
+    `OGRETMEN` kapsam dışı kaldı — cross-client bildirim + ayrı bir gerçek iki-process test ortamı
+    gerektiriyor, gerekçesi aynı bölümde.
 15. `ui_button_hover` klibi: **tamam** (2026-07-10) — `UiKit.Hover()` eklendi, tüm programatik
     butonlara (29/30, bilinçli 1 istisna) bağlandı, play-test edildi. Bkz. "ui_button_hover wiring".
 16. Ölü kod: **tamam** (2026-07-10) — `AbilityController.cs` ve `ObjectSpawnSkill.cs` silindi.
@@ -334,15 +335,50 @@ dışı bırakıldı (aşağıda tek tek gerekçelendirildi).
   sonrası `HERKESE_MEYDAN` unlock oldu, bir `FirePlayerDefeated` sonrası `SOSYAL_KELEBEK` ilerlemesi
   0'dan 1'e çıktı, 2 oyunculu `FireMatchWon` sonrası `DUELLO_SAMPIYONU` ilerlemesi 0'dan 1'e çıktı.
   Konsolda hata/uyarı yok.
-- **Kapsam dışı bırakılan 6 SOSYAL başarım (gerekçeli)**: `KOZMIK_EKIP` ve `OGRETMEN` maçlar arası
-  kalıcı arkadaş/takım ilişkisi state'i gerektiriyor (arkadaşla kaç maç oynandığı — şu an hiç
-  tutulmuyor, `FriendsManager`'a yeni bir sayaç + persistans katmanı ister); `INTIKAM` önceki maçta
-  kimin yendiğini hatırlayıp bir sonraki maçla eşleştirme gerektiriyor (maçlar arası durum yok);
-  `BIR_NUMARA` ve `KOZMIK_AVCI` leaderboard sıralama API'sine maç-sonu anında erişim istiyor (mevcut
-  `LeaderboardsService` entegrasyonu bunu senkron sağlamıyor, ayrı iş); `REKABETCI` bir tutorial/ilk
-  oturum akışına bağlı ve tutorial sistemi (yol haritası madde 11) henüz hiç yok. Hepsi kendi başına
-  ayrı bir alt sistem gerektirdiğinden bu geçişte (küçük teknik borç kapsamında) yapılmadı — ayrı
-  görev olarak ele alınmalı.
+- **Kalan 6 SOSYAL başarımın 5'i bağlandı (2026-07-10)** — yalnızca `OGRETMEN` gerekçeli kapsam
+  dışı kaldı (aşağıda). Önceki not (bu satırın eski hali) `REKABETCI`/`OGRETMEN` gerekçelerini
+  birbirine karıştırmıştı — gerçek `.asset` açıklamaları kontrol edilerek düzeltildi.
+  - **`INTIKAM`** ("Defeat whoever killed you in the next match"): saldırgan kimliğini projectile
+    boru hattına taşımaya gerek kalmadı — proje her zaman 1v1 olduğu için "bizi kim yendi" sorusunun
+    cevabı zaten maçın tek rakibi. `AchievementEvents.FireMatchLost(string winnerName)` (önceden
+    parametresizdi) kaybedilen maçın kazananının adını `AchievementTracker`'a taşıyor,
+    `PlayerPrefs["cr_intikam_target"]`'e yazılıyor; bir sonraki maçta `HandlePlayerDefeated` aynı
+    isimle eşleşirse `INTIKAM` unlock olup hedef temizleniyor.
+  - **`REKABETCI`** (gerçek açıklaması "Finish top 3 in a ranked match" — tutorial ile ilgisi yok):
+    proje kesinlikle 1v1 olduğu için (`MaxPlayers=2` her SessionOptions'ta) 2 oyuncudan biri olmak
+    zaten her zaman "top 3" içinde — sahte bir 3+ kişilik sıralama sistemi uydurmak yerine dereceli
+    (Quick Match) bir maç kazan/kaybet fark etmeden tamamlandığında doğrudan unlock ediliyor
+    (`AchievementEvents.OnRankedMatchCompleted`, `TurnManager.FinishMatchLocally`'ye eklenen
+    `ranked` parametresinden tetikleniyor).
+  - **`KOZMIK_EKIP`** ("Play 5 matches with the same 3 people" — 1v1'de "aynı 3 kişi" anlamsız,
+    "aynı arkadaşla 5 maç" olarak ölçeklendirildi): `FriendLobbyPanelUI.ShowAsHost/ShowAsClient`
+    artık arkadaşın `PlayerId`'sini `LobbyData.FriendOpponentId`'e yazıyor (client tarafı için
+    `InvitePopupUI.HandleInvite`'ın zaten aldığı `senderId` `ShowAsClient`'a yeni bir parametre
+    olarak eklendi); maç bitince `TurnManager.FinishMatchLocally` bunu okuyup
+    `AchievementEvents.FireFriendMatchCompleted(friendId)` ateşliyor ve alanı temizliyor (iptal/
+    arka plana atma durumlarında da `OnCancelClicked`/`CleanupOnBackground`'da temizleniyor —
+    aksi halde bir sonraki alakasız maça sızardı). `AchievementTracker` her arkadaş için ayrı
+    `PlayerPrefs` sayacı tutuyor, ilerleme o arkadaşın sayacının en yükseği (başka bir arkadaşla
+    oynamak ilerlemeyi düşürmüyor).
+  - **`BIR_NUMARA`/`KOZMIK_AVCI`** (leaderboard sıralaması): eski not "senkron erişim yok"
+    diyordu ama achievement kontrolünün senkron olmasına hiç gerek yoktu — `LeaderboardManager.
+    SubmitScoreAsync` skor gönderildikten sonra `FetchOwnEntryAsync()` ile (zaten var olan metod)
+    async sıralamayı öğrenip `AchievementEvents.FireLeaderboardRankKnown(rank)` ateşliyor;
+    `AchievementTracker` rank==0'da `BIR_NUMARA`, rank<10'da `KOZMIK_AVCI` unlock ediyor.
+  - **Test**: Play Mode'da (`TestSocialAchievements.cs`, geçici, sonradan silindi) her 5 event
+    doğrudan ateşlenerek doğrulandı — `INTIKAM`/`REKABETCI`/`BIR_NUMARA`/`KOZMIK_AVCI` unlock,
+    `KOZMIK_EKIP` ilerlemesi 5/5 ve unlock. Konsolda yeni hata yok (yalnızca bilinen zararsız NGO
+    stop-play temizlik hataları).
+  - **`OGRETMEN` kapsam dışı (gerekçeli)**: gerçek açıklaması "Guide a new player through the
+    tutorial" — mentor'un kendi cihazında, davet ettiği arkadaşın TutorialManager'ını tamamladığını
+    öğrenmesi gerekiyor. Bu, mentee'nin cihazındaki yerel `PlayerPrefs` durumunu mentor'un cihazına
+    taşıyacak bir cross-client bildirim ister (FriendsService.MessageAsync ile teknik olarak
+    mümkün görünüyor ama gerçek iki-taraflı akış, orijinal multiplayer milestone'da olduğu gibi
+    ayrı bir gerçek ikinci OS process'i gerektirir — bu geçişte test edilemedi). Ayrıca
+    `TutorialManager` bilinçli olarak yalnızca offline (hotseat/Antrenman) akışında tetikleniyor
+    (bkz. "Antrenman Modu" bölümü üstündeki tutorial notu), online arkadaş daveti akışına henüz
+    bağlanmadı — o da ayrı bir iş. Kendi başına ayrı bir alt sistem (cross-client bildirim) ve ayrı
+    bir test ortamı (iki gerçek process) gerektirdiğinden bu geçişte yapılmadı.
 
 ## Audio
 Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop

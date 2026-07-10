@@ -118,6 +118,22 @@ namespace CosmicRumble.Cloud
 #if UNITY_EDITOR
                 Debug.LogWarning($"[LeaderboardManager] Score submit failed: {e.Message}");
 #endif
+                return;
+            }
+
+            // BIR_NUMARA/KOZMIK_AVCI: skor gönderildikten sonra güncel sıralamayı öğren — achievement
+            // kontrolünün "anında" olması gerekmiyor, maç-sonu ekranı zaten bunu beklemiyor, bu yüzden
+            // ayrı bir fire-and-forget adım olarak yeterli (senkron bir API'ye ihtiyaç yoktu).
+            try
+            {
+                var own = await FetchOwnEntryAsync();
+                if (own != null) CosmicRumble.Achievements.AchievementEvents.FireLeaderboardRankKnown(own.Rank);
+            }
+            catch (Exception e)
+            {
+#if UNITY_EDITOR
+                Debug.LogWarning($"[LeaderboardManager] Rank check failed: {e.Message}");
+#endif
             }
         }
 

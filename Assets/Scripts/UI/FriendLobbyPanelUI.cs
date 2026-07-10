@@ -64,6 +64,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
     {
         if (!_sessionActive) return;
         _sessionActive = false;
+        LobbyData.FriendOpponentId = null; // maç hiç başlamadı — KOZMIK_EKIP'e sızmasın
         UnsubscribeNetwork();
         _ = NetworkBootstrap.Instance?.LeaveSessionAsync();
     }
@@ -86,6 +87,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
             return;
         }
         _sessionActive = true;
+        LobbyData.FriendOpponentId = friendId; // KOZMIK_EKIP — maç tamamlandığında TurnManager okur
 
         var (sent, error) = await FriendsManager.Instance.SendMatchInviteAsync(friendId, code);
         _statusText.text = sent
@@ -102,10 +104,11 @@ public class FriendLobbyPanelUI : MonoBehaviour
     }
 
     /// <summary>Client: davete katıldıktan sonra host'un başlatmasını bekler.</summary>
-    public void ShowAsClient(string hostName)
+    public void ShowAsClient(string hostName, string hostId)
     {
         _isHost = false;
         _sessionActive = true;
+        LobbyData.FriendOpponentId = hostId; // KOZMIK_EKIP — maç tamamlandığında TurnManager okur
         OpenCommon(hostName: hostName, guestName: PlayerIdentity.Get());
         _statusText.text = Loc.T("Waiting for host to start...");
         // Sahne yüklemesi NGO üzerinden otomatik gelir — burada ek iş yok.
@@ -164,6 +167,7 @@ public class FriendLobbyPanelUI : MonoBehaviour
         if (_sessionActive)
         {
             _sessionActive = false;
+            LobbyData.FriendOpponentId = null; // maç hiç başlamadı — KOZMIK_EKIP'e sızmasın
             await NetworkBootstrap.Instance.LeaveSessionAsync();
         }
         Hide();

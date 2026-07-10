@@ -58,6 +58,9 @@ namespace CosmicRumble.Achievements
         {
             AchievementEvents.OnMatchWon            += HandleMatchWon;
             AchievementEvents.OnMatchLost           += HandleMatchLost;
+            AchievementEvents.OnRankedMatchCompleted += HandleRankedMatchCompleted;
+            AchievementEvents.OnFriendMatchCompleted += HandleFriendMatchCompleted;
+            AchievementEvents.OnLeaderboardRankKnown += HandleLeaderboardRankKnown;
             AchievementEvents.OnDamageDealt         += HandleDamageDealt;
             AchievementEvents.OnDamageTaken         += HandleDamageTaken;
             AchievementEvents.OnWeaponUsed          += HandleWeaponUsed;
@@ -86,6 +89,9 @@ namespace CosmicRumble.Achievements
         {
             AchievementEvents.OnMatchWon            -= HandleMatchWon;
             AchievementEvents.OnMatchLost           -= HandleMatchLost;
+            AchievementEvents.OnRankedMatchCompleted -= HandleRankedMatchCompleted;
+            AchievementEvents.OnFriendMatchCompleted -= HandleFriendMatchCompleted;
+            AchievementEvents.OnLeaderboardRankKnown -= HandleLeaderboardRankKnown;
             AchievementEvents.OnDamageDealt         -= HandleDamageDealt;
             AchievementEvents.OnDamageTaken         -= HandleDamageTaken;
             AchievementEvents.OnWeaponUsed          -= HandleWeaponUsed;
@@ -176,9 +182,20 @@ namespace CosmicRumble.Achievements
             }
         }
 
-        private void HandleMatchLost()
+        private const string RevengeTargetPrefKey = "cr_intikam_target";
+
+        private void HandleMatchLost(string winnerName)
         {
             _totalMatchesPlayed++;
+
+            // INTIKAM: bir sonraki maçta bizi yenen kişiyi yenersek tetiklenecek — 1v1 olduğu için
+            // "kim" sorusu her zaman tek bir rakip, saldırgan kimliğini projectile boru hattına
+            // taşımaya gerek yok (bkz. HandlePlayerDefeated'daki aynı yaklaşım/SOSYAL_KELEBEK notu).
+            if (!string.IsNullOrEmpty(winnerName))
+            {
+                PlayerPrefs.SetString(RevengeTargetPrefKey, winnerName);
+                PlayerPrefs.Save();
+            }
         }
 
         private void HandleDamageDealt(int amount)
@@ -282,6 +299,52 @@ namespace CosmicRumble.Achievements
         {
             _uniqueOpponents.Add(playerId);
             AchievementManager.Instance?.UpdateProgress("SOSYAL_KELEBEK", _uniqueOpponents.Count);
+
+            // INTIKAM: az önce yendiğimiz kişi, önceki maçta bizi yenen kişiyle aynıysa tetiklenir.
+            if (playerId == PlayerPrefs.GetString(RevengeTargetPrefKey, ""))
+            {
+                AchievementManager.Instance?.UnlockAchievement("INTIKAM");
+                PlayerPrefs.DeleteKey(RevengeTargetPrefKey);
+                PlayerPrefs.Save();
+            }
+        }
+
+        // ── SOSYAL (kalan 6, 2026-07-10) ────────────────────────────────────
+
+        /// <summary>REKABETCI: dereceli (Quick Match) bir maç tamamlandı — 1v1'de kazan/kaybet fark
+        /// etmez, her sonuç zaten "top 3" (2 oyuncudan biri) içindedir.</summary>
+        private void HandleRankedMatchCompleted()
+        {
+            AchievementManager.Instance?.UnlockAchievement("REKABETCI");
+        }
+
+        private const string FriendMatchCountPrefPrefix = "cr_friend_matches_";
+
+        /// <summary>KOZMIK_EKIP: "aynı 3 kişiyle 5 maç" — bu proje her zaman 1v1 olduğu için "aynı
+        /// arkadaşla 5 maç" olarak ölçeklendirildi. Her arkadaş için ayrı sayaç tutulur, ilerleme o
+        /// arkadaşın sayacına göre güncellenir (başka bir arkadaşla oynamak ilerlemeyi düşürmez).</summary>
+        private void HandleFriendMatchCompleted(string friendId)
+        {
+            if (string.IsNullOrEmpty(friendId)) return;
+            string key = FriendMatchCountPrefPrefix + friendId;
+            int count = PlayerPrefs.GetInt(key, 0) + 1;
+            PlayerPrefs.SetInt(key, count);
+            PlayerPrefs.Save();
+
+            var am = AchievementManager.Instance;
+            if (am == null) return;
+            int best = Mathf.Max(am.GetProgress("KOZMIK_EKIP"), count);
+            am.UpdateProgress("KOZMIK_EKIP", best);
+        }
+
+        /// <summary>BIR_NUMARA/KOZMIK_AVCI: dereceli maç sonrası öğrenilen 0-tabanlı leaderboard
+        /// sıralaması (bkz. LeaderboardManager.ReportOnlineMatchResult → FetchOwnEntryAsync).</summary>
+        private void HandleLeaderboardRankKnown(int rank)
+        {
+            var am = AchievementManager.Instance;
+            if (am == null) return;
+            if (rank == 0)      am.UnlockAchievement("BIR_NUMARA");
+            if (rank < 10)      am.UnlockAchievement("KOZMIK_AVCI");
         }
 
         private void HandleDamagedTarget(string targetId)

@@ -11,4 +11,8 @@ public static class LobbyData
     /// <summary>Antrenman modu: botlar TurnManager.characters'a hiç eklenmez (isActive hep false
     /// kalır, hiçbir zaman hareket/ateş etmez — sadece hedef), maç oyuncu sayısı 1 diye bitmez.</summary>
     public static bool IsTraining = false;
+
+    /// <summary>Bu maç bir arkadaş daveti (FriendLobbyPanelUI) ile mi kuruldu — arkadaşın PlayerId'si.
+    /// Quick Match/hotseat'te null. TurnManager.FinishMatchLocally KOZMIK_EKIP için okuyup temizler.</summary>
+    public static string FriendOpponentId = null;
 }
