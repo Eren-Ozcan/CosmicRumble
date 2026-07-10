@@ -1607,8 +1607,9 @@ Kullanıcı gerçek Brawl Stars ekran görüntüleri paylaştı ("tasarım hala 
 ## Oyun Modları (1v1 / FFA / Takım) + Parti Lobisi
 Done (2026-07-10) — kullanıcı isteği: "8 arkadaşımla oynayabilmeliyim, lobide toplanıp mod seçilmeli".
 Proje daha önce tamamen 1v1'e kilitliydi (session `MaxPlayers=2` sabit, `TurnManager` "son karakter
-kazanır" mantığı, davet akışı tek arkadaşa özel). Şimdi 1v1, FFA (3-8 kişi), 2v2, 3v3, 4v4, 2v2v2v2,
-3v3v3 (en büyük mod, 9 oyuncu) hepsi destekleniyor.
+kazanır" mantığı, davet akışı tek arkadaşa özel). Şimdi 1v1, FFA (3-8 kişi), 2v2, 3v3, 4v4, 2v2v2v2
+hepsi destekleniyor — lobi kapasitesi kullanıcı kararıyla **max 8** ile sınırlandı, bu yüzden 9 oyuncu
+gerektiren 3v3v3 kapsam dışı bırakıldı (yalnızca 2 takımlı + 2v2v2v2 dörtlü mod var, 3 takımlı mod yok).
 
 - **`GameModeDefinition.cs`** (yeni): `GameModeType` enum + her modun takım sayısı/boyutu. `LobbyData`
   atıl `GameMode` string'i yerine `SelectedMode`/`FfaPlayerCount`/`PartyMembers` aldı.

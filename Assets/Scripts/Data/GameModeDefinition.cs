@@ -5,7 +5,8 @@ namespace CosmicRumble.Data
 {
     /// <summary>Desteklenen maç modları. Ffa'da gerçek oyuncu sayısı sabit değil — host
     /// LobbyData.FfaPlayerCount ile 3-8 arası seçer; diğer modlarda GameModeCatalog'daki
-    /// TotalPlayers sabittir.</summary>
+    /// TotalPlayers sabittir. Lobi kapasitesi max 8 ile sınırlı — 3v3v3 (9 gerektirirdi)
+    /// bu yüzden desteklenmiyor.</summary>
     public enum GameModeType
     {
         Duel1v1,
@@ -14,7 +15,6 @@ namespace CosmicRumble.Data
         Team3v3,
         Team4v4,
         Team2v2v2v2,
-        Team3v3v3,
     }
 
     /// <summary>Bir modun sabit yapısı. TeamCount==0 → takımsız (Duel1v1/Ffa), her karakter
@@ -43,7 +43,7 @@ namespace CosmicRumble.Data
     {
         public const int MinFfaPlayers = 3;
         public const int MaxFfaPlayers = 8;
-        public const int MaxLobbySize  = 9; // 3v3v3 — projedeki en büyük mod
+        public const int MaxLobbySize  = 8; // projedeki en büyük mod (4v4 / 2v2v2v2 / Ffa-8)
 
         public static readonly Dictionary<GameModeType, GameModeDefinition> All = new()
         {
@@ -53,7 +53,6 @@ namespace CosmicRumble.Data
             { GameModeType.Team3v3,     new GameModeDefinition(GameModeType.Team3v3,     "3v3",           6, 2, 3) },
             { GameModeType.Team4v4,     new GameModeDefinition(GameModeType.Team4v4,     "4v4",           8, 2, 4) },
             { GameModeType.Team2v2v2v2, new GameModeDefinition(GameModeType.Team2v2v2v2, "2v2v2v2",       8, 4, 2) },
-            { GameModeType.Team3v3v3,   new GameModeDefinition(GameModeType.Team3v3v3,   "3v3v3",         9, 3, 3) },
         };
 
         /// <summary>Ffa için gerçek (host'un seçtiği) oyuncu sayısını, diğer modlarda sabit

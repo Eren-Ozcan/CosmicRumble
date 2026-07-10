@@ -12,7 +12,7 @@ using CosmicRumble.Data;
 using CosmicRumble.Utilities;
 
 /// <summary>
-/// Parti lobisi — 1v1'den 3v3v3'e (9 oyuncu, projedeki en büyük mod) kadar tüm modların ortak
+/// Parti lobisi — 1v1'den 4v4/2v2v2v2'ye (8 oyuncu, projedeki en büyük mod) kadar tüm modların ortak
 /// host/misafir akışı. Eski FriendLobbyPanelUI'nin (sabit 2 slot, tek arkadaş) yerini alır.
 ///
 /// Host akışları:
@@ -476,7 +476,6 @@ public class PartyLobbyPanelUI : MonoBehaviour
             (GameModeType.Team3v3,     "3v3"),
             (GameModeType.Team4v4,     "4v4"),
             (GameModeType.Team2v2v2v2, "2v2v2v2"),
-            (GameModeType.Team3v3v3,   "3v3v3"),
         };
 
         int cols = 4;
@@ -529,7 +528,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.90f), new Vector2(500, 48), AccGold);
         UiKit.BrawlText(title);
 
-        // 3x3 slot ızgarası — projedeki en büyük mod (3v3v3) 9 oyuncu.
+        // 3x3 slot ızgarası (8 dolu + 1 boş kalır) — projedeki en büyük mod 8 oyuncu.
         for (int i = 0; i < GameModeCatalog.MaxLobbySize; i++)
         {
             int col = i % 3;
