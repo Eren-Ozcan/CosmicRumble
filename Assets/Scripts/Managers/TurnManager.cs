@@ -45,6 +45,11 @@ public class TurnManager : NetworkBehaviour
     /// <summary>Havada en az 1 mermi var mı?</summary>
     public bool ProjectileInFlight => _activeProjectiles > 0;
 
+    /// <summary>Şu an havadaki mermi(ler)i ateşleyen karakter — NotifyProjectileLaunched'ta set
+    /// edilir, ilgili mermi(ler) çözülene kadar geçerlidir (tur başına tek aktif karakter olduğu
+    /// için bir sonraki atışa kadar değişmez). CombatEventReporter'ın dostane ateş filtresi için.</summary>
+    public GravityBody CurrentShooter => _currentShooter;
+
     /// <summary>ProjectileBase.Start() tarafından çağrılır.</summary>
     public static void NotifyProjectileLaunched()
     {

@@ -23,10 +23,33 @@ namespace CosmicRumble.Achievements
                 if (IsHeadshot(ch.transform, impactPoint))
                     AchievementEvents.FireHeadshotLanded();
 
-                AchievementEvents.FireDamagedTarget(ch.gameObject.name);
-                if (ch.GetCurrentHealth() <= 0f)
-                    AchievementEvents.FirePlayerDefeated(ch.gameObject.name);
+                // Takım modlarında (2v2 vb.) dostane ateş veya kendine isabet "farklı rakip"
+                // sayan başarımları (HERKESE_MEYDAN, SOSYAL_KELEBEK, INTIKAM'ın hedef ataması)
+                // şişirmemeli — hasar/headshot istatistikleri bundan etkilenmez, sadece kimlik
+                // bazlı event'ler atlanır.
+                if (!IsFriendlyFire(ch))
+                {
+                    AchievementEvents.FireDamagedTarget(ch.gameObject.name);
+                    if (ch.GetCurrentHealth() <= 0f)
+                        AchievementEvents.FirePlayerDefeated(ch.gameObject.name);
+                }
             }
+        }
+
+        /// <summary>Şu an ateş eden karakter (TurnManager.CurrentShooter) hedefle aynı takımdaysa
+        /// (takım arkadaşı ya da kendine isabet) true. Atıcı ya da hedefin teamId'si bilinmiyorsa
+        /// (offline kenar durumu) dostane ateş SAYILMAZ — eski davranış (her isabet raporlanır)
+        /// korunur, takımsız modlarda (Duel1v1/Ffa) zaten her karakterin kendi tekil teamId'si
+        /// olduğu için bu kontrol yalnızca gerçek öz-isabette devreye girer.</summary>
+        static bool IsFriendlyFire(CharacterHealth target)
+        {
+            var shooter = TurnManager.Instance != null ? TurnManager.Instance.CurrentShooter : null;
+            if (shooter == null) return false;
+
+            var targetGb = target.GetComponent<GravityBody>();
+            if (targetGb == null) return false;
+
+            return shooter.teamId.Value == targetGb.teamId.Value;
         }
 
         /// <summary>Konum bilgisi olmayan sürekli hasar (DoT vb.) için — headshot kontrolü yapmaz.</summary>
