@@ -87,7 +87,24 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     yok/inaktif olduğu için mid-match'i etkilemiyor.
 
 ### 5. Yayın sonrası / opsiyonel
-19. Crash raporlama + analitik (Unity Cloud Diagnostics ücretsiz katman) — yayına yakın ekle.
+19. **Tamam (2026-07-10)** — Crash raporlama + analitik. `com.unity.services.cloud-diagnostics`
+    1.0.12 ve `com.unity.services.analytics` 5.1.1 kuruldu (6.3.0 önce denendi, bu Unity sürümüyle
+    [6000.1.17f1] uyumsuz çıktı — `RuntimePlatform.Switch2` derleme hatası, Unity 6000.2+ gerektiriyor;
+    5.1.1'e düşürüldü). Crash raporlama tamamen kod gerektirmiyor — `ProjectSettings.asset`'te
+    `enableCrashReportAPI: 1` (Player Settings → Other Settings → Crash Report API) açıldı, native
+    `CrashReportHandler` + Cloud Diagnostics paketi geri kalanını otomatik hallediyor. Analitik için
+    yeni `Assets/Scripts/Analytics/AnalyticsManager.cs` — `MainMenuUI.BootstrapSequence`'ta UGS Core
+    hazır olduktan sonra `StartDataCollection()` çağırıyor (otomatik session/engagement event'leri
+    dashboard şeması gerektirmeden toplanır), `TurnManager.FinishMatchLocally`'den her maç sonunda
+    `match_completed` custom event'i (won/ranked) gönderiyor — **bu custom event'in gerçekten
+    kaydedilmesi için UGS Dashboard'da aynı isimle bir şema tanımlanmalı** (kod hazır, dashboard adımı
+    ayrı — Achievement/Leaderboard kurulumlarıyla aynı desen). SDK'nın kendi dokümantasyonu
+    `StartDataCollection()`'ı "kullanıcı onayının alındığını veya gerekmediğini teyit eder" olarak
+    tanımlıyor — gizlilik politikası (yol haritası madde 7, henüz YOK) canlıya alınmadan gerçek
+    kullanıcı build'lerine dağıtılmamalı; Editor/iç test için sorun değil. Play-tested: Editor'da
+    misafir girişiyle `AnalyticsManager` singleton'ının kurulduğu, `AnalyticsService.Instance`'ın
+    gerçek user/session ID döndürdüğü ve `RecordMatchCompleted` çağrısının hatasız çalıştığı
+    doğrulandı.
 20. Push notification (sandık hazır / streak hatırlatma) — Dashboard'da servis var, kod yok.
 21. Localization: **tamamen bitti** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
     tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var, CJK font (Noto

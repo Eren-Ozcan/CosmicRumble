@@ -334,6 +334,7 @@ public class TurnManager : NetworkBehaviour
         AudioManager.Instance?.PlaySfx(isWinner ? "match_win" : "match_lose");
 
         if (ranked) AchievementEvents.FireRankedMatchCompleted();
+        CosmicRumble.Analytics.AnalyticsManager.Instance?.RecordMatchCompleted(isWinner, ranked);
 
         // KOZMIK_EKIP: bu maç bir arkadaş daveti ile kuruldu mu (bkz. FriendLobbyPanelUI) —
         // maç türünden bağımsız (kazan/kaybet fark etmez), tek seferlik tüketilir.

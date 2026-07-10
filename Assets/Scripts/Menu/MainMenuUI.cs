@@ -183,6 +183,10 @@ public class MainMenuUI : MonoBehaviour
         if (CosmicRumble.Social.FriendsManager.Instance != null)
             _ = CosmicRumble.Social.FriendsManager.Instance.EnsureInitializedAsync();
 
+        // Crash raporlama Player Settings üzerinden otomatik (Cloud Diagnostics paketi + native
+        // CrashReportHandler) — kod gerekmiyor. Analitik veri toplama burada başlatılıyor.
+        CosmicRumble.Analytics.AnalyticsManager.Instance?.EnsureStarted();
+
         BuildUI();
         ShowPanel(_mainPanel);
         LoadingScreenUI.Instance?.Hide();
@@ -196,6 +200,8 @@ public class MainMenuUI : MonoBehaviour
         if (AuthManager.Instance     == null) new GameObject("AuthManager").AddComponent<AuthManager>();
         if (AudioManager.Instance    == null) new GameObject("AudioManager").AddComponent<AudioManager>();
         if (CloudSaveManager.Instance == null) new GameObject("CloudSaveManager").AddComponent<CloudSaveManager>();
+        if (CosmicRumble.Analytics.AnalyticsManager.Instance == null)
+            new GameObject("AnalyticsManager").AddComponent<CosmicRumble.Analytics.AnalyticsManager>();
         if (CosmicRumble.Social.FriendsManager.Instance == null)
             new GameObject("FriendsManager").AddComponent<CosmicRumble.Social.FriendsManager>();
 
