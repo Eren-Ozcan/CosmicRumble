@@ -67,10 +67,14 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     yöneten mimarinin kalıntısı; güncel sistem her yeteneği kendi script'i üzerinden bağımsız çalıştırıyor).
     Silindikten sonra Play Mode'da misafir girişi + ana menü akışı hatasız çalıştığı doğrulandı
     (missing-script/missing-reference hatası yok).
-17. Editor'da UGS timeout'ları (CloudSave local-only düşüşleri) — cihazda sorun değilse kalsın;
-    açılış yükleme ekranındaki timeout mesajı kibarlaştırılabilir.
-18. Davet köşe durumları: host davet gönderip uygulamayı kapatır/arka plana atarsa session
-    temizliği (OnApplicationPause'ta LeaveSession düşünülebilir).
+17. **Tamam (2026-07-10)** — UGS timeout mesajı: `CloudSaveManager.IsUnavailable` public'e açıldı,
+    `MainMenuUI.BootstrapSequence` init/pull zaman aşımına uğrarsa `LoadingScreenUI`'da kısa süreli
+    yerelleştirilmiş "Playing offline" mesajı gösteriyor (önceden sessizce sıradaki adıma atlıyordu).
+18. **Tamam (2026-07-10)** — Davet köşe durumları: `FriendLobbyPanelUI` ve `OnlineLobbyPanelUI`'a
+    `OnApplicationPause`/`OnApplicationQuit` eklendi — host/client hâlâ lobi bekleme aşamasındayken
+    (maç başlamadan) uygulama arka plana atılır/kapatılırsa `NetworkBootstrap.LeaveSessionAsync()`
+    otomatik çağrılıp UGS session'ı temizleniyor. Maç başladıktan sonra bu panelller zaten
+    yok/inaktif olduğu için mid-match'i etkilemiyor.
 
 ### 5. Yayın sonrası / opsiyonel
 19. Crash raporlama + analitik (Unity Cloud Diagnostics ücretsiz katman) — yayına yakın ekle.

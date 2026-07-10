@@ -47,6 +47,27 @@ public class FriendLobbyPanelUI : MonoBehaviour
         UnsubscribeNetwork();
     }
 
+    /// <summary>
+    /// Davet/lobi bekleme aşamasındayken (maç henüz başlamadı) uygulama arka plana atılır veya
+    /// kapatılırsa session'ı temizler — aksi halde host'un açık bıraktığı oturum karşı tarafta
+    /// "zaten davet edildi" gibi köşe durumlara yol açabiliyordu. Maç başladıktan sonra (Game
+    /// sahnesine geçildiğinde) bu panel zaten yok/inaktif olduğu için burası tetiklenmez.
+    /// </summary>
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus) CleanupOnBackground();
+    }
+
+    void OnApplicationQuit() => CleanupOnBackground();
+
+    void CleanupOnBackground()
+    {
+        if (!_sessionActive) return;
+        _sessionActive = false;
+        UnsubscribeNetwork();
+        _ = NetworkBootstrap.Instance?.LeaveSessionAsync();
+    }
+
     // ════════════════════════════════════════════════════════════════════
     //  PUBLIC API
     // ════════════════════════════════════════════════════════════════════

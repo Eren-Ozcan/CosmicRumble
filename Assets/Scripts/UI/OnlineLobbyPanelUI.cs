@@ -43,6 +43,21 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
     }
 
+    /// <summary>
+    /// Eşleşme kurulmuş ama maç henüz başlamamışken (rakip bekleniyor / host'un sahne yüklemesi
+    /// bekleniyor) uygulama arka plana atılır veya kapatılırsa oturumu temizler — bkz.
+    /// FriendLobbyPanelUI'daki aynı deseni.
+    /// </summary>
+    void OnApplicationPause(bool pauseStatus)
+    {
+        if (pauseStatus && _connectionActive) _ = CancelConnectionAsync();
+    }
+
+    void OnApplicationQuit()
+    {
+        if (_connectionActive) _ = CancelConnectionAsync();
+    }
+
     // ════════════════════════════════════════════════════════════════════
     //  PUBLIC API
     // ════════════════════════════════════════════════════════════════════
