@@ -9,7 +9,7 @@ using CosmicRumble.Localization;
 /// <summary>
 /// Online eşleşme paneli — tek akış: HIZLI EŞLEŞME (dereceli). Eski "KOD OLUŞTUR"/"KODA KATIL"
 /// kartları kaldırıldı; arkadaşla oynamak artık SOSYAL panelindeki davet sistemiyle yapılıyor
-/// (FriendLobbyPanelUI). Host tarafı 2. oyuncu bağlanınca (server olarak) Game sahnesini
+/// (PartyLobbyPanelUI). Host tarafı 2. oyuncu bağlanınca (server olarak) Game sahnesini
 /// yükler — NGO bu yüklemeyi bağlı client'a otomatik yayar.
 /// </summary>
 public class OnlineLobbyPanelUI : MonoBehaviour
@@ -46,7 +46,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     /// <summary>
     /// Eşleşme kurulmuş ama maç henüz başlamamışken (rakip bekleniyor / host'un sahne yüklemesi
     /// bekleniyor) uygulama arka plana atılır veya kapatılırsa oturumu temizler — bkz.
-    /// FriendLobbyPanelUI'daki aynı deseni.
+    /// PartyLobbyPanelUI'daki aynı deseni.
     /// </summary>
     void OnApplicationPause(bool pauseStatus)
     {

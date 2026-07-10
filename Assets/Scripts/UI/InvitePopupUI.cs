@@ -8,7 +8,7 @@ using CosmicRumble.Localization;
 
 /// <summary>
 /// Gelen maç daveti popup'ı — ekranın üst-ortasında küçük kart: "{isim} seni maça davet etti!"
-/// KATIL → JoinSessionAsync(kod) → FriendLobbyPanelUI.ShowAsClient. Bayat kod (host iptal etti)
+/// KATIL → JoinSessionAsync(kod) → PartyLobbyPanelUI.ShowAsClient. Bayat kod (host iptal etti)
 /// → "Davet artık geçerli değil." REDDET → kapat.
 /// Sadece menü bağlamında çalışır: aktif bir NGO oturumu varken (maçta/lobide) gelen davetler
 /// sessizce düşürülür — davet eden zaten presence'ta "Maçta" görür, butonu kilitlenir.
@@ -86,7 +86,7 @@ public class InvitePopupUI : MonoBehaviour
         if (ok)
         {
             _root.SetActive(false);
-            FriendLobbyPanelUI.Instance?.ShowAsClient(_pendingFromName, _pendingFromId);
+            PartyLobbyPanelUI.Instance?.ShowAsClient(_pendingFromName, _pendingFromId);
         }
         else
         {

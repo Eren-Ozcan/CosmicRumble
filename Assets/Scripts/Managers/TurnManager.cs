@@ -363,7 +363,7 @@ public class TurnManager : NetworkBehaviour
         if (ranked) AchievementEvents.FireRankedMatchCompleted();
         CosmicRumble.Analytics.AnalyticsManager.Instance?.RecordMatchCompleted(isWinner, ranked);
 
-        // KOZMIK_EKIP: bu maç bir arkadaş daveti ile kuruldu mu (bkz. FriendLobbyPanelUI) —
+        // KOZMIK_EKIP: bu maç bir arkadaş daveti ile kuruldu mu (bkz. PartyLobbyPanelUI) —
         // maç türünden bağımsız (kazan/kaybet fark etmez), tek seferlik tüketilir.
         if (!string.IsNullOrEmpty(LobbyData.FriendOpponentId))
         {

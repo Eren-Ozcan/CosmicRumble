@@ -239,7 +239,7 @@ public class MainMenuUI : MonoBehaviour
         // Paneller MenuScene'e bağlı yaşar (DontDestroyOnLoad değil) — her menü dönüşünde yeniden kurulur.
         if (LeaderboardPanelUI.Instance  == null) new GameObject("LeaderboardPanelUI").AddComponent<LeaderboardPanelUI>();
         if (SocialPanelUI.Instance       == null) new GameObject("SocialPanelUI").AddComponent<SocialPanelUI>();
-        if (FriendLobbyPanelUI.Instance  == null) new GameObject("FriendLobbyPanelUI").AddComponent<FriendLobbyPanelUI>();
+        if (PartyLobbyPanelUI.Instance   == null) new GameObject("PartyLobbyPanelUI").AddComponent<PartyLobbyPanelUI>();
         if (InvitePopupUI.Instance       == null) new GameObject("InvitePopupUI").AddComponent<InvitePopupUI>();
         if (WardrobePanelUI.Instance     == null) new GameObject("WardrobePanelUI").AddComponent<WardrobePanelUI>();
         if (AvatarManager.Instance       == null) new GameObject("AvatarManager").AddComponent<AvatarManager>();
@@ -711,6 +711,8 @@ public class MainMenuUI : MonoBehaviour
             () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
         Item("dw_training",     Loc.T("TRAINING"),     AccGold, "T",
             StartTrainingMatch);
+        Item("dw_party",        Loc.T("PARTY"),         new Color(0.95f, 0.45f, 0.65f, 1f), "P",
+            () => PartyLobbyPanelUI.Instance?.ShowModeSelect());
 #if UNITY_EDITOR
         // Yerel/bot maçı menüden kaldırıldı (arkadaş davetli özel lobi yerini aldı) — offline
         // spawn yolu (GameInitializer/LobbyData) test için Editor'a kilitli girişle duruyor.

@@ -289,7 +289,7 @@ public class SocialPanelUI : MonoBehaviour
                 () =>
                 {
                     Hide();
-                    FriendLobbyPanelUI.Instance?.ShowAsHost(memberId, shownName);
+                    PartyLobbyPanelUI.Instance?.ShowAsHost(memberId, shownName);
                 });
             inviteBtn.GetComponent<Button>().interactable = canInvite;
 

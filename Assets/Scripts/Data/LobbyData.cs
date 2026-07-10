@@ -26,7 +26,7 @@ public static class LobbyData
     /// kalır, hiçbir zaman hareket/ateş etmez — sadece hedef), maç oyuncu sayısı 1 diye bitmez.</summary>
     public static bool IsTraining = false;
 
-    /// <summary>Bu maç bir arkadaş daveti (FriendLobbyPanelUI) ile mi kuruldu — arkadaşın PlayerId'si.
+    /// <summary>Bu maç bir arkadaş daveti (PartyLobbyPanelUI) ile mi kuruldu — arkadaşın PlayerId'si.
     /// Quick Match/hotseat'te null. TurnManager.FinishMatchLocally KOZMIK_EKIP için okuyup temizler.</summary>
     public static string FriendOpponentId = null;
 }
