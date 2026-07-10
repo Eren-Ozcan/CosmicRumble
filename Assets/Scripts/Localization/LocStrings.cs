@@ -17,6 +17,7 @@ namespace CosmicRumble.Localization
             ["Connecting..."]         = new[] { "Bağlanılıyor...", "连接中...", "Conectando...", "接続中...", "연결 중...", "Verbindung wird hergestellt..." },
             ["Fetching cloud save..."] = new[] { "Bulut kaydı alınıyor...", "正在获取云存档...", "Obteniendo guardado en la nube...", "クラウドセーブを取得中...", "클라우드 저장 데이터 가져오는 중...", "Cloud-Speicherstand wird abgerufen..." },
             ["Loading profile..."]    = new[] { "Profil yükleniyor...", "正在加载个人资料...", "Cargando perfil...", "プロフィールを読み込み中...", "프로필 로딩 중...", "Profil wird geladen..." },
+            ["Playing offline"]       = new[] { "Çevrimdışı oynanıyor", "离线游戏中", "Jugando sin conexión", "オフラインでプレイ中", "오프라인으로 플레이 중", "Offline spielen" },
 
             // ── Main menu ────────────────────────────────────────────────────
             ["Turn-based planetary warfare"] = new[] { "Sıra tabanlı gezegenler arası savaş", "回合制星球战争", "Guerra planetaria por turnos", "ターン制惑星戦争", "턴제 행성 전쟁", "Rundenbasierter Planetenkrieg" },

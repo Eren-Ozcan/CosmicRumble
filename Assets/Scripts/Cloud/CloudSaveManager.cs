@@ -26,6 +26,9 @@ namespace CosmicRumble.Cloud
 
         public bool IsReady { get; private set; }
 
+        /// <summary>Init/pull zaman aşımına uğradı veya kalıcı olarak başarısız oldu — local-only devam ediliyor.</summary>
+        public bool IsUnavailable => _unavailable;
+
         private bool _unavailable;
 
         // Cloud Save anahtarı -> yerel dosya adı (sabit isimli dosyalar).

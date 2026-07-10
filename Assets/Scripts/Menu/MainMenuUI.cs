@@ -146,7 +146,18 @@ public class MainMenuUI : MonoBehaviour
 
         // 3) Bulut senkronu — progress manager'lar oluşturulmadan ÖNCE bitmeli.
         if (CloudSaveManager.Instance != null)
+        {
             yield return CloudSaveManager.Instance.InitializeAndPull();
+
+            // Zaman aşımı/erişilemezlik durumunda kullanıcıya "bir şey mi bozuldu" hissi vermek
+            // yerine kısa, sakin bir "çevrimdışı" bildirimi göster (önceden sessizce sonraki
+            // adıma atlıyordu — ağ yoksa açılış donmuş gibi görünebiliyordu).
+            if (CloudSaveManager.Instance.IsUnavailable)
+            {
+                LoadingScreenUI.Instance?.SetStatus(Loc.T("Playing offline"));
+                yield return new WaitForSecondsRealtime(0.8f);
+            }
+        }
 
         // 4) Offline/başarısızlık emniyeti: hâlâ oturum yoksa misafir olarak devam (oyun offline
         //    da açılmalı) — "Misafir" UI'da görünmez, PlayerIdentity takma ad üretir.
