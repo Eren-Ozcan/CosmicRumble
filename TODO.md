@@ -1603,3 +1603,50 @@ Kullanıcı gerçek Brawl Stars ekran görüntüleri paylaştı ("tasarım hala 
 - **Doğrulama:** Play Mode ekran görüntüleri — hub (yeni yerleşim, yumuşak desen, OYNA alt yazısı düzgün),
   çekmece açık hali (BS 3. görüntüdeki dizilişle aynı), mavi AYARLAR, MARKET paneli yeni fontla. Derleme
   temiz, konsolda yeni hata yok.
+
+## Oyun Modları (1v1 / FFA / Takım) + Parti Lobisi
+Done (2026-07-10) — kullanıcı isteği: "8 arkadaşımla oynayabilmeliyim, lobide toplanıp mod seçilmeli".
+Proje daha önce tamamen 1v1'e kilitliydi (session `MaxPlayers=2` sabit, `TurnManager` "son karakter
+kazanır" mantığı, davet akışı tek arkadaşa özel). Şimdi 1v1, FFA (3-8 kişi), 2v2, 3v3, 4v4, 2v2v2v2,
+3v3v3 (en büyük mod, 9 oyuncu) hepsi destekleniyor.
+
+- **`GameModeDefinition.cs`** (yeni): `GameModeType` enum + her modun takım sayısı/boyutu. `LobbyData`
+  atıl `GameMode` string'i yerine `SelectedMode`/`FfaPlayerCount`/`PartyMembers` aldı.
+- **`GravityBody.teamId`** (yeni `NetworkVariable<int>`, `isActive` ile aynı desen) — takımsız modlarda
+  (Duel1v1/Ffa) her oyuncu kendi tekil takımı, takım modlarında round-robin paylaşılan id. İsim etiketi
+  takım rengiyle boyanıyor (**gövde sprite'ı BİLEREK boyanmadı** — `ShieldSkill.cs` aynı SpriteRenderer'ı
+  kalkan efekti için kullanıyor, çakışsaydı kalkan kapanınca renk silinirdi).
+- **`TurnManager.CheckGameOver`**: "son karakter" yerine "hayatta kalan farklı takım sayısı ≤1" —
+  takımsız modlarda eski davranışla birebir aynı, takım modlarında bütün takım elenene kadar bitmiyor.
+  **Bulunup aynı geçişte kapatılan kritik regresyon**: teamId varsayılan 0 olduğu için bu değişiklik
+  tek başına HER maçı ilk karede bitirirdi — `GameInitializer`/`NetworkPlayerSpawner` artık spawn
+  anında gerçek takım ataması yapıyor.
+- **`PartyLobbyPanelUI.cs`** (yeni, eski `FriendLobbyPanelUI`'nin — sabit 2 slot — yerine): host mod
+  seçer (FFA için 3-8 stepper), PARTİYİ KUR özel bir UGS session açar (MaxPlayers moda göre), 3x3 roster
+  ekranından istediği kadar arkadaşı aynı session koduna davet edebilir (`FriendsManager` üzerinden,
+  tek tek). Misafir tarafı yalnızca canlı "X/N katılımcı" sayacı görüyor — **isim bazlı tam roster
+  senkronu yok** (clientId↔PlayerId eşlemesi/NetworkList gerektirir, kapsam dışı bırakıldı).
+- **Bilinçli kapsam kararı**: Quick Match (herkese açık, dereceli, +30/−20 kupa) **1v1 olarak kaldı** —
+  yeni modlar yalnızca özel parti lobisinden (hep dostluk maçı) erişiliyor. Bu sayede `DUELLO_SAMPIYONU`,
+  `REKABETCI` ve kupa formülü (`LeaderboardManager`) hiç değiştirilmeden doğru kalıyor.
+- **Dostane ateş filtresi**: `CombatEventReporter`, `TurnManager.CurrentShooter` (zaten var olan
+  "şu an ateş eden karakter" takibi) ile hedefin takımını karşılaştırıp `HERKESE_MEYDAN`/`SOSYAL_KELEBEK`
+  gibi "N farklı rakip" başarımlarının takım arkadaşı/kendine isabetle şişmesini engelliyor.
+- **`INTIKAM` düzeltildi**: artık maçın nihai kazananını değil, `FireDefeatedBy` ile gerçek öldürücüyü
+  hedef alıyor (FFA/takımda bunlar farklı kişiler olabilir) — yeni `AchievementEvents.OnDefeatedBy`.
+- **Play-tested (Coplay MCP)**: offline hotseat Duel1v1 (2 karakter, ilk karede bitmiyor — regresyon
+  testi), Team2v2 (4 karakter, round-robin takım ataması, 2 takım ayrıyken bitmiyor), parti lobisi host
+  akışı (mod seç → FFA stepper → PARTİYİ KUR → gerçek UGS session kuruldu, hatasız). Bu geçişte bir
+  gerçek bug bulundu ve düzeltildi: `PartyLobbyPanelUI.BuildRosterRoot()` inaktif hiyerarşide
+  `UiKit.BrawlText()` çağırıyordu (WardrobePanelUI'da daha önce görülenle aynı TMP outline/OnEnable
+  bug'ı) — sıra düzeltildi.
+- **Kalan/bilinçli ertelenen işler**:
+  - Gerçek çok-cihazlı online FFA/takım testi (tek geliştirici ortamı, hiç yapılamadı — arkadaş
+    daveti/presence testiyle aynı kısıtlama, bkz. yol haritası madde 2).
+  - Parti lobisinde host'un takımları elle sürükle-bırak ile yeniden atayabilmesi yok — şu an takım
+    ataması yalnızca katılım sırasına göre otomatik (round-robin).
+  - `KOZMIK_EKIP` hâlâ tek arkadaş id'si takip ediyor (parti akışında yalnızca ilk davet edilen arkadaş
+    için ilerliyor) — gerçek grup takibi ayrı bir iş.
+  - `KARA_DELIK_USTASI` (Black Hole çoklu-çekim) hâlâ kendi ayrı sayaç yolunda, dostane ateş filtresi
+    almadı.
+  - Misafir tarafında diğer katılımcıların isim bazlı roster senkronu yok (yukarıda açıklandı).
