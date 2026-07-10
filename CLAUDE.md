@@ -37,3 +37,13 @@ Assets/Scripts/
 
 ## Backlog
 Ertelenen işler (kostümler, quest içeriği, ses içeriği, multiplayer, tam tuş rebinding, cloud save vb.) için `TODO.md`'ye bak.
+
+## Commit Alışkanlığı
+Commit atmak önemli — kullanıcı GitHub profilinin aktif/kalabalık görünmesini istiyor. Buna göre:
+- Anlamlı her adımdan sonra ayrı ayrı commit at (tek dev seansında birden fazla iş kalemi varsa,
+  her kalemi bitirince kendi commit'ini at — hepsini sona biriktirip tek dev commit yapma).
+- Küçük, bağımsız bir düzeltme/iyileştirme fark edersen bile ayrı bir commit olarak kaydet;
+  büyük bir işin içine gömüp kaybetme.
+- Yine de her commit gerçek, çalışan bir durumu temsil etmeli (derleme temiz, mümkünse test/play-test
+  edilmiş) — sık commit "yarım kalmış/bozuk kod commit et" anlamına gelmiyor.
+- Push'u da unutma — yalnızca local commit profilde görünmez.
