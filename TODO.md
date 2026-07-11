@@ -166,6 +166,24 @@ generated. Data-complete; still needs real art (see below).
   için `NullReferenceException` (Material.CreateWithMaterial, source null) fırlatıyordu, panel ilk açılışta
   patlıyordu. Sıra değiştirildi (`SetActive(true)` önce, `Populate()` sonra) — düzeltmeden sonra hatasız
   çalıştığı doğrulandı.
+- **Kostüm görseli üretimi denendi, askıya alındı (2026-07-11).** Sırayla denenen yollar:
+  1. Coplay MCP `generate_or_edit_images` → **401 Unauthorized**. Coplay panelinde (Coplay menüsü →
+     Toggle Window → Model Selection) kontrol edildi: hesaba giriş yapılı ama bakiye **$0,0000** —
+     Coplay'in AI üretim özellikleri (görsel/ses/3D, hepsi) kullanım başına ücretli ve kredi yok. Görsel
+     üretim modeli olarak "Nano Banana Pro" (Google Gemini'nin görsel modeli) seçili duruyor — yani
+     Coplay'in arkasında zaten Gemini çalışıyor, sadece Coplay'in kendi faturalandırması üzerinden.
+  2. Ücretsiz üçüncü parti hazır asset (Kenney.nl, CC0 — projenin ses/font'ta zaten kullandığı kaynak)
+     araştırıldı: silahlar için "Game Icons" paketi uygun görünüyordu, karakterler için "Toon Characters"
+     paketi indirilip incelendi (6 arketip: Female/Male adventurer, Female/Male person, Robot, Zombie —
+     stil oyunun `player_15.png`'sine yakın ama tam eşleşmiyor, sadece 6 arketip var 10 tema için).
+     Kullanıcı kararıyla bu yoldan **vazgeçildi**.
+  3. Kullanıcının kendi Gemini erişimiyle (Coplay dışında, doğrudan) görselleri üretip projeye asset
+     olarak aktarma teklif edildi — kullanıcı **işi şimdilik askıya aldı**, ilerlemedi.
+  **Sonraki oturum için**: kostüm/avatar görselleri hâlâ tamamen eksik (`previewSprite` null). Eğer
+  kullanıcı Coplay'e kredi yüklerse madde 1 doğrudan denenebilir; yüklemezse madde 3 (kullanıcının kendi
+  Gemini'siyle üretip PNG teslim etmesi) en hızlı yol — bu durumda 10 karakter + 10 silah teması şablonu
+  yeterli (isimden renk çıkarıp tonlama otomasyonu ile 150 kostüme dağıtılabilir, plan hazır ama
+  uygulanmadı).
 
 ## Quests
 Done — full quest pool (14 assets: 8 daily / 4 weekly / 2 monthly), `QuestsPanelUI.cs` (Daily/Weekly/Monthly
