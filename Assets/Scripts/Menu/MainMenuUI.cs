@@ -8,6 +8,7 @@ using CosmicRumble.Economy.IAP;
 using CosmicRumble.Achievements;
 using CosmicRumble.Cloud;
 using CosmicRumble.Localization;
+using CosmicRumble.Legal;
 
 /// <summary>
 /// MenuScene'e boş bir GameObject ekle, bu scripti yapıştır — bitti.
@@ -935,6 +936,12 @@ public class MainMenuUI : MonoBehaviour
             new Color(1f, 1f, 1f, 0.55f), TextAlignmentOptions.Center,
             new Vector2(0.5f, 0f), new Vector2(360, 20), new Vector2(0, 12));
 
+        // Yasal linkler — tüm sekmelerde görünür (tab içeriği değil, panel geneli footer)
+        MakeLinkText(_settingsPanel, "lbl_privacy", Loc.T("Privacy Policy"), new Vector2(-95, 32),
+            () => Application.OpenURL(LegalLinks.PrivacyPolicyUrl));
+        MakeLinkText(_settingsPanel, "lbl_terms", Loc.T("Terms of Service"), new Vector2(95, 32),
+            () => Application.OpenURL(LegalLinks.TermsOfServiceUrl));
+
         // ── Tab row ──────────────────────────────────────────────────────────
         MakeTabBtn("tab_audio",     Loc.T("AUDIO"),    -168, 170, () => ShowSettingsTab(_audioTab));
         MakeTabBtn("tab_graphics",  Loc.T("GRAPHICS"),  -56, 170, () => ShowSettingsTab(_graphicsTab));
@@ -1619,6 +1626,22 @@ public class MainMenuUI : MonoBehaviour
         rt.anchorMin        = rt.anchorMax = anchor;
         rt.sizeDelta        = sizeDelta;
         rt.anchoredPosition = pos;
+        return txt;
+    }
+
+    /// <summary>Altı çizili, tıklanabilir küçük metin — gizlilik politikası/kullanım koşulları gibi
+    /// tam bir buton plakası hak etmeyen yasal linkler için.</summary>
+    TextMeshProUGUI MakeLinkText(GameObject parent, string name, string content, Vector2 pos, UnityEngine.Events.UnityAction onClick)
+    {
+        var txt = MakeTxt(parent, name, content, 12, FontStyles.Underline,
+            new Color(1f, 1f, 1f, 0.65f), TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0f), new Vector2(170, 20), pos);
+
+        var btn = txt.gameObject.AddComponent<Button>();
+        btn.targetGraphic = txt;
+        btn.colors = UiKit.ButtonColors(new Color(1f, 1f, 1f, 0.65f));
+        btn.onClick.AddListener(onClick);
+        UiKit.Hover(txt.gameObject);
         return txt;
     }
 

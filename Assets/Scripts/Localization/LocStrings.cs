@@ -280,6 +280,10 @@ namespace CosmicRumble.Localization
             // ── Avatar picker ────────────────────────────────────────────────
             ["CHOOSE AVATAR"]    = new[] { "AVATAR SEÇ", "选择头像", "ELEGIR AVATAR", "アバターを選択", "아바타 선택", "AVATAR WÄHLEN" },
             ["SELECTED"]         = new[] { "SEÇİLİ", "已选择", "SELECCIONADO", "選択中", "선택됨", "AUSGEWÄHLT" },
+
+            // ── Legal links ──────────────────────────────────────────────────
+            ["Privacy Policy"]    = new[] { "Gizlilik Politikası", "隐私政策", "Política de Privacidad", "プライバシーポリシー", "개인정보 처리방침", "Datenschutzrichtlinie" },
+            ["Terms of Service"]  = new[] { "Kullanım Koşulları", "服务条款", "Términos de Servicio", "利用規約", "이용약관", "Nutzungsbedingungen" },
         };
     }
 }
