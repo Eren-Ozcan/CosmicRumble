@@ -50,7 +50,7 @@ namespace CosmicRumble.Achievements
                     return;
                 }
             }
-            Debug.LogWarning($"[SteamAchievementProvider] No Steam achievement named '{id}' — check the Steamworks Admin API name matches AchievementDefinition.id.");
+            Debug.LogWarning($"[SteamAchievementProvider] No Steam achievement named '{id}' — set AchievementDefinition.steamId to the real Steamworks Admin API name (defaults to achievementId if left blank).");
 #endif
         }
 

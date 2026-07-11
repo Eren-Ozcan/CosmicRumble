@@ -110,7 +110,7 @@ namespace CosmicRumble.Achievements
             entry.isUnlocked = true;
             Save();
 
-            _provider?.UnlockAchievement(id);
+            _provider?.UnlockAchievement(ResolvePlatformId(def));
 
             // Grant rewards
             if (CurrencyManager.Instance != null)
@@ -137,7 +137,7 @@ namespace CosmicRumble.Achievements
             entry.currentProgress = value;
             Save();
 
-            _provider?.UpdateProgress(id, value, def.targetValue);
+            _provider?.UpdateProgress(ResolvePlatformId(def), value, def.targetValue);
 
             if (def.triggerType == AchievementTriggerType.Cumulative && value >= def.targetValue)
                 UnlockAchievement(id);
@@ -158,6 +158,20 @@ namespace CosmicRumble.Achievements
         }
 
         // ─── Helpers ─────────────────────────────────────────────────────────
+
+        /// <summary>Internal achievementId'yi aktif sağlayıcının platform ID'sine çevirir
+        /// (Console/Steamworks/App Store Connect'te oluşturulan opak ID) — doldurulmamışsa
+        /// achievementId'ye düşer, bkz. AchievementDefinition.SteamId/GooglePlayId/GameCenterId.</summary>
+        private string ResolvePlatformId(AchievementDefinition def)
+        {
+            switch (_provider?.ProviderName)
+            {
+                case "Steam":      return def.SteamId;
+                case "GooglePlay": return def.GooglePlayId;
+                case "AppStore":   return def.GameCenterId;
+                default:           return def.achievementId;
+            }
+        }
 
         private AchievementProgress GetOrCreate(string id)
         {
