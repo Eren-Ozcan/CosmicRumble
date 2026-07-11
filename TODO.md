@@ -27,13 +27,32 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
    derecelendirme, mağaza görselleri/açıklama, AAB imzalama.
 5. IAP gerçek SKU'ları: `gem_pack_100..6000` Console'da birebir aynı ID'lerle; fiyat/tier'lar
    placeholder — fiyatlandırma iş kararı olarak verilmedi.
-6. Başarım ID eşlemesi: Play Console'un ürettiği opak ID'ler (`CgkI...`) ↔ içsel id'ler
-   (`ROKETCI` vb.) için provider'a Dictionary (50 başarım Console'da oluşturulacak).
-7. Yasal: gizlilik politikası URL'i (UGS veri işliyor — şart), kullanım koşulları, KVKK/GDPR,
-   yaş derecelendirmesi.
+6. Başarım ID eşlemesi: **kod tarafı tamam (2026-07-11)** — `AchievementDefinition` artık
+   `steamId`/`googlePlayId`/`gameCenterId` alanları taşıyor (boşsa `achievementId`'ye düşer),
+   `AchievementManager.ResolvePlatformId()` aktif sağlayıcıya göre doğru ID'yi seçip provider'a
+   onu gönderiyor. **Kalan: yalnız veri girişi** — 50 başarım ilgili Console'larda oluşturulup
+   ürettikleri opak ID'ler (`CgkI...` vb.) bu üç alana Inspector'dan tek tek yazılacak, kod
+   değişikliği gerekmeyecek.
+7. Yasal: **taslak metin + kod altyapısı tamam (2026-07-11)** — `legal/PRIVACY_POLICY.md` ve
+   `legal/TERMS_OF_SERVICE.md` (TR+EN, kodda gerçekten aktif olan UGS sistemleri baz alınarak
+   yazıldı) eklendi, **hukuki incelemeden geçmeden yayınlanmamalı** (KVKK/GDPR maddeleri ve
+   sorumluluk sınırlaması `{{...}}` placeholder'ları hukukçu onayı bekliyor). Ayarlar panelinde
+   (`MainMenuUI`) tüm sekmelerde görünen "Gizlilik Politikası"/"Kullanım Koşulları" linkleri
+   eklendi (`Assets/Scripts/Utilities/LegalLinks.cs` üzerinden `Application.OpenURL`). **Kalan**:
+   metinler hukukçu onayından geçip gerçek bir URL'de barındırılmalı, sonra `LegalLinks.cs`'teki
+   placeholder URL'ler gerçek adresle değiştirilmeli; yaş derecelendirmesi Console'da belirlenince
+   madde 5 (çocuk gizliliği) doldurulmalı.
 8. iOS hattı (Android'den sonra): Apple Developer hesabı, Mac/build pipeline,
    `AppleGameCenterAuthProvider` stub'ının doldurulması (Apple.GameKit +
    `SignInWithAppleGameCenterAsync`), App Privacy etiketi, TestFlight. Şu an iOS için hiçbir şey yok.
+   **Denendi ve sert bir platform engeli bulundu (2026-07-11)**: Apple.GameKit'i Package Manager'a
+   git URL'iyle (`https://github.com/apple/unityplugins.git?path=/plug-ins/Apple.GameKit`) eklemek
+   "package.json bulunamadı" hatasıyla temiz başarısız oldu (projede kalıntı yok, derleme temiz
+   kaldı) — resmi Apple deposu doğrudan UPM git-paketi değil. Apple'ın kendi Quickstart dokümanına
+   göre önce `python3 build.py` ile native (Xcode gerektiren) kütüphaneler derlenip bir `.tgz`
+   üretilmeli, paket Unity'ye "Add package from tarball" ile öyle eklenmeli — bu derleme adımı
+   **yalnızca macOS'ta çalışır**. Yani bu yalnızca Apple Developer hesabı meselesi değil: Windows'ta
+   hiçbir şekilde kurulamıyor, Mac/Xcode olmadan denenecek başka bir yol yok.
 
 ### 3. Oyun içeriği eksikleri (spec'te var, başlanmadı)
 9. 150 kostüm (master spec Bölüm 4): **veri tarafı tamam** (2026-07-09) — 150 `CostumeDefinition` +
