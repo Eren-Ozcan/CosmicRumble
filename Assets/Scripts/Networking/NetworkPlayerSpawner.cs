@@ -38,6 +38,11 @@ namespace CosmicRumble.Networking
         readonly Dictionary<ulong, NetworkObject> _playerObjects = new Dictionary<ulong, NetworkObject>();
         readonly Dictionary<ulong, NetworkObject> _orphaned = new Dictionary<ulong, NetworkObject>();
         readonly Dictionary<ulong, float> _orphanedSince = new Dictionary<ulong, float>();
+        // Eski clientId → kopmadan önce bildirilmiş UGS PlayerId (bkz. NetworkIdentityRegistry):
+        // sahipsiz karakter yalnızca aynı kimlikle dönen bağlantıya devredilir.
+        readonly Dictionary<ulong, string> _orphanUgsIds = new Dictionary<ulong, string>();
+        // Bağlanmış ama kimliğini henüz bildirmemiş reconnect adayları.
+        readonly HashSet<ulong> _pendingClaims = new HashSet<ulong>();
         bool _matchStarted;
 
         void Start()
@@ -45,6 +50,10 @@ namespace CosmicRumble.Networking
             var nm = NetworkManager.Singleton;
             if (nm == null || !nm.IsListening) return; // offline hotseat — GameInitializer halleder
             if (!nm.IsServer) return;                  // sadece server spawn eder
+
+            // clientId'ler oturumlar arasında yeniden kullanılır — bayat kimlikler taşınmasın.
+            CosmicRumble.Utilities.NetworkIdentityRegistry.Clear();
+            CosmicRumble.Utilities.NetworkIdentityRegistry.OnIdentityReported += OnIdentityReported;
 
             SpawnAllConnectedClients(nm);
             _matchStarted = true;
@@ -55,6 +64,7 @@ namespace CosmicRumble.Networking
 
         void OnDestroy()
         {
+            CosmicRumble.Utilities.NetworkIdentityRegistry.OnIdentityReported -= OnIdentityReported;
             var nm = NetworkManager.Singleton;
             if (nm != null)
             {
@@ -85,6 +95,7 @@ namespace CosmicRumble.Networking
                 }
                 _orphaned.Remove(clientId);
                 _orphanedSince.Remove(clientId);
+                _orphanUgsIds.Remove(clientId);
             }
         }
 
@@ -149,7 +160,11 @@ namespace CosmicRumble.Networking
         /// <summary>
         /// Maç başladıktan sonra gelen HER yeni bağlantı bir reconnect adayıdır (ilk 2 oyuncu
         /// zaten SpawnAllConnectedClients ile spawn edildi, bu callback yalnızca ondan SONRA
-        /// abone olunuyor).
+        /// abone olunuyor). Devir ARTIK KİMLİK DOĞRULAMALI: eskiden ilk sahipsiz karakter,
+        /// kimliğine bakılmadan gelen ilk bağlantıya veriliyordu — katılım kodunu bilen üçüncü
+        /// bir kişi kopan oyuncunun karakterini devralabilirdi. Şimdi bağlantının TurnManager
+        /// spawn'ında bildirdiği UGS PlayerId, karakterin kopmadan önceki kimliğiyle birebir
+        /// eşleşmek zorunda.
         /// </summary>
         void OnClientConnectedAfterMatchStart(ulong clientId)
         {
@@ -161,19 +176,54 @@ namespace CosmicRumble.Networking
                 return;
             }
 
+            _pendingClaims.Add(clientId);
+            TryResolveClaim(clientId); // kimlik bağlantıdan önce gelmiş olabilir (sıra garantisi yok)
+        }
+
+        void OnIdentityReported(ulong clientId, string ugsPlayerId)
+        {
+            if (_pendingClaims.Contains(clientId))
+                TryResolveClaim(clientId);
+        }
+
+        void TryResolveClaim(ulong clientId)
+        {
+            string ugsId = CosmicRumble.Utilities.NetworkIdentityRegistry.Get(clientId);
+            if (ugsId == null) return; // kimlik bildirilince OnIdentityReported tekrar dener
+
+            _pendingClaims.Remove(clientId);
+
             ulong orphanKey = 0;
             NetworkObject orphanObj = null;
-            foreach (var kvp in _orphaned) { orphanKey = kvp.Key; orphanObj = kvp.Value; break; }
+            bool found = false;
+            foreach (var kvp in _orphaned)
+            {
+                _orphanUgsIds.TryGetValue(kvp.Key, out var expectedId);
+                if (expectedId != null && expectedId == ugsId)
+                {
+                    orphanKey = kvp.Key;
+                    orphanObj = kvp.Value;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                Debug.LogWarning($"[NET] clientId={clientId} kimliği hiçbir sahipsiz karakterle eşleşmedi — devir yapılmadı.");
+                return;
+            }
 
             _orphaned.Remove(orphanKey);
             _orphanedSince.Remove(orphanKey);
+            _orphanUgsIds.Remove(orphanKey);
 
             if (orphanObj == null) return; // bu arada despawn olmuş olabilir
 
             orphanObj.ChangeOwnership(clientId);
             _playerObjects[clientId] = orphanObj;
 
-            Debug.Log($"[NET] Reconnect: clientId={clientId} {orphanObj.name} karakterini geri kazandı (eski clientId={orphanKey}).");
+            Debug.Log($"[NET] Reconnect: clientId={clientId} {orphanObj.name} karakterini geri kazandı (eski clientId={orphanKey}, kimlik doğrulandı).");
             NetworkBootstrap.Instance?.HideStatus();
         }
 
@@ -185,6 +235,7 @@ namespace CosmicRumble.Networking
 
             _orphaned[clientId] = netObj;
             _orphanedSince[clientId] = Time.time;
+            _orphanUgsIds[clientId] = CosmicRumble.Utilities.NetworkIdentityRegistry.Get(clientId);
 
             Debug.Log($"[NET] clientId={clientId} koptu — {netObj.name} sahipsiz bırakıldı, {reconnectTimeout}s içinde geri dönülebilir.");
             NetworkBootstrap.Instance?.ShowStatus(Loc.T("Opponent disconnected, waiting for reconnect..."));

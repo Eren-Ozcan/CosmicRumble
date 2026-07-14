@@ -137,6 +137,30 @@ public class TurnManager : NetworkBehaviour
         base.OnDestroy();
     }
 
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+
+        // Reconnect kimlik doğrulaması: her client (ilk bağlantı + rejoin) game sahnesine
+        // senkronize olunca kendi UGS PlayerId'sini server'a bildirir. NetworkPlayerSpawner,
+        // kopan oyuncunun sahipsiz karakterini yalnızca aynı kimlikle dönen bağlantıya devreder
+        // (bkz. NetworkIdentityRegistry).
+        if (!IsServer)
+        {
+            string ugsId = null;
+            try { ugsId = Unity.Services.Authentication.AuthenticationService.Instance.PlayerId; }
+            catch { /* UGS oturumu yoksa (Editor testleri) kimlik bildirilmez */ }
+            if (!string.IsNullOrEmpty(ugsId)) SubmitIdentityServerRpc(ugsId);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void SubmitIdentityServerRpc(string ugsPlayerId, ServerRpcParams rpcParams = default)
+    {
+        CosmicRumble.Utilities.NetworkIdentityRegistry.Report(
+            rpcParams.Receive.SenderClientId, ugsPlayerId);
+    }
+
     private void Start()
     {
         // IsSpawned=false → offline hotseat, eski davranış (tek makine her şeyi yönetir).
