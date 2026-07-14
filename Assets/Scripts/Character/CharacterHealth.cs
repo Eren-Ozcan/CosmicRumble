@@ -120,16 +120,25 @@ public class CharacterHealth : NetworkBehaviour, IDamageable
     {
         isDead = true;
 
-        // Ölüm efekti varsa instantiate et
-        if (deathEffectPrefab != null)
+        // Ölüm efekti: Die() networked modda yalnız server'da çalışır — yerel Instantiate
+        // client ekranlarında hiç görünmüyordu (karakter efektsiz yok oluyordu). ClientRpc
+        // host'ta da çalıştığı için server ayrıca instantiate etmez; offline eski yol.
+        if (IsSpawned && IsServer)
+            DeathFxClientRpc();
+        else if (!IsSpawned && deathEffectPrefab != null)
             Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
 
-        // Tüm diğer MonoBehaviour script'lerini devre dışı bırak
+        // Diğer MonoBehaviour script'lerini devre dışı bırak — NGO senkron bileşenleri HARİÇ:
+        // NetworkObject/NetworkTransform/NetworkRigidbody2D kapatılırsa aşağıdaki gecikmeli
+        // Destroy'un tetiklediği despawn replikasyonu bozulur/uyarı üretir.
         MonoBehaviour[] scripts = GetComponents<MonoBehaviour>();
         foreach (MonoBehaviour script in scripts)
         {
-            if (script != this)
-                script.enabled = false;
+            if (script == this) continue;
+            if (script is NetworkObject ||
+                script is Unity.Netcode.Components.NetworkTransform ||
+                script is Unity.Netcode.Components.NetworkRigidbody2D) continue;
+            script.enabled = false;
         }
 
         // Collider'ı kapat
@@ -147,6 +156,13 @@ public class CharacterHealth : NetworkBehaviour, IDamageable
 
         // Belirtilen süre sonra GameObject'i yok et
         Destroy(gameObject, destroyDelay);
+    }
+
+    [ClientRpc]
+    private void DeathFxClientRpc()
+    {
+        if (deathEffectPrefab != null)
+            Instantiate(deathEffectPrefab, transform.position, Quaternion.identity);
     }
 
     /// <summary>
