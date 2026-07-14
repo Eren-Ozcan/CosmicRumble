@@ -115,7 +115,12 @@ public class BatHammerSkill : AbilityBase
     [ServerRpc]
     private void SwingServerRpc(Vector2 aimDir, float power01)
     {
-        var targets = DetectTargets(aimDir);
+        if (!ServerCanAct) return;
+        // aimDir client'tan geliyor — birim vektör olduğu garanti değil (ör. bozuk/kötü niyetli
+        // bir client normalize etmeden gönderebilir), bu da DetectTargets'ın Dot-karşılaştırmalı
+        // koni testini bozar. Server kendi hesaplamasında her zaman normalize edilmiş haliyle çalışır.
+        if (aimDir.sqrMagnitude < 0.0001f) return;
+        var targets = DetectTargets(aimDir.normalized);
         ApplyKnockback(targets, power01);
     }
 
