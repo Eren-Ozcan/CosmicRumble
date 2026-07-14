@@ -48,6 +48,18 @@ public abstract class AbilityBase : NetworkBehaviour, IAbilitySelectable, ICoold
     public abstract KeyCode ActivationKey { get; }
     public abstract float CooldownTime { get; }
 
+    /// <summary>
+    /// Server-side güvenlik kontrolü — her [ServerRpc] ateşleme/aktivasyon handler'ının İLK
+    /// satırında çağrılmalı. Client-side Update() akışındaki isActive.Value kontrolü yalnızca
+    /// bu client'ın kendi UI/input döngüsünü kısıtlar; değiştirilmiş bir client [ServerRpc]'yi
+    /// Update() akışını hiç çalıştırmadan (reflection/özel NGO mesajıyla) doğrudan çağırabilir.
+    /// Bu property sunucunun kendi "gerçekten bu karakterin sırası mı" doğrulamasıdır — hem sıra
+    /// dışı ateşlemeyi hem de aynı turda mermi henüz çözülmeden ikinci bir ateşlemeyi engeller
+    /// (TurnManager.NotifyProjectileLaunched ilk ateşten hemen sonra isActive.Value'yu senkron
+    /// olarak false yapar, bu yüzden art arda çağrılan bir RPC ikinci denemede burada reddedilir).
+    /// </summary>
+    protected bool ServerCanAct => gravityBody != null && gravityBody.isActive.Value;
+
     // ── IAbilitySelectable ───────────────────────────────────────
     public virtual void SetSelected(bool selected)
     {
