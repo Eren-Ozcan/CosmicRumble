@@ -85,5 +85,9 @@ public class ShieldSkill : AbilityBase
     }
 
     [ServerRpc]
-    private void ActivateShieldServerRpc() => characterHealth.SetShielded(true);
+    private void ActivateShieldServerRpc()
+    {
+        if (!ServerCanAct) return;
+        characterHealth.SetShielded(true);
+    }
 }
