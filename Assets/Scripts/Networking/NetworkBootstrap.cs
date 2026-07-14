@@ -93,12 +93,16 @@ namespace CosmicRumble.Networking
                 LastJoinCode = session.Code;
                 _wasClient = false;
                 IsRankedMatch = false; // arkadaş daveti = dostluk maçı
+#if UNITY_EDITOR
                 Debug.Log($"[NET] Hosted session, code={LastJoinCode}, IsHost={NetworkManager.Singleton.IsHost}");
+#endif
                 return LastJoinCode;
             }
             catch (Exception e)
             {
+#if UNITY_EDITOR
                 Debug.LogError($"[NET] HostSessionAsync failed: {e}");
+#endif
                 return null;
             }
             finally
@@ -141,12 +145,16 @@ namespace CosmicRumble.Networking
                     NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
                 }
 
+#if UNITY_EDITOR
                 Debug.Log($"[NET] QuickMatch succeeded, becameHost={becameHost}, code={LastJoinCode}");
+#endif
                 return true;
             }
             catch (Exception e)
             {
+#if UNITY_EDITOR
                 Debug.LogError($"[NET] QuickMatchAsync failed: {e}");
+#endif
                 return false;
             }
             finally
@@ -172,7 +180,9 @@ namespace CosmicRumble.Networking
                 _wasClient = true;
                 _intentionalLeave = false;
                 IsRankedMatch = false; // kodla katılma = dostluk maçı (reconnect bunu geri yükler, aşağıya bak)
+#if UNITY_EDITOR
                 Debug.Log($"[NET] Joined session code={code}, IsClient={NetworkManager.Singleton.IsClient}");
+#endif
 
                 NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
                 NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
@@ -180,7 +190,9 @@ namespace CosmicRumble.Networking
             }
             catch (Exception e)
             {
+#if UNITY_EDITOR
                 Debug.LogError($"[NET] JoinSessionAsync failed: {e}");
+#endif
                 return false;
             }
             finally
@@ -206,7 +218,9 @@ namespace CosmicRumble.Networking
             }
             catch (Exception e)
             {
+#if UNITY_EDITOR
                 Debug.LogWarning($"[NET] LeaveSessionAsync: session leave failed (continuing shutdown anyway): {e}");
+#endif
             }
             finally
             {
@@ -242,13 +256,17 @@ namespace CosmicRumble.Networking
                 {
                     if (p.Id == myId) continue;
                     await host.RemovePlayerAsync(p.Id);
+#if UNITY_EDITOR
                     Debug.Log($"[NET] RemoveDisconnectedPeerAsync: removed stale session player {p.Id}");
+#endif
                     return;
                 }
             }
             catch (Exception e)
             {
+#if UNITY_EDITOR
                 Debug.LogWarning($"[NET] RemoveDisconnectedPeerAsync failed: {e}");
+#endif
             }
         }
 
@@ -267,14 +285,18 @@ namespace CosmicRumble.Networking
             bool wasRanked = IsRankedMatch; // JoinSessionAsync bayrağı sıfırlar; rejoin sonrası geri yüklenir
             if (string.IsNullOrEmpty(codeToRetry))
             {
+#if UNITY_EDITOR
                 Debug.LogWarning("[NET] Unexpected disconnect but no LastJoinCode to retry with.");
+#endif
                 return;
             }
 
             for (int attempt = 1; attempt <= reconnectAttempts; attempt++)
             {
                 ShowStatus(string.Format(Loc.T("Connection lost, reconnecting... (attempt {0}/{1})"), attempt, reconnectAttempts));
+#if UNITY_EDITOR
                 Debug.Log($"[NET] Reconnect attempt {attempt}/{reconnectAttempts} with code={codeToRetry}");
+#endif
                 await Task.Delay(TimeSpan.FromSeconds(reconnectDelaySeconds));
 
                 if (_intentionalLeave) return; // bu sırada kullanıcı kendi çıktıysa vazgeç
@@ -283,13 +305,17 @@ namespace CosmicRumble.Networking
                 if (ok)
                 {
                     IsRankedMatch = wasRanked; // dereceli maça rejoin, dereceli kalır
+#if UNITY_EDITOR
                     Debug.Log("[NET] Reconnect succeeded.");
+#endif
                     HideStatus();
                     return;
                 }
             }
 
+#if UNITY_EDITOR
             Debug.LogWarning("[NET] Reconnect failed after all attempts, giving up.");
+#endif
             ShowStatus(Loc.T("Connection lost completely."));
             await Task.Delay(TimeSpan.FromSeconds(2f));
             HideStatus();
