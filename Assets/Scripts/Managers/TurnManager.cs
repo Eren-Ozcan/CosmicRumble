@@ -81,6 +81,10 @@ public class TurnManager : NetworkBehaviour
         if (Instance._pendingNextTurn)
         {
             Instance._pendingNextTurn = false;
+            // Kilit burada da açılmalı: pending yolunda aşağıdaki else dalı hiç çalışmaz —
+            // açılmazsa atıcının movementLocked'ı sonsuza dek true kalır (kalıcı hareket felci).
+            if (Instance._currentShooter != null)
+                Instance._currentShooter.movementLocked = false;
             Instance._currentShooter  = null;
             Instance.NextTurn();                        // ertelenmiş geçiş
         }
@@ -213,6 +217,10 @@ public class TurnManager : NetworkBehaviour
             var oldAb = oldGb.GetComponent<CharacterAbilities>();
             oldAb?.DeselectAll();
             oldGb.isActive.Value = false;
+            // Onaylanmış (Enter) ama ateşlenmemiş silahın hareket kilidi turla birlikte düşmeli —
+            // DeselectAll → NotifyWeaponCancelled bunu açAMAZ (_weaponConfirmed hâlâ true), bu
+            // yüzden burada koşulsuz açılır.
+            oldGb.movementLocked = false;
             oldGb.ZeroHorizontalVelocity();
         }
 
@@ -224,6 +232,9 @@ public class TurnManager : NetworkBehaviour
         if (newGb != null)
         {
             newGb.isActive.Value = true;
+            // Önceki turlardan sahipsiz kalmış bir kilit varsa temizle (savunmacı — normalde
+            // yukarıdaki eski-karakter temizliği yeterli).
+            newGb.movementLocked = false;
             newGb.OnTurnStart();
             CameraController.Instance?.SetActiveCharacter(newGb.transform);
 
