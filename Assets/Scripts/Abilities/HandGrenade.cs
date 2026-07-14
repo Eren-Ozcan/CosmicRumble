@@ -108,8 +108,7 @@ public class HandGrenade : AbilityBase
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
-        AchievementEvents.FireWeaponUsed("weapon_grenade");
-        AudioManager.Instance?.PlaySfx("weapon_grenade_throw");
+        AnnounceFire("weapon_grenade_throw", "weapon_grenade", isWeapon: true);
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var grenade = bulletGO.GetComponent<HandGrenadeProjectile>();

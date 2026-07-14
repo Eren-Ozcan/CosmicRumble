@@ -107,8 +107,7 @@ public class RPG : AbilityBase
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
-        AchievementEvents.FireWeaponUsed("weapon_rpg");
-        AudioManager.Instance?.PlaySfx("weapon_rpg_fire");
+        AnnounceFire("weapon_rpg_fire", "weapon_rpg", isWeapon: true);
 
         var bulletGO = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         var proj = bulletGO.GetComponent<Projectile>();

@@ -125,8 +125,7 @@ public class Teleport : AbilityBase
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
-        AchievementEvents.FireAbilityUsed("skill_teleport");
-        AudioManager.Instance?.PlaySfx("skill_teleport");
+        AnnounceFire("skill_teleport", "skill_teleport", isWeapon: false);
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

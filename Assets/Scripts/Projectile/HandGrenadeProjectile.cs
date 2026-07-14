@@ -29,6 +29,16 @@ public class HandGrenadeProjectile : MonoBehaviour
     [Tooltip("Bu hızın altındaki temaslar sekme sayılmaz (yavaş yuvarlanma sırasında spam'i önler)")]
     public float minBounceSpeed = 0.5f;
 
+    private void Start()
+    {
+        // Uçuş loop'u server'da Init() içinde başlıyor — replike (non-server) kopyada Init hiç
+        // çalışmadığı için client el bombasını sessiz izliyordu.
+        var netObj = GetComponent<Unity.Netcode.NetworkObject>();
+        var nm = Unity.Netcode.NetworkManager.Singleton;
+        if (netObj != null && netObj.IsSpawned && (nm == null || !nm.IsServer))
+            AudioManager.Instance?.PlayLoopingSfxOnObject(gameObject, "projectile_flight_grenade");
+    }
+
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime)
     {
         rb = GetComponent<Rigidbody2D>();

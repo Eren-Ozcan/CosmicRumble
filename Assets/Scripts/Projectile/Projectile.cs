@@ -63,7 +63,12 @@ public class Projectile : MonoBehaviour
         var netObj = GetComponent<NetworkObject>();
         var nm = NetworkManager.Singleton;
         if (netObj != null && netObj.IsSpawned && (nm == null || !nm.IsServer))
+        {
             StartCoroutine(TemporaryIgnoreAllCharacters());
+            // Uçuş loop'u server'da Init() içinde başlıyor — replike kopyada Init çalışmadığı
+            // için client roketi sessiz uçuyordu.
+            AudioManager.Instance?.PlayLoopingSfxOnObject(gameObject, "projectile_flight_rocket");
+        }
     }
 
     private IEnumerator TemporaryIgnoreAllCharacters()

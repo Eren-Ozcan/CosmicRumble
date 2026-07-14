@@ -85,8 +85,7 @@ public class Bomb : AbilityBase
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
-        AchievementEvents.FireWeaponUsed("weapon_bomb");
-        AudioManager.Instance?.PlaySfx("weapon_bomb_place");
+        AnnounceFire("weapon_bomb_place", "weapon_bomb", isWeapon: true);
 
         GameObject bombObj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
 

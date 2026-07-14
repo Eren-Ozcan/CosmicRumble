@@ -122,8 +122,7 @@ public class BlackHoleSkill : AbilityBase
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
-        AchievementEvents.FireAbilityUsed("skill_blackhole");
-        AudioManager.Instance?.PlaySfx("skill_blackhole_activate");
+        AnnounceFire("skill_blackhole_activate", "skill_blackhole", isWeapon: false);
 
         var go = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
 

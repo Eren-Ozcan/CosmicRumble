@@ -116,8 +116,7 @@ public class Shotgun : AbilityBase
         float half = totalSpreadAngle * 0.5f;
 
         TurnManager.Instance?.RegisterShot();
-        AchievementEvents.FireWeaponUsed("weapon_shotgun");
-        AudioManager.Instance?.PlaySfx("weapon_shotgun_fire");
+        AnnounceFire("weapon_shotgun_fire", "weapon_shotgun", isWeapon: true);
 
         for (int i = 0; i < pelletCount; i++)
         {

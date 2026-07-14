@@ -78,6 +78,40 @@ public abstract class AbilityBase : NetworkBehaviour, IAbilitySelectable, ICoold
         return Vector2.ClampMagnitude(v, max);
     }
 
+    // ── Ateşleme FX + başarım kredisi ────────────────────────────────────
+    /// <summary>
+    /// Ateşleme sesini HER makinede çalar, silah/yetenek-kullanım başarım event'ini yalnızca
+    /// ATICININ makinesinde ateşler. Eskiden ikisi de server-side SpawnAndInit içindeydi:
+    /// online'da client kendi silah sesini hiç duymuyor, kullanım kredisi ise host'un yerel
+    /// görev/başarım ilerlemesine yazılıyordu (client'ın "5 farklı silah kullan" tipi görevleri
+    /// online maçta hiç ilerlemiyordu). Offline'da davranış birebir eskisi gibidir.
+    /// </summary>
+    protected void AnnounceFire(string sfxId, string achievementId, bool isWeapon)
+    {
+        if (IsSpawned)
+        {
+            if (IsServer) FireFxClientRpc(sfxId ?? "", achievementId ?? "", isWeapon);
+        }
+        else
+        {
+            ApplyFireFx(sfxId, achievementId, isWeapon, creditLocalPlayer: true);
+        }
+    }
+
+    [ClientRpc]
+    private void FireFxClientRpc(string sfxId, string achievementId, bool isWeapon)
+    {
+        ApplyFireFx(sfxId, achievementId, isWeapon, creditLocalPlayer: IsOwner);
+    }
+
+    private void ApplyFireFx(string sfxId, string achievementId, bool isWeapon, bool creditLocalPlayer)
+    {
+        if (!string.IsNullOrEmpty(sfxId)) AudioManager.Instance?.PlaySfx(sfxId);
+        if (!creditLocalPlayer || string.IsNullOrEmpty(achievementId)) return;
+        if (isWeapon) CosmicRumble.Achievements.AchievementEvents.FireWeaponUsed(achievementId);
+        else          CosmicRumble.Achievements.AchievementEvents.FireAbilityUsed(achievementId);
+    }
+
     // ── IAbilitySelectable ───────────────────────────────────────
     public virtual void SetSelected(bool selected)
     {
