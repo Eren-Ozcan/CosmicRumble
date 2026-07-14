@@ -1,4 +1,6 @@
 ﻿// Assets/Scripts/Planet/DestructiblePlanet.cs
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -90,6 +92,14 @@ public class DestructiblePlanet : MonoBehaviour
     /// <summary>
     /// Patlama geldiğinde çağrılır.
     /// Etraftaki Rigidbody’lere impulse uygular ve görseli parçalar.
+    ///
+    /// NETWORKED MODDA TAHRİBAT SERVER-AUTHORITATIVE: mermiler her makinede yerel fizikle de
+    /// simüle edildiği için bu metod her makinede, makineye özgü temas noktalarıyla çağrılıyordu —
+    /// host ve client'ın gezegenleri zamanla birbirinden ayrışıyordu (birinde zemin olan yer
+    /// diğerinde delik). Artık yalnızca server'ın çağrısı işlenir; server parametreleri
+    /// TurnManager üzerinden ClientRpc ile yayar ve delik HER makinede birebir aynı
+    /// pos/yarıçap/kuvvetle açılır (ClientRpc host'ta da çalıştığı için server yerel uygulamayı
+    /// ayrıca yapmaz — çift delik olmasın). Offline'da eski doğrudan yol aynen çalışır.
     /// </summary>
     /// <param name="worldPos">Patlama merkezi (dünya koordinatı)</param>
     /// <param name="radiusWorld">Patlama yarıçapı (dünya birimi)</param>
@@ -98,11 +108,62 @@ public class DestructiblePlanet : MonoBehaviour
     {
         if (radiusWorld <= 0f) return;
 
+        var nm = NetworkManager.Singleton;
+        bool networked = nm != null && nm.IsListening &&
+                         TurnManager.Instance != null && TurnManager.Instance.IsSpawned;
+        if (networked)
+        {
+            if (nm.IsServer)
+                TurnManager.BroadcastPlanetExplosion(this, worldPos, radiusWorld, forceStrength);
+            // client'ın kendi yerel simülasyonundan gelen çağrılar yok sayılır — uygulama
+            // her makinede PlanetExplosionClientRpc → ApplyExplosionNow ile yapılır.
+            return;
+        }
+
+        ApplyExplosionNow(worldPos, radiusWorld, forceStrength);
+    }
+
+    /// <summary>Deliği ve patlama kuvvetini bu makinede gerçekten uygular — offline'da doğrudan,
+    /// online'da TurnManager.PlanetExplosionClientRpc tarafından çağrılır.</summary>
+    public void ApplyExplosionNow(Vector2 worldPos, float radiusWorld, float forceStrength)
+    {
+        if (radiusWorld <= 0f) return;
+        if (runtimeTex == null) return; // Start() henüz çalışmadıysa (savunma)
+
         // 1) Patlama kuvvetini etraftaki objelere uygula
         ApplyExplosionForce(worldPos, radiusWorld, forceStrength);
 
         // 2) Görseli parçala ve collider’i güncelle
         ExplodeVisual(worldPos, radiusWorld);
+    }
+
+    // ── Makineler arası stabil kimlik ────────────────────────────────────────
+    // Gezegenler sahneye yerleştirilmiş sıradan objeler (NetworkObject yok) — RPC'de referans
+    // taşınamaz. Her makine aynı sahneyi yüklediği için isim+konuma göre sıralanmış indeks her
+    // makinede aynı gezegeni gösterir. Patlama düşük frekanslı olduğundan her çağrıda taze
+    // FindObjectsByType maliyeti kabul edilebilir.
+
+    public static DestructiblePlanet FindByStableIndex(int index)
+    {
+        var all = GetAllSorted();
+        return (index >= 0 && index < all.Count) ? all[index] : null;
+    }
+
+    public int StableIndex => GetAllSorted().IndexOf(this);
+
+    private static List<DestructiblePlanet> GetAllSorted()
+    {
+        var arr = FindObjectsByType<DestructiblePlanet>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+        var list = new List<DestructiblePlanet>(arr);
+        list.Sort((a, b) =>
+        {
+            int n = string.CompareOrdinal(a.name, b.name);
+            if (n != 0) return n;
+            // aynı isimli birden çok gezegen olabilir — statik sahne konumuna göre kır
+            int c = a.transform.position.x.CompareTo(b.transform.position.x);
+            return c != 0 ? c : a.transform.position.y.CompareTo(b.transform.position.y);
+        });
+        return list;
     }
 
     private void ExplodeVisual(Vector2 worldPos, float radiusWorld)

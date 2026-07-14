@@ -402,6 +402,28 @@ public class TurnManager : NetworkBehaviour
     /// </summary>
     public void RegisterShot() => _totalShots++;
 
+    // ── Gezegen tahribatı senkronu ────────────────────────────────────────
+    // DestructiblePlanet sahneye yerleştirilmiş, NetworkObject'siz bir obje — kendi RPC'si
+    // olamaz. TurnManager zaten sahnedeki spawned NetworkBehaviour olduğu için yayın buradan
+    // yapılır: server ExplodeWithForce parametrelerini stabil gezegen indeksiyle tüm makinelere
+    // iletir, delik her makinede birebir aynı açılır (bkz. DestructiblePlanet.ExplodeWithForce).
+
+    public static void BroadcastPlanetExplosion(DestructiblePlanet planet, Vector2 pos, float radius, float force)
+    {
+        if (Instance == null || !Instance.IsSpawned || !Instance.IsServer) return;
+        int index = planet != null ? planet.StableIndex : -1;
+        if (index < 0) return;
+        Instance.PlanetExplosionClientRpc(index, pos, radius, force);
+    }
+
+    [ClientRpc]
+    private void PlanetExplosionClientRpc(int planetIndex, Vector2 pos, float radius, float force)
+    {
+        // ClientRpc host'ta da çalışır — server'ın kendi uygulaması da bu yoldan gelir,
+        // böylece delik her makinede tam olarak bir kez açılır.
+        DestructiblePlanet.FindByStableIndex(planetIndex)?.ApplyExplosionNow(pos, radius, force);
+    }
+
     /// <summary>
     /// Tüm karakterleri (insan + bot) tek seferde kaydet.
     /// GameInitializer.Start() tarafından çağrılır — TurnManager.Start()'tan önce çalışır.
