@@ -65,6 +65,18 @@ public class MainMenuUI : MonoBehaviour
     TextMeshProUGUI _btnMoveLeftLabel, _btnMoveRightLabel, _btnJumpLabel;
     string _awaitingRebindFor; // null | "MoveLeft" | "MoveRight" | "Jump"
 
+    CyclerControl _languageCycler;
+
+    // Ayarlar paneli "OK" ile onaylanana kadar hiçbir gerçek ayar (GameConfig.Instance,
+    // LocalizationManager, Screen) değişmez — her kontrol sadece bu pending alanları günceller.
+    // Panel her açıldığında (OpenSettingsPanel) bu alanlar güncel cfg/dil değerinden yeniden
+    // tohumlanır, böylece "BACK" ile bırakılan yarım değişiklikler bir sonraki açılışa taşınmaz.
+    float    _pendingMaster, _pendingMusic, _pendingSfx;
+    bool     _pendingFullscreen, _pendingVSync;
+    int      _pendingResolutionIndex, _pendingQualityIndex;
+    KeyCode  _pendingMoveLeftKey, _pendingMoveRightKey, _pendingJumpKey;
+    Language _pendingLanguage;
+
     TextMeshProUGUI _accountStatusText;
     TextMeshProUGUI _googleStatusText, _cosmicStatusText;
     GameObject _googleLinkBtn, _cosmicLinkBtn, _logoutBtn;
@@ -703,23 +715,22 @@ public class MainMenuUI : MonoBehaviour
                 () => { Click(); SetDrawer(false); act(); });
         }
         Item("dw_settings",     Loc.T("SETTINGS"),     new Color(0.55f, 0.58f, 0.66f, 1f), "S",
-            () => ShowPanel(_settingsPanel));
+            () => OpenSettingsPanel());
         Item("dw_leaderboard",  Loc.T("LEADERBOARD"),  AccCyan, "L",
             () => LeaderboardPanelUI.Instance?.Show());
         Item("dw_achievements", Loc.T("ACHIEVEMENTS"), AccPurple, "A",
             () => AchievementsPanelUI.Instance?.Show());
         Item("dw_account",      Loc.T("ACCOUNT"),      AccGreen, "@",
-            () => { ShowPanel(_settingsPanel); ShowSettingsTab(_accountTab); });
+            () => OpenSettingsPanel(_accountTab));
         Item("dw_training",     Loc.T("TRAINING"),     AccGold, "T",
             StartTrainingMatch);
         Item("dw_party",        Loc.T("PARTY"),         new Color(0.95f, 0.45f, 0.65f, 1f), "P",
             () => PartyLobbyPanelUI.Instance?.ShowModeSelect());
-#if UNITY_EDITOR
-        // Yerel/bot maçı menüden kaldırıldı (arkadaş davetli özel lobi yerini aldı) — offline
-        // spawn yolu (GameInitializer/LobbyData) test için Editor'a kilitli girişle duruyor.
+        // Yerel/bot maçı menüden kaldırılmıştı (arkadaş davetli özel lobi yerini almıştı),
+        // ardından test amaçlı geri eklendi — hot-seat kontrol edilebilir botlarla gerçek
+        // build'lerde de test yapılabilsin diye Editor kısıtı kaldırıldı.
         Item("dw_botmatch",     Loc.T("BOT MATCH (DEV)"), AccBlue, "B",
             () => LobbyPanelUI.Instance?.Show());
-#endif
         _drawerCol.sizeDelta = new Vector2(300, itemCount * 82 + 16);
 
         _drawerRoot.SetActive(false);
@@ -961,13 +972,64 @@ public class MainMenuUI : MonoBehaviour
         BuildControlsTab(_controlsTab);
         BuildAccountTab(_accountTab);
 
-        // Back button — always visible, outside the tabs
-        MakeBtn(_settingsPanel, "btn_back", Loc.T("BACK"), -230,
-            PlateDark, new Color(0.26f, 0.28f, 0.34f),
-            () => { Click(); ShowPanel(_mainPanel); });
+        // Back/OK butonları — yan yana, sekmelerin dışında, her zaman görünür. BACK hiçbir
+        // pending değişikliği uygulamadan kapatır (zaten hiçbir kontrol cfg/dile doğrudan
+        // yazmıyor); OK == ApplyPendingSettings, tüm bekleyen değişiklikleri tek seferde uygular.
+        MakeSettingsButton(_settingsPanel, "btn_back", Loc.T("BACK"),
+            PlateDark, new Vector2(-155, -230), () => { Click(); ShowPanel(_mainPanel); },
+            new Vector2(180, 52));
+        MakeSettingsButton(_settingsPanel, "btn_ok", Loc.T("OK"),
+            AccGreen, new Vector2(155, -230), ApplyPendingSettings,
+            new Vector2(180, 52));
 
         ShowSettingsTab(_audioTab);
+    }
+
+    /// <summary>Ayarlar panelini açar ve tüm kontrolleri (slider/toggle/cycler/dil) güncel
+    /// GameConfig/LocalizationManager değerinden yeniden tohumlar — önceki bir açılışta BACK
+    /// ile bırakılmış yarım değişiklikler burada silinir.</summary>
+    void OpenSettingsPanel(GameObject tab = null)
+    {
+        ShowPanel(_settingsPanel);
         LoadSettingsValues();
+        ShowSettingsTab(tab != null ? tab : _audioTab);
+    }
+
+    /// <summary>Panel "OK" ile onaylandığında tüm bekleyen ayarları tek seferde uygular.
+    /// Dil DEĞİŞİKLİĞİ en sona bırakılır çünkü LocalizationManager.SetLanguage sahneyi yeniden
+    /// yüklüyor — ondan önceki adımların (Save/ApplyGraphics/ApplyVolumes) diske/motöre işlenmiş
+    /// olması gerekiyor, yoksa reload'da kaybolurlar.</summary>
+    void ApplyPendingSettings()
+    {
+        Click();
+
+        var cfg = GameConfig.Instance;
+        if (cfg != null)
+        {
+            cfg.MasterVolume    = _pendingMaster;
+            cfg.MusicVolume     = _pendingMusic;
+            cfg.SfxVolume       = _pendingSfx;
+            cfg.Fullscreen      = _pendingFullscreen;
+            cfg.ResolutionIndex = _pendingResolutionIndex;
+            cfg.QualityLevel    = _pendingQualityIndex;
+            cfg.VSync           = _pendingVSync;
+            cfg.MoveLeftKey     = _pendingMoveLeftKey;
+            cfg.MoveRightKey    = _pendingMoveRightKey;
+            cfg.JumpKey         = _pendingJumpKey;
+            cfg.Save();
+            cfg.ApplyGraphics();
+            Screen.fullScreen = cfg.Fullscreen;
+        }
+        AudioManager.Instance?.ApplyVolumes();
+        RefreshControlsLabels();
+
+        if (LocalizationManager.Instance != null && _pendingLanguage != LocalizationManager.Instance.CurrentLanguage)
+        {
+            LocalizationManager.Instance.SetLanguage(_pendingLanguage); // sahne reload — buradan sonrası çalışmaz
+            return;
+        }
+
+        ShowPanel(_mainPanel);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -997,10 +1059,12 @@ public class MainMenuUI : MonoBehaviour
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(200, 28), new Vector2(-70, -95));
         _fsToggle = MakeToggle(parent, -95);
 
-        _masterSlider.onValueChanged.AddListener(v => { GameConfig.Instance.MasterVolume = v; AudioManager.Instance?.ApplyVolumes(); });
-        _musicSlider.onValueChanged.AddListener(v  => { GameConfig.Instance.MusicVolume  = v; AudioManager.Instance?.ApplyVolumes(); });
-        _sfxSlider.onValueChanged.AddListener(v    => { GameConfig.Instance.SfxVolume    = v; AudioManager.Instance?.ApplyVolumes(); });
-        _fsToggle.onValueChanged.AddListener(v     => { GameConfig.Instance.Fullscreen = v; Screen.fullScreen = v; GameConfig.Instance.Save(); });
+        // OK'a basılana kadar sadece pending alanları güncellenir — ne cfg ne Screen ne AudioManager
+        // burada dokunulur (bkz. ApplyPendingSettings).
+        _masterSlider.onValueChanged.AddListener(v => _pendingMaster = v);
+        _musicSlider.onValueChanged.AddListener(v  => _pendingMusic  = v);
+        _sfxSlider.onValueChanged.AddListener(v    => _pendingSfx    = v);
+        _fsToggle.onValueChanged.AddListener(v     => _pendingFullscreen = v);
     }
 
     void BuildGraphicsTab(GameObject parent)
@@ -1019,7 +1083,7 @@ public class MainMenuUI : MonoBehaviour
             ? Mathf.Clamp(cfg.ResolutionIndex, 0, resOptions.Length - 1)
             : Mathf.Max(0, resOptions.Length - 1);
         _resolutionCycler = MakeCycler(parent, "res", 100, resOptions, startRes,
-            idx => { if (GameConfig.Instance != null) GameConfig.Instance.ResolutionIndex = idx; });
+            idx => _pendingResolutionIndex = idx);
 
         MakeTxt(parent, "lbl_quality", Loc.T("Quality"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 40));
@@ -1029,21 +1093,16 @@ public class MainMenuUI : MonoBehaviour
             ? Mathf.Clamp(cfg.QualityLevel, 0, Mathf.Max(0, qualityOptions.Length - 1))
             : QualitySettings.GetQualityLevel();
         _qualityCycler = MakeCycler(parent, "quality", 40, qualityOptions, startQuality,
-            idx => { if (GameConfig.Instance != null) GameConfig.Instance.QualityLevel = idx; });
+            idx => _pendingQualityIndex = idx);
 
         MakeTxt(parent, "lbl_vsync", "VSync", 18, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(200, 28), new Vector2(-70, -20));
         _vsyncToggle = MakeToggle(parent, -20);
         _vsyncToggle.isOn = cfg == null || cfg.VSync;
-        _vsyncToggle.onValueChanged.AddListener(v => { if (GameConfig.Instance != null) GameConfig.Instance.VSync = v; });
+        _vsyncToggle.onValueChanged.AddListener(v => _pendingVSync = v);
 
-        MakeBtn(parent, "btn_apply_graphics", Loc.T("APPLY"), -90,
-            AccGreen, AccGreenHov, () =>
-            {
-                Click();
-                GameConfig.Instance?.ApplyGraphics();
-                GameConfig.Instance?.Save();
-            });
+        // Ayrı "APPLY" kaldırıldı — panel altındaki tek "OK" butonu (ApplyPendingSettings)
+        // Resolution/Quality/VSync dahil tüm sekmelerin bekleyen değişikliklerini uygular.
     }
 
     void BuildControlsTab(GameObject parent)
@@ -1087,28 +1146,27 @@ public class MainMenuUI : MonoBehaviour
         RefreshAccountTab();
     }
 
-    /// <summary>Dil seçici — Kaynak/Kalite cycler'ıyla aynı ok-ile-gez kalıbı. Değişiklik anında
-    /// LocalizationManager.SetLanguage üzerinden sahneyi yeniden yükler (Loc.T build-time seçildiği
-    /// için canlı retranslate yerine bu daha güvenilir).</summary>
+    static readonly Language[] AllLanguages = (Language[])System.Enum.GetValues(typeof(Language));
+
+    /// <summary>Dil seçici — Kaynak/Kalite cycler'ıyla aynı ok-ile-gez kalıbı. Sadece _pendingLanguage'ı
+    /// günceller; gerçek LocalizationManager.SetLanguage (sahne reload'u) panel "OK" ile onaylanana
+    /// kadar tetiklenmez (bkz. ApplyPendingSettings) — aksi halde tek tıkla anında sahneyi yeniden
+    /// yükleyip ayarlar panelinden dışarı atardı.</summary>
     void BuildLanguageRow(GameObject parent)
     {
         MakeTxt(parent, "lbl_lang", Loc.T("Language"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, -180));
 
-        var languages = (Language[])System.Enum.GetValues(typeof(Language));
-        var langOptions = new string[languages.Length];
-        for (int i = 0; i < languages.Length; i++)
-            langOptions[i] = LocalizationManager.DisplayName(languages[i]);
+        var langOptions = new string[AllLanguages.Length];
+        for (int i = 0; i < AllLanguages.Length; i++)
+            langOptions[i] = LocalizationManager.DisplayName(AllLanguages[i]);
 
         int startIdx = 0;
         if (LocalizationManager.Instance != null)
-            startIdx = System.Array.IndexOf(languages, LocalizationManager.Instance.CurrentLanguage);
+            startIdx = System.Array.IndexOf(AllLanguages, LocalizationManager.Instance.CurrentLanguage);
 
-        MakeCycler(parent, "lang", -180, langOptions, Mathf.Max(0, startIdx), idx =>
-        {
-            if (LocalizationManager.Instance != null)
-                LocalizationManager.Instance.SetLanguage(languages[idx]);
-        });
+        _languageCycler = MakeCycler(parent, "lang", -180, langOptions, Mathf.Max(0, startIdx),
+            idx => _pendingLanguage = AllLanguages[idx]);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -1121,17 +1179,14 @@ public class MainMenuUI : MonoBehaviour
         RefreshControlsLabels();
     }
 
+    /// <summary>Etiketler pending tuş alanlarını gösterir (cfg'yi değil) — OK'a basılana kadar
+    /// gerçek GameConfig tuşları değişmez, ama kullanıcı seçtiği tuşu burada görebilir.</summary>
     void RefreshControlsLabels()
     {
-        var cfg = GameConfig.Instance;
-        KeyCode left  = cfg != null ? cfg.MoveLeftKey  : KeyCode.A;
-        KeyCode right = cfg != null ? cfg.MoveRightKey : KeyCode.D;
-        KeyCode jump  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
-
         string waiting = Loc.T("Press a key…");
-        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? waiting : left.ToString();
-        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? waiting : right.ToString();
-        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? waiting : jump.ToString();
+        if (_btnMoveLeftLabel)  _btnMoveLeftLabel.text  = _awaitingRebindFor == "MoveLeft"  ? waiting : _pendingMoveLeftKey.ToString();
+        if (_btnMoveRightLabel) _btnMoveRightLabel.text = _awaitingRebindFor == "MoveRight" ? waiting : _pendingMoveRightKey.ToString();
+        if (_btnJumpLabel)      _btnJumpLabel.text       = _awaitingRebindFor == "Jump"      ? waiting : _pendingJumpKey.ToString();
     }
 
     void Update()
@@ -1141,16 +1196,11 @@ public class MainMenuUI : MonoBehaviour
 
         if (pressed != KeyCode.Escape)
         {
-            var cfg = GameConfig.Instance;
-            if (cfg != null)
+            switch (_awaitingRebindFor)
             {
-                switch (_awaitingRebindFor)
-                {
-                    case "MoveLeft":  cfg.MoveLeftKey  = pressed; break;
-                    case "MoveRight": cfg.MoveRightKey = pressed; break;
-                    case "Jump":      cfg.JumpKey      = pressed; break;
-                }
-                cfg.Save();
+                case "MoveLeft":  _pendingMoveLeftKey  = pressed; break;
+                case "MoveRight": _pendingMoveRightKey = pressed; break;
+                case "Jump":      _pendingJumpKey       = pressed; break;
             }
         }
 
@@ -1525,14 +1575,39 @@ public class MainMenuUI : MonoBehaviour
         _settingsPanel.SetActive(panel == _settingsPanel);
     }
 
+    /// <summary>Ayarlar paneli her açıldığında (OpenSettingsPanel) çağrılır — tüm kontrolleri VE
+    /// pending alanlarını güncel cfg/dil durumundan yeniden tohumlar, böylece önceki bir açılışta
+    /// BACK ile terk edilmiş yarım değişiklikler bir sonraki açılışa asla taşınmaz.</summary>
     void LoadSettingsValues()
     {
         var cfg = GameConfig.Instance;
         if (cfg == null) return;
+
         if (_masterSlider) _masterSlider.value = cfg.MasterVolume;
         if (_musicSlider)  _musicSlider.value  = cfg.MusicVolume;
         if (_sfxSlider)    _sfxSlider.value    = cfg.SfxVolume;
         if (_fsToggle)     _fsToggle.isOn      = cfg.Fullscreen;
+        if (_vsyncToggle)  _vsyncToggle.isOn   = cfg.VSync;
+
+        // Slider/Toggle setter'ı yalnızca değer gerçekten farklıysa onValueChanged'i tetikler —
+        // eşit kaldığı durumları da kapsamak için pending alanları burada ayrıca doğrudan eşitliyoruz.
+        _pendingMaster       = cfg.MasterVolume;
+        _pendingMusic        = cfg.MusicVolume;
+        _pendingSfx          = cfg.SfxVolume;
+        _pendingFullscreen   = cfg.Fullscreen;
+        _pendingVSync        = cfg.VSync;
+        _pendingMoveLeftKey  = cfg.MoveLeftKey;
+        _pendingMoveRightKey = cfg.MoveRightKey;
+        _pendingJumpKey      = cfg.JumpKey;
+
+        if (_resolutionCycler != null && _resolutionCycler.Options.Length > 0)
+            _resolutionCycler.Set(Mathf.Clamp(cfg.ResolutionIndex, 0, _resolutionCycler.Options.Length - 1));
+        if (_qualityCycler != null && _qualityCycler.Options.Length > 0)
+            _qualityCycler.Set(Mathf.Clamp(cfg.QualityLevel, 0, _qualityCycler.Options.Length - 1));
+        if (_languageCycler != null && LocalizationManager.Instance != null)
+            _languageCycler.Set(Mathf.Max(0, System.Array.IndexOf(AllLanguages, LocalizationManager.Instance.CurrentLanguage)));
+
+        RefreshControlsLabels();
     }
 
     static void Click() => AudioManager.Instance?.PlayClick();
