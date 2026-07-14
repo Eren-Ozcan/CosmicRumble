@@ -101,6 +101,7 @@ public class RPG : AbilityBase
     private void FireServerRpc(Vector2 initialVelocity)
     {
         if (!ServerCanAct) return;
+        if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
         SpawnAndInit(initialVelocity);
     }
 
