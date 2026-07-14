@@ -87,8 +87,9 @@ public class BombExplosion : MonoBehaviour
 
         AchievementEvents.FireShotFired(hitAny);
 
-        // Bombayı yok et
-        Destroy(gameObject);
+        // Bombayı yok et — client'ta yalnız görsel olarak kapatılır, gerçek yok etme server'ın
+        // despawn'ıyla gelir (bkz. NetworkPhysicsGuard.DespawnOrDestroy).
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     private void OnDrawGizmosSelected()

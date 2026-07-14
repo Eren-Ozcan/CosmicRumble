@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -52,6 +54,41 @@ public class Projectile : MonoBehaviour
         spawnTime = Time.time;
     }
 
+    void Start()
+    {
+        // Replike (non-server) kopyalarda Init() çağrılmaz — owner bilinmediği için roket namlu
+        // ucunda atıcının collider'ına çarpıp yerelde anında "patlayabilir". Bu makinelerde
+        // simülasyon saf görsel olduğundan kısa süre tüm karakterler yok sayılır
+        // (KineticProjectile.Start'taki korumanın aynısı; server/offline etkilenmez).
+        var netObj = GetComponent<NetworkObject>();
+        var nm = NetworkManager.Singleton;
+        if (netObj != null && netObj.IsSpawned && (nm == null || !nm.IsServer))
+            StartCoroutine(TemporaryIgnoreAllCharacters());
+    }
+
+    private IEnumerator TemporaryIgnoreAllCharacters()
+    {
+        var bodies = FindObjectsByType<GravityBody>(FindObjectsSortMode.None);
+        var allCols = new List<Collider2D>();
+        foreach (var body in bodies)
+            allCols.AddRange(body.GetComponentsInChildren<Collider2D>());
+
+        foreach (var c in allCols)
+            if (c != null) Physics2D.IgnoreCollision(col, c, true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        if (this == null) yield break;
+        if (col == null || !col.enabled) yield break; // mermi bu arada "emekliye ayrılmış" olabilir
+
+        foreach (var c in allCols)
+        {
+            if (c == null || !c.enabled) continue;
+            if (owner != null && c.transform.IsChildOf(owner.transform)) continue; // Init yönetiyor
+            Physics2D.IgnoreCollision(col, c, false);
+        }
+    }
+
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 1f)
     {
         NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
@@ -87,7 +124,7 @@ public class Projectile : MonoBehaviour
         {
             CameraController.OnProjectileDestroyed();
             SettleOnce();
-            Destroy(gameObject);
+            NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
     }
@@ -116,7 +153,7 @@ public class Projectile : MonoBehaviour
     {
         CameraController.OnProjectileDestroyed();
         SettleOnce();
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     void SettleOnce(bool isHit = false)
@@ -200,7 +237,7 @@ public class Projectile : MonoBehaviour
 
         CameraController.OnProjectileDestroyed();
         SettleOnce(hitAny);
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
 #if UNITY_EDITOR

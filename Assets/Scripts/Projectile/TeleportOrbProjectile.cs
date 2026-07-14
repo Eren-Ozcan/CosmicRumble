@@ -264,7 +264,7 @@ public class TeleportOrbProjectile : MonoBehaviour
     {
         CameraController.OnProjectileDestroyed();
         SettleOnce();
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
 #if UNITY_EDITOR

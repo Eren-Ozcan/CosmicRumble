@@ -33,7 +33,7 @@ public class BombBehaviour : MonoBehaviour
             Instantiate(explosionPrefab, transform.position, Quaternion.identity);
         CameraController.OnProjectileDestroyed();
         SettleOnce();
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     void OnCollisionEnter2D(Collision2D collision)

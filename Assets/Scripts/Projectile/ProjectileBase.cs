@@ -83,6 +83,15 @@ public class ProjectileBase : MonoBehaviour
         TurnManager.NotifyProjectileSettled();
     }
 
+    // Dış kaynaklı Destroy'larda da (ör. DeathBoundary sınır temizliği) sayaç düşmeli — yoksa
+    // TurnManager.ProjectileInFlight sonsuza dek >0 kalır ve tur/zamanlayıcı donar. Diğer tüm
+    // mermi scriptlerinde (KineticProjectile, Projectile, HandGrenadeProjectile...) bu güvence
+    // zaten vardı, yalnız bu sınıfta eksikti.
+    protected virtual void OnDestroy()
+    {
+        SettleOnce();
+    }
+
     protected virtual void OnCollisionEnter2D(Collision2D collision)
     {
         Vector2 impactPoint = collision.GetContact(0).point;
@@ -97,7 +106,7 @@ public class ProjectileBase : MonoBehaviour
 
         CameraController.OnProjectileDestroyed();
         SettleOnce();
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     protected virtual void Explode(Vector2 center)
@@ -171,7 +180,7 @@ public class ProjectileBase : MonoBehaviour
     {
         CameraController.OnProjectileDestroyed();
         SettleOnce();
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     protected virtual void Update()

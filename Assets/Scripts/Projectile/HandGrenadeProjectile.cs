@@ -97,7 +97,7 @@ public class HandGrenadeProjectile : MonoBehaviour
         #endif
         CameraController.OnProjectileDestroyed();
         SettleOnce(hitAny);
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     private void SettleOnce(bool isHit = false)

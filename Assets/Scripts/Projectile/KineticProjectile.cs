@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using Unity.Netcode;
+using UnityEngine;
 using CosmicRumble.Achievements;
 
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -60,6 +63,42 @@ public class KineticProjectile : MonoBehaviour
         if (useTrigger) col.isTrigger = true;
     }
 
+    void Start()
+    {
+        // Replike (non-server) kopyalarda Init() hiç çağrılmaz — owner bilinmediği için mermi
+        // namlu ucunda atıcının kendi collider'ıyla çakışıp daha ilk frame'de yerel "isabet"
+        // üretebilir (mermi client ekranında anında kaybolurdu). Bu makinelerde simülasyon saf
+        // görsel olduğundan (hasar zaten server'da), kısa süre TÜM karakterler yok sayılır.
+        // Server/offline'da bilinçli olarak YAPILMAZ: yakın mesafe atışların isabeti değişmesin.
+        var netObj = GetComponent<NetworkObject>();
+        var nm = NetworkManager.Singleton;
+        if (netObj != null && netObj.IsSpawned && (nm == null || !nm.IsServer))
+            StartCoroutine(TemporaryIgnoreAllCharacters());
+    }
+
+    private IEnumerator TemporaryIgnoreAllCharacters()
+    {
+        var bodies = FindObjectsByType<GravityBody>(FindObjectsSortMode.None);
+        var cols = new List<Collider2D>();
+        foreach (var body in bodies)
+            cols.AddRange(body.GetComponentsInChildren<Collider2D>());
+
+        foreach (var c in cols)
+            if (c != null) Physics2D.IgnoreCollision(col, c, true);
+
+        yield return new WaitForSeconds(0.3f);
+
+        if (this == null) yield break;
+        if (col == null || !col.enabled) yield break; // mermi bu arada "emekliye ayrılmış" olabilir
+
+        foreach (var c in cols)
+        {
+            if (c == null || !c.enabled) continue;
+            if (owner != null && c.transform.IsChildOf(owner.transform)) continue; // Init yönetiyor
+            Physics2D.IgnoreCollision(col, c, false);
+        }
+    }
+
     public void Init(Vector2 initialVelocity, GameObject ownerObj, float ignoreTime = 0.5f)
     {
         NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
@@ -95,7 +134,7 @@ public class KineticProjectile : MonoBehaviour
 
         if (traveled >= maxRange)
         {
-            Destroy(gameObject);
+            NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
 
@@ -122,13 +161,13 @@ public class KineticProjectile : MonoBehaviour
             dmg.TakeDamage(dmgAmount);
             hitCharacter = true;
             CombatEventReporter.ReportHit(dmg, dmgAmount, other.bounds.center);
-            if (stopOnDamageable) Destroy(gameObject);
+            if (stopOnDamageable) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
 
         if (other.TryGetComponent<DestructiblePlanet>(out var dp))
         {
-            if (planetDamageApplied) { if (destroyOnPlanetHit) Destroy(gameObject); return; } // ✅
+            if (planetDamageApplied) { if (destroyOnPlanetHit) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this); return; } // ✅
             planetDamageApplied = true;
 
             if (applyPlanetDamage)
@@ -143,7 +182,7 @@ public class KineticProjectile : MonoBehaviour
                         planetDamageForce * planetDamageMultiplier);
             }
 
-            if (destroyOnPlanetHit) Destroy(gameObject);
+            if (destroyOnPlanetHit) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
 
@@ -172,7 +211,7 @@ public class KineticProjectile : MonoBehaviour
             dmg.TakeDamage(dmgAmount);
             hitCharacter = true;
             CombatEventReporter.ReportHit(dmg, dmgAmount, c.GetContact(0).point);
-            if (stopOnDamageable) Destroy(gameObject);
+            if (stopOnDamageable) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
 
@@ -184,7 +223,7 @@ public class KineticProjectile : MonoBehaviour
 
         if (c.collider.TryGetComponent<DestructiblePlanet>(out var dp))
         {
-            if (planetDamageApplied) { if (destroyOnPlanetHit) Destroy(gameObject); return; } // ✅
+            if (planetDamageApplied) { if (destroyOnPlanetHit) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this); return; } // ✅
             planetDamageApplied = true;
 
             if (applyPlanetDamage)
@@ -200,11 +239,11 @@ public class KineticProjectile : MonoBehaviour
                         planetDamageForce * planetDamageMultiplier);
             }
 
-            if (destroyOnPlanetHit) Destroy(gameObject);
+            if (destroyOnPlanetHit) NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
             return;
         }
 
-        Destroy(gameObject);
+        NetworkPhysicsGuard.DespawnOrDestroy(gameObject, this);
     }
 
     // ---- Helpers ----

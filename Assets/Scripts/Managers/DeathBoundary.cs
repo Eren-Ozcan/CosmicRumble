@@ -61,7 +61,9 @@ public class DeathBoundary : MonoBehaviour
         if (((Vector2)proj.transform.position).sqrMagnitude > deathRadius * deathRadius)
         {
             CameraController.OnProjectileDestroyed();
-            Destroy(proj.gameObject);
+            // Networked mermilerde client yereli Destroy edemez (NGO hatası + desync) —
+            // yardımcı, client'ta görsel kapatıp server'ın despawn'ını bekler.
+            NetworkPhysicsGuard.DespawnOrDestroy(proj.gameObject, proj);
         }
     }
 
