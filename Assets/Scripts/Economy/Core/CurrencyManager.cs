@@ -1,9 +1,8 @@
 using System;
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 using UnityEngine;
 using CosmicRumble.Cloud;
+using CosmicRumble.Utilities;
 
 namespace CosmicRumble.Economy
 {
@@ -37,21 +36,11 @@ namespace CosmicRumble.Economy
         private SaveData _data = new SaveData();
         private string SavePath => Path.Combine(Application.persistentDataPath, "currency.json");
 
-        // Gömülü anahtar + cihaz kimliği birleşimi: aynı dosyanın başka bir cihaza kopyalanması da
-        // HMAC'i geçersiz kılar (basit bir cihaz-bağlama katmanı, tam bir DRM değil).
-        private static readonly byte[] IntegrityKey =
-        {
-            0x4b, 0x2e, 0x91, 0x7a, 0xd3, 0x5c, 0x08, 0xf1,
-            0x63, 0xa9, 0x2d, 0x74, 0xbe, 0x11, 0x9c, 0x40
-        };
-
-        private static string ComputeHmac(string data)
-        {
-            string keyed = data + "|" + SystemInfo.deviceUniqueIdentifier;
-            using var hmac = new HMACSHA256(IntegrityKey);
-            byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(keyed));
-            return Convert.ToBase64String(hash);
-        }
+        // İmza CİHAZDAN BAĞIMSIZ (SaveIntegrity.Sign): bu dosya CloudSaveManager ile buluta itilip
+        // başka bir cihaza aynen iniyor — eski, cihaz kimliği karılmış imza yeni cihazda HER ZAMAN
+        // tutmuyor ve meşru bulut geri yüklemesi "kurcalama" sanılıp bakiye SIFIRLANIYOR, üstüne
+        // sıfırlanmış hali buluta geri yazılıyordu (kalıcı veri kaybı). Cihaz bağlama, buluta giden
+        // veriyle tanım gereği bağdaşmaz; kurcalama koruması imzanın kendisiyle devam ediyor.
 
         private void Awake()
         {
@@ -109,7 +98,7 @@ namespace CosmicRumble.Economy
         private void Save()
         {
             string json = JsonUtility.ToJson(_data);
-            var envelope = new SaveEnvelope { data = json, hmac = ComputeHmac(json) };
+            var envelope = new SaveEnvelope { data = json, hmac = SaveIntegrity.Sign(json) };
             File.WriteAllText(SavePath, JsonUtility.ToJson(envelope, true));
             CloudSaveManager.Instance?.QueuePush("currency", SavePath);
         }
@@ -129,8 +118,13 @@ namespace CosmicRumble.Economy
 
                 if (envelope != null && !string.IsNullOrEmpty(envelope.hmac))
                 {
-                    // Yeni (zarflı) format — bütünlük doğrulanmalı.
-                    if (ComputeHmac(envelope.data) != envelope.hmac)
+                    // Zarflı format — bütünlük doğrulanmalı. Önce güncel (cihazdan bağımsız) imza;
+                    // tutmazsa bu güncellemeden ÖNCE yazılmış cihaz-bağlı imza denenir (geçiş):
+                    // eski imza yalnızca dosyayı yazan cihazda geçerlidir ama mevcut oyuncuların
+                    // ilerlemesini silmemek için kabul edilip hemen yeni formatta yeniden imzalanır.
+                    bool valid = SaveIntegrity.Sign(envelope.data) == envelope.hmac;
+                    bool legacyValid = !valid && SaveIntegrity.SignDeviceBound(envelope.data) == envelope.hmac;
+                    if (!valid && !legacyValid)
                     {
 #if UNITY_EDITOR
                         Debug.LogWarning("[CurrencyManager] currency.json HMAC mismatch — muhtemel kurcalama tespit edildi, güvenli varsayılana dönülüyor.");
@@ -140,6 +134,8 @@ namespace CosmicRumble.Economy
                         return;
                     }
                     _data = JsonUtility.FromJson<SaveData>(envelope.data) ?? new SaveData();
+                    if (legacyValid)
+                        Save(); // yeni (cihazdan bağımsız) imzayla yeniden yaz
                 }
                 else
                 {
