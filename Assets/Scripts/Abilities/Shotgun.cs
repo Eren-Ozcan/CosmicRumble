@@ -104,7 +104,11 @@ public class Shotgun : AbilityBase
     }
 
     [ServerRpc]
-    private void FirePelletsServerRpc(Vector2 baseInitial) => SpawnAllPellets(baseInitial);
+    private void FirePelletsServerRpc(Vector2 baseInitial)
+    {
+        if (!ServerCanAct) return;
+        SpawnAllPellets(baseInitial);
+    }
 
     private void SpawnAllPellets(Vector2 baseInitial)
     {
