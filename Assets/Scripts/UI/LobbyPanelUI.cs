@@ -26,7 +26,10 @@ public class LobbyPanelUI : MonoBehaviour
 
     // ── Runtime referanslar ───────────────────────────────────────────────
     GameObject      _root;
-    int             _botCount = 0;
+    // Varsayılan 1: 0 bot ile START'a basılırsa sahnede tek karakter kalır, TurnManager.CheckGameOver
+    // ilk frame'de "tek takım hayatta" görüp maçı anında bitirir (bkz. TurnManager.cs CheckGameOver) —
+    // test amaçlı bir bot maçının en az bir rakiple açılması gerekiyor.
+    int             _botCount = 1;
     TextMeshProUGUI _botCountText;
     TextMeshProUGUI _botPreviewText;
     TextMeshProUGUI _startBtnLabel;
@@ -218,6 +221,7 @@ public class LobbyPanelUI : MonoBehaviour
     void OnStartClicked()
     {
         // LobbyData doldur
+        LobbyData.IsTraining   = false; // önceki bir Antrenman denemesinden kalmış olabilir
         LobbyData.BotCount     = _botCount;
         LobbyData.MapName      = "CosmicArena";
         LobbyData.SelectedMode = CosmicRumble.Data.GameModeType.Duel1v1;
