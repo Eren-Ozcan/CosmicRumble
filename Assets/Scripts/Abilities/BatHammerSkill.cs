@@ -116,6 +116,7 @@ public class BatHammerSkill : AbilityBase
     private void SwingServerRpc(Vector2 aimDir, float power01)
     {
         if (!ServerCanAct) return;
+        if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
         // aimDir client'tan geliyor — birim vektör olduğu garanti değil (ör. bozuk/kötü niyetli
         // bir client normalize etmeden gönderebilir), bu da DetectTargets'ın Dot-karşılaştırmalı
         // koni testini bozar. Server kendi hesaplamasında her zaman normalize edilmiş haliyle çalışır.
