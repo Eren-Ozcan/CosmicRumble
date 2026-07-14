@@ -41,10 +41,45 @@ namespace CosmicRumble.Cloud
         public const int TrophiesPerWin  = 30;
         public const int TrophiesPerLoss = 20;
 
-        private const string TrophyPrefKey = "leaderboard_trophies";
+        private const string TrophyPrefKey    = "leaderboard_trophies";
+        private const string TrophySigPrefKey = "leaderboard_trophies_sig";
 
-        /// <summary>Yerelde bilinen güncel kupa sayısı.</summary>
-        public int Trophies => PlayerPrefs.GetInt(TrophyPrefKey, 0);
+        /// <summary>
+        /// Yerelde bilinen güncel kupa sayısı. Değer, cihaza bağlı bir HMAC ile imzalanır
+        /// (buluta gitmeyen saf yerel önbellek): PlayerPrefs/regedit'te elle değiştirilen kupa
+        /// imzayı tutturamaz ve 0 sayılır — böylece şişirilmiş değer bir sonraki maç sonunda
+        /// leaderboard'a da gönderilmez. NOT: bu yalnızca kolay kurcalamaya karşı bir bariyer;
+        /// gerçek sunucu-taraflı kupa otoritesi Cloud Code işi (TODO.md madde 22).
+        /// </summary>
+        public int Trophies
+        {
+            get
+            {
+                int value = PlayerPrefs.GetInt(TrophyPrefKey, 0);
+                if (value == 0) return 0;
+
+                string sig = PlayerPrefs.GetString(TrophySigPrefKey, "");
+                if (sig == CosmicRumble.Utilities.SaveIntegrity.SignDeviceBound("trophies:" + value))
+                    return value;
+
+                // Geçiş: bu güncellemeden önce yazılmış (hiç imzalanmamış) değer bir kez kabul
+                // edilip imzalanır — mevcut oyuncuların kupası silinmesin.
+                if (!PlayerPrefs.HasKey(TrophySigPrefKey))
+                {
+                    StoreTrophies(value);
+                    return value;
+                }
+                return 0;
+            }
+        }
+
+        private static void StoreTrophies(int total)
+        {
+            PlayerPrefs.SetInt(TrophyPrefKey, total);
+            PlayerPrefs.SetString(TrophySigPrefKey,
+                CosmicRumble.Utilities.SaveIntegrity.SignDeviceBound("trophies:" + total));
+            PlayerPrefs.Save();
+        }
 
         private void Awake()
         {
@@ -98,8 +133,7 @@ namespace CosmicRumble.Cloud
             int delta = localPlayerWon ? +TrophiesPerWin : -TrophiesPerLoss;
             int total = Mathf.Max(0, Trophies + delta);
 
-            PlayerPrefs.SetInt(TrophyPrefKey, total);
-            PlayerPrefs.Save();
+            StoreTrophies(total);
 
             _ = SubmitScoreAsync(total);
         }
