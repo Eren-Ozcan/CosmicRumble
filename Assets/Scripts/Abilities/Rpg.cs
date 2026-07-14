@@ -98,7 +98,11 @@ public class RPG : AbilityBase
     }
 
     [ServerRpc]
-    private void FireServerRpc(Vector2 initialVelocity) => SpawnAndInit(initialVelocity);
+    private void FireServerRpc(Vector2 initialVelocity)
+    {
+        if (!ServerCanAct) return;
+        SpawnAndInit(initialVelocity);
+    }
 
     private void SpawnAndInit(Vector2 initialVelocity)
     {
