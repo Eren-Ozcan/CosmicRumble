@@ -1,6 +1,7 @@
 // Assets/Scripts/Gravity/GravityBody.cs
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Utilities;
@@ -20,6 +21,13 @@ public class GravityBody : NetworkBehaviour
     // tarafından set edilir (bkz. TeamColors, TurnManager.CheckGameOver).
     public NetworkVariable<int> teamId =
         new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+    // Görünen oyuncu adı — sahibi kendi makinesinde PlayerIdentity'den doldurur, herkese replike
+    // olur. Online spawn yolu (NetworkPlayerSpawner) isim etiketi hiç eklemiyordu: karakterler
+    // "Player_0" gibi iç adlarla dolaşıyor, maç sonu ekranı da "Player_1 Wins!" gösteriyordu.
+    // Offline'da GameInitializer isimleri doğrudan atadığı için bu değişken hiç devreye girmez.
+    public NetworkVariable<FixedString64Bytes> playerName =
+        new NetworkVariable<FixedString64Bytes>(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
     [HideInInspector] public bool movementLocked = false;
@@ -117,6 +125,29 @@ public class GravityBody : NetworkBehaviour
         // için burada bir kez de anında uygulanır (OnValueChanged ilk değişimi kaçırmasın diye).
         teamId.OnValueChanged += (oldValue, newValue) => ApplyTeamColor();
         ApplyTeamColor();
+
+        // İsim yalnızca gerçek karakterlerde anlamlı (GravityBody bazı mermi prefab'larında da
+        // var). OnValueChanged yazan tarafta da tetiklendiği için owner'ın kendi etiketi de
+        // aynı yoldan kurulur.
+        if (GetComponent<CharacterHealth>() != null)
+        {
+            playerName.OnValueChanged += (oldValue, newValue) => ApplyPlayerName(newValue.ToString());
+            if (IsOwner)
+                playerName.Value = PlayerIdentity.Get();
+            else if (!playerName.Value.IsEmpty)
+                ApplyPlayerName(playerName.Value.ToString());
+        }
+    }
+
+    /// <summary>Replike edilen görünen adı objeye ve isim etiketine uygular (etiket yoksa kurar).</summary>
+    private void ApplyPlayerName(string newName)
+    {
+        if (string.IsNullOrEmpty(newName)) return;
+        gameObject.name = newName;
+        var tag = GetComponent<CharacterNameTag>();
+        if (tag == null) tag = gameObject.AddComponent<CharacterNameTag>();
+        tag.SetName(newName);
+        ApplyTeamColor(); // yeni kurulan etiket takım rengini de alsın
     }
 
     /// <summary>teamId.Value'ya göre isim etiketini renklendirir. Atayan taraf (GameInitializer
