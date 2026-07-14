@@ -50,6 +50,7 @@ namespace CosmicRumble.Localization
             ["GRAPHICS"]         = new[] { "GRAFİK", "画面", "GRÁFICOS", "グラフィック", "그래픽", "GRAFIK" },
             ["CONTROLS"]         = new[] { "KONTROLLER", "操作", "CONTROLES", "操作設定", "조작", "STEUERUNG" },
             ["BACK"]             = new[] { "GERİ", "返回", "ATRÁS", "戻る", "뒤로", "ZURÜCK" },
+            ["SKIP"]             = new[] { "PAS", "跳过", "SALTAR", "スキップ", "건너뛰기", "PASSEN" },
             ["Master Volume"]    = new[] { "Ana Ses", "总音量", "Volumen General", "マスター音量", "전체 음량", "Gesamtlautstärke" },
             ["Music"]            = new[] { "Müzik", "音乐", "Música", "音楽", "음악", "Musik" },
             ["Effects"]          = new[] { "Efektler", "音效", "Efectos", "効果音", "효과음", "Effekte" },

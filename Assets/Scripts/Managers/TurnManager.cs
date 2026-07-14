@@ -30,6 +30,14 @@ public class TurnManager : NetworkBehaviour
     private float turnTimer = 0f;
     private bool gameOver = false;
 
+    // Tur zamanlayıcısının client'lara yansıması: Update'teki tur mantığı yalnız server'da
+    // çalıştığı için TurnTimerUI client makinede hiç güncellenmiyordu (donuk sayaç).
+    // Server her frame kalan süreyi yazar, client'lar salt-okur gösterir.
+    private readonly NetworkVariable<float> netTurnTimer =
+        new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private readonly NetworkVariable<float> netTurnDuration =
+        new NetworkVariable<float>(15f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     private float _matchStartTime;
     private int   _totalShots = 0;
 
@@ -198,7 +206,18 @@ public class TurnManager : NetworkBehaviour
 
     private void Update()
     {
-        if (IsSpawned && !IsServer) return;
+        // Client: tur mantığı çalışmaz ama zamanlayıcı server'ın yazdığı NetworkVariable'dan
+        // GÖSTERİLMELİ (eskiden client'ta sayaç hiç güncellenmiyordu) ve oyuncu kendi turunu
+        // pas geçebilmeli (istek server'da doğrulanır).
+        if (IsSpawned && !IsServer)
+        {
+            if (gameOver) return;
+            TurnTimerUI.Instance?.UpdateTimerDisplay(netTurnTimer.Value, Mathf.Max(0.01f, netTurnDuration.Value));
+
+            if (Input.GetKeyDown(nextTurnKey))
+                RequestEndTurnServerRpc();
+            return;
+        }
         if (gameOver) return;
 
         // Yok edilmiş karakterleri her frame temizle (aynı tur içi ölümleri yakala)
@@ -210,21 +229,75 @@ public class TurnManager : NetworkBehaviour
         // ── Manuel geçiş ─────────────────────────────────────────────────────
         if (Input.GetKeyDown(nextTurnKey))
         {
-            if (ProjectileInFlight)
-                _pendingNextTurn = true;   // mermi bitince geç
-            else
-                NextTurn();
+            // Online host yalnız KENDİ turunu pas geçebilir — eskiden Tab, sıra client'tayken de
+            // turu atlıyordu (host rakibin turunu keyfî kesebiliyordu). Offline hotseat'te sıra
+            // kimdeyse klavye zaten onda: eski davranış aynen korunur.
+            bool allowed = true;
+            if (IsSpawned)
+            {
+                var cur = characters[Mathf.Clamp(currentIndex, 0, characters.Count - 1)];
+                allowed = cur != null && NetworkManager.Singleton != null &&
+                          cur.OwnerClientId == NetworkManager.Singleton.LocalClientId;
+            }
+            if (allowed) EndTurnEarly();
         }
 
         // ── Otomatik zamanlayıcı (mermi uçuşu sırasında dondurulur) ──────────
         if (!ProjectileInFlight && turnTimer > 0f)
         {
             turnTimer -= Time.deltaTime;
+            if (IsSpawned) netTurnTimer.Value = turnTimer;
             TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
 
             if (turnTimer <= 0f)
                 NextTurn();
         }
+    }
+
+    /// <summary>Sıradaki oyuncunun turunu erken bitirir (mermi havadaysa çözülmesini bekler).</summary>
+    private void EndTurnEarly()
+    {
+        if (ProjectileInFlight)
+            _pendingNextTurn = true;   // mermi bitince geç
+        else
+            NextTurn();
+    }
+
+    /// <summary>
+    /// UI (pas butonu) için ortak giriş noktası — offline'da doğrudan, online'da host/client
+    /// ayrımını yaparak doğru yoldan tur bitirir. Sırası olmayanın isteği server'da reddedilir.
+    /// </summary>
+    public void RequestEndTurn()
+    {
+        if (gameOver) return;
+
+        if (!IsSpawned)
+        {
+            if (characters != null && characters.Count >= 2) EndTurnEarly();
+            return;
+        }
+
+        if (IsServer)
+        {
+            if (characters == null || characters.Count == 0) return;
+            var cur = characters[Mathf.Clamp(currentIndex, 0, characters.Count - 1)];
+            if (cur != null && NetworkManager.Singleton != null &&
+                cur.OwnerClientId == NetworkManager.Singleton.LocalClientId)
+                EndTurnEarly();
+            return;
+        }
+
+        RequestEndTurnServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestEndTurnServerRpc(ServerRpcParams rpcParams = default)
+    {
+        if (gameOver || characters == null || characters.Count == 0) return;
+        var cur = characters[Mathf.Clamp(currentIndex, 0, characters.Count - 1)];
+        // Yalnızca SIRADAKİ karakterin sahibi kendi turunu pas geçebilir.
+        if (cur == null || cur.OwnerClientId != rpcParams.Receive.SenderClientId) return;
+        EndTurnEarly();
     }
 
     /// <summary>
@@ -262,19 +335,38 @@ public class TurnManager : NetworkBehaviour
             newGb.OnTurnStart();
             CameraController.Instance?.SetActiveCharacter(newGb.transform);
 
-            // UIManager’a bağlı abilities güncelle
+            // UIManager’a bağlı abilities güncelle. Online'da UI bağlaması makine başına bir kez
+            // CharacterAbilities.OnNetworkSpawn'da (kendi karakterine) yapılır — burada SetCharacter
+            // çağrılsaydı host'un paneli rakibin turunda rakibin cephanesine geçerdi ve client'ta
+            // hiç çağrılmadığı için panel tamamen ölü kalırdı (mobil client silah bile seçemiyordu).
             var abilities = newGb.GetComponent<CharacterAbilities>();
             if (abilities != null)
             {
                 abilities.ResetTurnState();
-                UIManager.Instance?.SetCharacter(abilities);
-                UIManager.Instance?.ClearAllSkillFilters();
-                UIManager.Instance?.ClearAllSkillSelections();
+                if (!IsSpawned)
+                {
+                    // Offline hotseat: tek makine sırayla tüm karakterleri oynatır — UI aktif karaktere bağlanır.
+                    UIManager.Instance?.SetCharacter(abilities);
+                    UIManager.Instance?.ClearAllSkillFilters();
+                    UIManager.Instance?.ClearAllSkillSelections();
+                }
+                else if (newGb.IsOwner)
+                {
+                    // Online host'un kendi turu: bağlama sabit, yalnızca filtre/kilit tazelenir.
+                    // (Client'ın tazelemesi netHasUsedSkill reset'inin replikasyonuyla gelir.)
+                    UIManager.Instance?.ClearAllSkillFilters();
+                    UIManager.Instance?.ClearAllSkillSelections();
+                }
             }
         }
 
         // Yeni turn süresi başlat
         turnTimer = turnDuration;
+        if (IsSpawned && IsServer)
+        {
+            netTurnTimer.Value = turnTimer;
+            netTurnDuration.Value = turnDuration;
+        }
 
         // ⏱ UI başlatma (ilk dolu gösterim)
         TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);

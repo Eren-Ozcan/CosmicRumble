@@ -139,7 +139,24 @@ public class CharacterAbilities : NetworkBehaviour
         }
 
         netAmmo.OnValueChanged        += (oldV, newV) => FireAllChangeEvents();
-        netHasUsedSkill.OnValueChanged += (oldV, newV) => { };
+
+        // Tur başı reset'i server yapar (ResetTurnState) — kilidin kalktığı bilgisi client'ın
+        // UI'ına bu replikasyondan yansır (LockAllSkillsUI'nin gri kilidini kaldırır).
+        netHasUsedSkill.OnValueChanged += (oldV, newV) =>
+        {
+            if (IsOwner && oldV && !newV && UIManager.Instance != null)
+            {
+                UIManager.Instance.ClearAllSkillFilters();
+                UIManager.Instance.ClearAllSkillSelections();
+            }
+        };
+
+        // Online'da her makinenin UI'ı KENDİ karakterine bir kez bağlanır. Eskiden SetCharacter
+        // yalnızca server'ın ActivateCharacter'ından çağrılıyordu: client makinede panel hiç
+        // bağlanmıyor, cephane sayaçları boş kalıyor ve dokunmatik seçim (OnSkillIconTapped)
+        // hiç çalışmıyordu — mobil client silah bile seçemezdi.
+        if (IsOwner)
+            UIManager.Instance?.SetCharacter(this);
 
         FireAllChangeEvents();
     }
