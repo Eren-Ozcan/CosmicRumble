@@ -86,7 +86,14 @@ namespace CosmicRumble.Economy.IAP
         private bool IsReceiptValid(PendingOrder order)
         {
 #if IAP_RECEIPT_VALIDATION && !UNITY_EDITOR
-            if (_validator == null) return true; // validator kurulamadıysa engelleme, sessizce geç
+            if (_validator == null)
+            {
+                // Validator kurulamadıysa satın almayı engelleme (para tahsil edilmiş olabilir) ama
+                // SESSİZ kalma: doğrulamanın fiilen devre dışı olduğu build loglarından görülebilsin
+                // (release'te de — bu satır güvenlik denetimi gereği bilinçli olarak korumasız).
+                Debug.LogError("[IAPManager] Receipt validator unavailable — purchases are NOT being validated!");
+                return true;
+            }
             try
             {
                 var receipts = _validator.Validate(order.Info.Receipt);
