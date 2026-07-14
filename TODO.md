@@ -152,6 +152,54 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     Steamworks kurulumu.
 24. Büyüme fikirleri (spec dışı): 2v2/4 oyuncu, sezonluk lig sıfırlama, battle pass.
 
+## Güvenlik/Bug Denetimi — Tam Geçiş (2026-07-15)
+Tüm kod tabanı (136 script) güvenlik açığı/bug/eksik davranış için tarandı; bulunan HER şey
+düzeltildi ve 15 atomik commit olarak işlendi. **Henüz Editor'de derleme/play-test edilmedi —
+Unity kapalıydı; bir sonraki oturumda ilk iş derleme + hızlı play-test yapılmalı** (özellikle
+Bomb.prefab'a elle YAML ile eklenen NetworkObject/NetworkTransform/NetworkRigidbody2D — Unity
+import'ta `GlobalObjectIdHash`'i kendisi üretecek, diğer mermi prefab'larında da dosyada 0 duruyor).
+
+Düzeltilenler (commit sırasıyla):
+1. `movementLocked` kalıcı kilit: mermi havadayken Tab veya onaylı-ateşlenmemiş silahla süre
+   dolması karakteri maç sonuna dek felç ediyordu — tur geçişinde koşulsuz açılıyor.
+2. Cloud Save ↔ cihaz-bağlı HMAC çelişkisi: yeni cihaza inen currency.json "kurcalama" sanılıp
+   sıfırlanıyor ve sıfır buluta geri yazılıyordu — imza cihazdan bağımsız yapıldı (`SaveIntegrity`),
+   eski imzalar bir kez kabul edilip yeniden imzalanıyor.
+3. Kupa önbelleği imzalandı (cihaz-bağlı HMAC) — regedit ile kupa şişirip leaderboard'a gönderme
+   kapatıldı (asıl otorite hâlâ Cloud Code işi, madde 22).
+4. 6 silahın Fire RPC'sine server-side hız clamp'i (`ClampFireVelocity`) — modifiye client
+   sınırsız güçte ateş edemez.
+5. **Bomb** güvenlik geçişindeki eksik 10. silahtı: ServerRpc/ServerTryConsume(slot 9)/
+   NetworkObject.Spawn eklendi, prefab network bileşenleri + DefaultNetworkPrefabs kaydı yapıldı.
+6. Client'ta spawned NetworkObject'lere yerel `Destroy` (NGO hatası + desync) —
+   `NetworkPhysicsGuard.DespawnOrDestroy` (client'ta görsel kapat, server despawn'ını bekle);
+   `ProjectileBase.OnDestroy→SettleOnce` eklendi (DeathBoundary imhası turn sayacını sızdırıyordu).
+7. Gezegen tahribatı server-authoritative + senkron: delikler artık her makinede aynı
+   pos/yarıçapla `TurnManager.PlanetExplosionClientRpc` üzerinden açılıyor (ayrışma bitti).
+8. Ateş sesi her makinede + silah-kullanım başarım kredisi atıcının makinesinde
+   (`AbilityBase.AnnounceFire`); roket/el bombası uçuş loop'u client kopyalarında da çalıyor.
+9. Ölüm efekti ClientRpc ile her makinede; `Die()` artık NGO senkron bileşenlerini kapatmıyor.
+10. Online oyuncu adları/etiketleri: `GravityBody.playerName` (owner-write NetworkVariable) —
+    "Player_1 Wins!" yerine gerçek ad, isim etiketi + takım rengi online'da da kuruluyor.
+11. Reconnect kimlik doğrulaması: sahipsiz karakter yalnızca aynı UGS PlayerId ile dönene
+    devrediliyor (`NetworkIdentityRegistry` + `TurnManager.SubmitIdentityServerRpc`).
+12. Online client HUD'ı canlandı: tur sayacı NetworkVariable ile replike; skill paneli her
+    makinede KENDİ karakterine bağlanıyor (mobil client silah seçemiyordu); tur pas geçme
+    RequestEndTurn RPC'si + TurnTimerUI'da programatik SKIP butonu (host artık rakibin turunu
+    Tab ile atlayamıyor).
+13. `PlanetClickExploder` (guard'sız debug hile aracı, hiçbir yerde takılı değildi) silindi.
+14. IAP: validator kurulamayınca doğrulamanın sessizce kapalı kalması artık release'te de
+    hata loguyla görünür.
+15. Maç sonu "{0} Wins!"/"Draw!"/"+{0} Gold" metinleri Loc.T'ye bağlandı (6 dil).
+
+Bilinen kalan boşluklar (bu geçişte bilinçli kapsam dışı):
+- Kara delik ZONE görselleri/GIF client'ta yok (zone server'da runtime kuruluyor; çekim kuvveti
+  `GravityBody.ApplyForce` yönlendirmesiyle zaten doğru çalışıyor — saf görsel eksik).
+- İsabet/ıskalama (accuracy) istatistiği online'da hâlâ makine-yerel: `FireShotFired` her
+  makinede kendi yerel simülasyonundan ateşleniyor; atıcı kimliğini projectile'a replike etmek
+  gerekir (ayrı iş).
+- Ekonomi/CloudSave hâlâ client-authoritative (madde 22, Cloud Code planı değişmedi).
+
 ## Costumes
 Done (2026-07-09) — GARDIROP (Wardrobe) panel added, `CostumeManager` bootstrapped, 150-costume data
 generated. Data-complete; still needs real art (see below).
