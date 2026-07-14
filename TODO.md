@@ -1763,13 +1763,28 @@ verilmedi.
    tüm 8 RPC handler'ın ilk satırına `if (!ServerCanAct) return;` kondu — bu tek kontrol hem sıra
    dışı ateşlemeyi hem de `TurnManager.NotifyProjectileLaunched`'ın ilk ateşten hemen sonra
    `isActive.Value`'yu senkron false yapması sayesinde art arda ateşlemeyi engelliyor.
-   - **Bilinçli kapsam dışı bırakılan, daha büyük bir takip işi:** ammo sayaçları
-     (`rpgAmmoRemaining`, `grenadesRemaining` vb.) ve `HasUsedSkillThisTurn`, `CharacterAbilities`
-     içinde hâlâ plain client-side alanlar (`CharacterAbilities` bir `NetworkBehaviour` değil) —
-     yani "turda sadece bir yetenek" ve "cephane sınırı" kuralları tam sunucu-yetkili değil, sadece
-     "sırası bende mi" korunuyor. Bunu tam düzeltmek `CharacterAbilities`'i network-aware yapıp her
-     sayacı `NetworkVariable`'a çevirmeyi gerektirir — UI/ammo-display akışlarının tamamına
-     dokunan, ayrı ve daha riskli bir refactor; bu geçişte yapılmadı.
+   - **Takip edildi ve kapatıldı (2026-07-15, 3. tur) — `CharacterAbilities` network-authoritative
+     yapıldı.** `MonoBehaviour` → `NetworkBehaviour`; tüm cephane sayaçları (`superJumps`, `rpgAmmo`,
+     `pistolAmmo`, `shotgunAmmo`, `grenades`, `shields`) tek bir `AmmoState` (`INetworkSerializable`)
+     struct'ında toplanıp `NetworkVariable<AmmoState>` (Server-write) yapıldı; `HasUsedSkillThisTurn`
+     de `NetworkVariable<bool>` (Server-write) oldu. Yeni `ServerTryConsume(int slotIndex)` —
+     `netHasUsedSkill` true iken HERHANGİ slotu reddeder (turda tek yetenek kuralı, ayrıca
+     silaha-özel server-side cooldown zamanlayıcısı gerekmeden "art arda farklı silah" açığını da
+     kapatıyor) ve ilgili slotun cephanesini kontrol edip düşürür — her 9 ability'nin (Pistol/
+     Shotgun/Rpg/HandGrenade/Teleport/BlackHoleSkill/BatHammerSkill/ShieldSkill/SuperJumpSkill)
+     `[ServerRpc]` handler'ından `ServerCanAct`'ten HEMEN SONRA çağrılıyor. `SuperJumpSkill`'in
+     kendi `[ServerRpc]`'si yoktu (yalnızca `gravityBody.nextJumpIsSuper` client-side bayrağını
+     set ediyordu) — yeni `ConsumeServerRpc`/`ApplySuperJumpClientRpc` çifti eklendi (aynı
+     `GravityBody.ApplyForce`'taki owner-hedefli ClientRpc deseni). Public API (getter'lar,
+     event'ler, `HasUsedSkillThisTurn`) hiç değişmedi — `WeaponUIManager`/`SkillUIManager`'da
+     sıfır değişiklik gerekti. Offline hotseat davranışı bilerek birebir korundu (her `Use*()`
+     metodu `!IsSpawned` dalında eskisiyle aynı doğrudan mutasyonu yapıyor) — `CharacterHealth.
+     Awake()/OnNetworkSpawn()`'daki (zaten test edilmiş) "offline'da doğrudan, online'da yalnızca
+     server" deseni birebir taklit edildi, yeni bir mimari icat edilmedi.
+     **Not — Unity Editor bu geçişte kapalıydı, canlı/iki-process doğrulama yapılamadı**; değişiklik
+     dikkatli statik inceleme + mevcut, zaten doğrulanmış `CharacterHealth` desenine birebir
+     sadakatle yazıldı, ama bir sonraki Unity oturumunda hem offline hem online (iki client) bir
+     maçta ateşleme/cephane/tur geçişini test etmek şart.
    - **Kalıcı bir mimari sınır (kod ile çözülemez):** bu proje host'u oyunculardan biri olan P2P
      Relay/NGO kullanıyor ("server" = bir oyuncunun kendi makinesi), yetkili/tarafsız bir dedicated
      server yok. Yukarıdaki fix hileli bir NON-HOST client'a karşı korur; hileli bir HOST kendi
@@ -1813,11 +1828,36 @@ verilmedi.
    client projesinin kapsamı/araçları dışında.
 7. **`LeaderboardManager.ReportOnlineMatchResult`** public bir metod, gerçekten bir maç olduğunu
    doğrulayan bir sunucu/Cloud Code kontrolü olmadan doğrudan `AddPlayerScoreAsync` çağırıyor —
-   hileli bir client'ın kupayı keyfi şişirmesini engelleyen hiçbir şey yok. Gerçek çözüm: maç
-   sonucunu bir Cloud Code fonksiyonuna (match ID + katılımcı listesiyle) doğrulatıp kupa
-   güncellemesini oradan yaptırmak — aynı şekilde Cloud Code altyapısı gerektiriyor, bu oturumda
-   yapılamadı.
+   hileli bir client'ın kupayı keyfi şişirmesini engelleyen hiçbir şey yok.
+   - **Neden bu geçişte de yapılmadı (madde 6 ile aynı gerekçe + fazlası):** `ugs` CLI bu makinede
+     kurulu değil, `com.unity.services.cloudcode` paketi projeye eklenmemiş, ve gerçek deploy
+     (Dashboard'a giriş/CLI login) yalnızca kullanıcının kendi Unity kimliğiyle yapılabilecek
+     interaktif bir adım — bu oturumdan fiilen imkansız. ÖNEMLİSİ: bu, madde 1'deki host-güven
+     sınırı yüzünden basit bir "client Cloud Code'u çağırsın" fix'i değil — cheating HOST da
+     zaten sunucu rolünde olduğu için, gerçek bir düzeltme iki taraf arasında ÇAPRAZ DOĞRULAMA
+     (dual-attestation) gerektiriyor: her iki client de maç sonucunu (matchId + winnerId/loserId,
+     her ikisinin de gerçek UGS PlayerId'siyle) BAĞIMSIZ olarak aynı Cloud Code fonksiyonuna
+     bildirir; fonksiyon iki bildirim UYUŞMUYORSA veya yalnızca biri gelmişse kupa vermez, yalnızca
+     ikisi de aynı sonucu bildirirse (tek bir hileli taraf artık tek başına yeterli olmuyor,
+     rakibiyle de anlaşması gerekiyor) kupa güncellenir. Bu, şu an client'larda bilinmeyen
+     rakibin gerçek PlayerId'sinin (Quick Match'te — arkadaş daveti akışında zaten var) karşılıklı
+     değişimini de gerektiriyor; yani bu yalnızca bir Cloud Code scripti değil, yeni bir
+     cross-client protokol. Canlı iki-process test edilemeden (bu oturumda Unity Editor kapalıydı)
+     bunu doğrudan test edilmiş, çalışan dereceli maç akışına kabloyu bağlamak riskli — "sorunsuz"
+     hedefiyle çelişirdi, bu yüzden bilerek yapılmadı.
+   - **Sonraki oturum için somut plan:** (1) `NetworkPlayerSpawner`/`TurnManager`'a match başlangıcında
+     her iki client'ın kendi `AuthenticationService.Instance.PlayerId`'sini bir `[ServerRpc]` ile
+     sunucuya bildirmesi + sunucunun ikisini de her iki client'a bir `[ClientRpc]` ile geri
+     yayması (host taraflı bir `Dictionary<ulong,string>` clientId→PlayerId eşlemesi); (2)
+     `com.unity.services.cloudcode` paketini ekleyip bir `SubmitMatchResult(matchId, winnerId,
+     loserId)` Cloud Code modülü yazmak (JS, Cloud Save Data API ile iki tarafın bildirimini
+     `match_<matchId>` anahtarında biriktirip karşılaştıran); (3) `LeaderboardManager`'ı bunu
+     çağıracak, ama BAŞARISIZ olursa (henüz deploy edilmemiş/ağ hatası) sessizce mevcut doğrudan
+     `AddPlayerScoreAsync` yoluna düşecek şekilde yazmak (geriye dönük kırılmaz); (4) Unity Editor
+     açıkken gerçek iki-process bir dereceli maçla uçtan uca doğrulamak (bu projenin tüm
+     multiplayer milestone'larında izlenen standart, bkz. yukarıdaki "Multiplayer" bölümü).
 
 Madde 22 (üstteki YAYIN YOL HARİTASI) zaten bunu "gelir başlayınca öncelik" olarak not etmişti; bu
-denetim somut mekanizmaları (hangi dosya/satır, tam olarak ne kadar açık) doğruladı ve 6-7 kod
-değişikliği yaptı, 6-7 kalan maddeyi backend-bağımlı olarak netleştirdi.
+denetim somut mekanizmaları (hangi dosya/satır, tam olarak ne kadar açık) doğruladı, bu turda ek
+olarak `CharacterAbilities`'i (madde 1'in takibi) network-authoritative yaptı, kalan iki maddeyi
+(6-7) somut bir uygulama planıyla backend-bağımlı olarak netleştirdi.
