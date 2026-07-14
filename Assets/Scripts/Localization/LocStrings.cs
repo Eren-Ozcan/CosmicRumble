@@ -51,6 +51,11 @@ namespace CosmicRumble.Localization
             ["CONTROLS"]         = new[] { "KONTROLLER", "操作", "CONTROLES", "操作設定", "조작", "STEUERUNG" },
             ["BACK"]             = new[] { "GERİ", "返回", "ATRÁS", "戻る", "뒤로", "ZURÜCK" },
             ["SKIP"]             = new[] { "PAS", "跳过", "SALTAR", "スキップ", "건너뛰기", "PASSEN" },
+
+            // ── Maç sonu ─────────────────────────────────────────────────────
+            ["{0} Wins!"] = new[] { "{0} Kazandı!", "{0} 获胜！", "¡{0} gana!", "{0}の勝利！", "{0} 승리!", "{0} gewinnt!" },
+            ["Draw!"]     = new[] { "Berabere!", "平局！", "¡Empate!", "引き分け！", "무승부!", "Unentschieden!" },
+            ["+{0} Gold"] = new[] { "+{0} Altın", "+{0} 金币", "+{0} de oro", "+{0}ゴールド", "+{0} 골드", "+{0} Gold" },
             ["Master Volume"]    = new[] { "Ana Ses", "总音量", "Volumen General", "マスター音量", "전체 음량", "Gesamtlautstärke" },
             ["Music"]            = new[] { "Müzik", "音乐", "Música", "音楽", "음악", "Musik" },
             ["Effects"]          = new[] { "Efektler", "音效", "Efectos", "効果音", "효과음", "Effekte" },

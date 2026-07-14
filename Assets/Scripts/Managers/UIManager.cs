@@ -249,13 +249,15 @@ public class UIManager : MonoBehaviour
             gameOverPanel.SetActive(true);
 
         if (winnerText != null)
-            winnerText.text = winnerName != null ? $"{winnerName} Wins!" : "Draw!";
+            winnerText.text = winnerName != null
+                ? string.Format(CosmicRumble.Localization.Loc.T("{0} Wins!"), winnerName)
+                : CosmicRumble.Localization.Loc.T("Draw!");
 
         if (xpEarnedText != null)
             xpEarnedText.text = $"+{xpEarned} XP";
 
         if (goldEarnedText != null)
-            goldEarnedText.text = $"+{goldEarned} Gold";
+            goldEarnedText.text = string.Format(CosmicRumble.Localization.Loc.T("+{0} Gold"), goldEarned);
     }
 
     // ── End-game button callbacks — public so they appear in the Inspector OnClick dropdown ──
