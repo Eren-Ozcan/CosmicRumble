@@ -107,6 +107,7 @@ public class Shotgun : AbilityBase
     private void FirePelletsServerRpc(Vector2 baseInitial)
     {
         if (!ServerCanAct) return;
+        if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
         SpawnAllPellets(baseInitial);
     }
 
