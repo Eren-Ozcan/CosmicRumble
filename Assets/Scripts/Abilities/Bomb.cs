@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -66,14 +67,42 @@ public class Bomb : AbilityBase
         float clamped = Mathf.Min(pull.magnitude, maxDragDistance);
         Vector2 initial = pull.normalized * clamped * powerMultiplier;
 
+        // Networked modda atış isteği server'a taşınır (diğer 9 yetenekle aynı desen) — bu silah
+        // 2026-07-14 güvenlik geçişinde atlanmıştı: bomba yalnızca atanın makinesinde var oluyor
+        // (client atınca hasar no-op, host atınca rakip görünmez bombadan hasar alıyordu) ve
+        // ServerCanAct/ServerTryConsume hiç işlemiyordu. Offline hotseat'te eski yol aynen çalışır.
+        if (IsSpawned) FireServerRpc(initial);
+        else SpawnAndInit(initial);
+    }
+
+    [ServerRpc]
+    private void FireServerRpc(Vector2 initialVelocity)
+    {
+        if (!ServerCanAct) return;
+        if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
+        SpawnAndInit(ClampFireVelocity(initialVelocity, maxDragDistance, powerMultiplier));
+    }
+
+    private void SpawnAndInit(Vector2 initialVelocity)
+    {
         AchievementEvents.FireWeaponUsed("weapon_bomb");
         AudioManager.Instance?.PlaySfx("weapon_bomb_place");
 
         GameObject bombObj = Instantiate(projectilePrefab, firePoint.position, Quaternion.identity);
+
+        if (IsSpawned) bombObj.GetComponent<NetworkObject>().Spawn();
+
         Rigidbody2D rb = bombObj.GetComponent<Rigidbody2D>();
         if (rb != null)
-            rb.AddForce(initial, ForceMode2D.Impulse);
+        {
+            // Prefab'a eklenen NetworkRigidbody2D offline'da body'yi Kinematic'e zorlar —
+            // diğer mermilerin Init() yollarındaki düzeltmenin aynısı (bkz. NetworkPhysicsGuard).
+            NetworkPhysicsGuard.EnsureDynamicWhenNotSpawned(rb);
+            rb.AddForce(initialVelocity, ForceMode2D.Impulse);
+        }
 
+        // BombBehaviour (fitil + patlama akışı) yalnızca simülasyonu yöneten makinede gerekir;
+        // client kopyaları prefab'daki BombExplosion ile yalnızca yerel görsel temas efektini oynatır.
         BombBehaviour bb = bombObj.AddComponent<BombBehaviour>();
         bb.Init(fuseTime, explosionPrefab);
         // TurnManager bildirimleri BombBehaviour.Init() içinde yapılıyor

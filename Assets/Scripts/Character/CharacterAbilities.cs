@@ -295,6 +295,7 @@ public class CharacterAbilities : NetworkBehaviour
             case 6: // Teleport — sınırsız
             case 7: // BatHammer — sınırsız
             case 8: // BlackHole — sınırsız
+            case 9: // Bomb — sınırsız
                 break;
             default:
                 return false;
@@ -326,6 +327,7 @@ public class CharacterAbilities : NetworkBehaviour
             case 6: return 1; // Teleport (sınırsız)
             case 7: return 1; // Bat/Hammer (sınırsız)
             case 8: return 1; // Black Hole (sınırsız)
+            case 9: return 1; // Bomb (sınırsız)
             default: return 0;
         }
     }
