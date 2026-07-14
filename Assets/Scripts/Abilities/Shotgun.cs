@@ -108,7 +108,7 @@ public class Shotgun : AbilityBase
     {
         if (!ServerCanAct) return;
         if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
-        SpawnAllPellets(baseInitial);
+        SpawnAllPellets(ClampFireVelocity(baseInitial, maxDragDistance, powerMultiplier));
     }
 
     private void SpawnAllPellets(Vector2 baseInitial)

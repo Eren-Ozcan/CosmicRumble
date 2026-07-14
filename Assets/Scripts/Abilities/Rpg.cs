@@ -102,7 +102,7 @@ public class RPG : AbilityBase
     {
         if (!ServerCanAct) return;
         if (charAbilities != null && !charAbilities.ServerTryConsume(SlotIndex)) return;
-        SpawnAndInit(initialVelocity);
+        SpawnAndInit(ClampFireVelocity(initialVelocity, maxDragDistance, powerMultiplier));
     }
 
     private void SpawnAndInit(Vector2 initialVelocity)

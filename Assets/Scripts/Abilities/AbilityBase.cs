@@ -60,6 +60,24 @@ public abstract class AbilityBase : NetworkBehaviour, IAbilitySelectable, ICoold
     /// </summary>
     protected bool ServerCanAct => gravityBody != null && gravityBody.isActive.Value;
 
+    /// <summary>
+    /// Client'tan gelen atış hızını meşru üst sınıra kırpar — nişan/güç client'ta hesaplandığı
+    /// için değiştirilmiş bir client [ServerRpc]'ye istediği büyüklükte vektör gönderebilir.
+    /// Meşru maksimum her silahta maxDragDistance * powerMultiplier'dır; server bunun üstünü
+    /// kabul etmez (BatHammerSkill.SwingServerRpc'deki normalize/Clamp01 ile aynı ilke).
+    /// NaN/Infinity içeren kasıtlı bozuk girdiler sıfırlanır.
+    /// </summary>
+    protected static Vector2 ClampFireVelocity(Vector2 v, float maxDragDistance, float powerMultiplier)
+    {
+        if (float.IsNaN(v.x) || float.IsNaN(v.y) ||
+            float.IsInfinity(v.x) || float.IsInfinity(v.y))
+            return Vector2.zero;
+
+        float max = Mathf.Abs(maxDragDistance * powerMultiplier);
+        if (max <= 0f) return Vector2.zero;
+        return Vector2.ClampMagnitude(v, max);
+    }
+
     // ── IAbilitySelectable ───────────────────────────────────────
     public virtual void SetSelected(bool selected)
     {
