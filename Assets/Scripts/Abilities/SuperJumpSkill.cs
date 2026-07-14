@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Achievements;
 
@@ -44,7 +45,13 @@ public class SuperJumpSkill : AbilityBase
         bool canUse = charAbilities == null || charAbilities.UseSuperJump();
         if (canUse)
         {
-            gravityBody.nextJumpIsSuper = true;
+            // Networked modda gerçek tüketim + "sıradaki zıplama super" bayrağı server'a taşınır
+            // (diğer ability'lerle aynı desen — client-side UseSuperJump() yalnızca iyimser UI/tahmin
+            // içindir, gerçek kontrol ServerTryConsume'da) — offline hotseat'te eski doğrudan yol
+            // aynen çalışır.
+            if (IsSpawned) ConsumeServerRpc();
+            else gravityBody.nextJumpIsSuper = true;
+
             charAbilities?.OnAbilityConsumed();
             cooldownTimer = cooldownTime;
             AchievementEvents.FireAbilityUsed("skill_superjump");
@@ -52,5 +59,27 @@ public class SuperJumpSkill : AbilityBase
         }
         isSelected = false;
         fireAllowed = false;
+    }
+
+    [ServerRpc]
+    private void ConsumeServerRpc()
+    {
+        if (!ServerCanAct) return;
+        if (charAbilities == null || !charAbilities.ServerTryConsume(SlotIndex)) return;
+
+        // nextJumpIsSuper yalnızca sahibinin kendi Update()'inde okunan plain bir bool (GravityBody
+        // input'u owner-only) — bu yüzden server, gerçek sahibin makinesine hedefli bir ClientRpc ile
+        // "bir sonraki zıplaman süper olsun" der (GravityBody.ApplyForce/Teleport'taki owner-hedefli
+        // ClientRpc deseniyle birebir aynı).
+        var rpcParams = new ClientRpcParams
+        { Send = new ClientRpcSendParams { TargetClientIds = new[] { OwnerClientId } } };
+        ApplySuperJumpClientRpc(rpcParams);
+    }
+
+    [ClientRpc]
+    private void ApplySuperJumpClientRpc(ClientRpcParams rpcParams = default)
+    {
+        if (!IsOwner) return;
+        gravityBody.nextJumpIsSuper = true;
     }
 }
