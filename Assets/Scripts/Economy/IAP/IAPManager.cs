@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Purchasing;
+using UnityEngine.Purchasing.Security;
 
 namespace CosmicRumble.Economy.IAP
 {
@@ -39,13 +40,65 @@ namespace CosmicRumble.Economy.IAP
 
         private StoreController _storeController;
 
+#if IAP_RECEIPT_VALIDATION
+        private CrossPlatformValidator _validator;
+#endif
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
+#if IAP_RECEIPT_VALIDATION
+            try
+            {
+                _validator = new CrossPlatformValidator(GooglePlayTangle.Data(), AppleTangle.Data(), Application.identifier);
+            }
+            catch (Exception e)
+            {
+#if UNITY_EDITOR
+                Debug.LogError($"[IAPManager] CrossPlatformValidator init failed: {e.Message}");
+#endif
+                _validator = null;
+            }
+#endif
+
             _ = InitializePurchasingAsync();
+        }
+
+        /// <summary>
+        /// Makbuz doğrulaması — güvenlik denetiminde bulunan "IAP satın almaları hiçbir makbuz
+        /// doğrulaması olmadan Gem veriyor" açığının düzeltmesi. IAP_RECEIPT_VALIDATION define'ı
+        /// aktif olana kadar (aşağıya bak) geçici olarak her zaman true döner — STEAMWORKS_INSTALLED/
+        /// GPGS_INSTALLED ile aynı "kod hazır, gerçek anahtar bekliyor" deseni:
+        ///   1. Play Console → Uygulamanız → Bütünlük → Lisanslama'daki Base64 RSA public key'i kopyala.
+        ///   2. Unity Editor'de Window → Unity IAP → Receipt Validation Obfuscator'ı aç, public key'i
+        ///      yapıştır, "Obfuscate Secrets" çalıştır — bu Assets altına GooglePlayTangle.cs (+ Apple
+        ///      App Store Connect kullanılacaksa AppleTangle.cs) üretir.
+        ///   3. Player Settings → Scripting Define Symbols'a IAP_RECEIPT_VALIDATION ekle.
+        /// O ana kadar bu metod bilinçli olarak no-op (true) — aksi halde Tangle sınıfları
+        /// üretilmeden IAP_RECEIPT_VALIDATION tanımlanırsa derleme hatası olurdu.
+        /// Editor/FakeStore'da (mağaza bağlantısı yok) her zaman true döner — gerçek mağaza
+        /// receipt formatı olmadığı için CrossPlatformValidator burada zaten StoreNotSupported
+        /// atar, bu da Editor'deki normal IAP test akışını kırardı.
+        /// </summary>
+        private bool IsReceiptValid(PendingOrder order)
+        {
+#if IAP_RECEIPT_VALIDATION && !UNITY_EDITOR
+            if (_validator == null) return true; // validator kurulamadıysa engelleme, sessizce geç
+            try
+            {
+                var receipts = _validator.Validate(order.Info.Receipt);
+                return receipts != null && receipts.Length > 0;
+            }
+            catch (IAPSecurityException)
+            {
+                return false;
+            }
+#else
+            return true;
+#endif
         }
 
         private async Task InitializePurchasingAsync()
@@ -147,12 +200,21 @@ namespace CosmicRumble.Economy.IAP
                 ? Array.Find(GemPacks, p => p.productId == productId)
                 : null;
 
-            if (pack != null)
+            if (pack != null && IsReceiptValid(pendingOrder))
             {
                 CurrencyManager.Instance?.Add(CurrencyType.Gem, pack.gemAmount);
                 OnPurchaseSucceeded?.Invoke(productId);
 #if UNITY_EDITOR
                 Debug.Log($"[IAPManager] Purchased {productId} -> +{pack.gemAmount} Gem");
+#endif
+            }
+            else if (pack != null)
+            {
+                // Makbuz doğrulaması başarısız — Gem verilmez. Yine de ConfirmPurchase çağrılır
+                // (para mağazadan zaten tahsil edilmiş olabilir; onaylanmazsa sipariş sonsuza
+                // kadar "pending" kalıp her açılışta tekrar denenir).
+#if UNITY_EDITOR
+                Debug.LogWarning($"[IAPManager] Receipt validation FAILED for '{productId}' — Gem NOT granted.");
 #endif
             }
 #if UNITY_EDITOR
