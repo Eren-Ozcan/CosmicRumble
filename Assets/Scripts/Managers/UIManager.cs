@@ -148,7 +148,7 @@ public class UIManager : MonoBehaviour
         }
 
         int left = currentAb.GetSkillRemaining(slotIndex);
-        countTexts[slotIndex].text = left.ToString();
+        countTexts[slotIndex].text = left < 0 ? "∞" : left.ToString(); // -1 = sınırsız (Pistol)
 
         // Seçili slotu asla bozma; değilse stoğa göre boya
         if (selectedIndex == slotIndex)
