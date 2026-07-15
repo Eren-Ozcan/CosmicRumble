@@ -45,7 +45,14 @@ namespace CosmicRumble.Economy
         private void Start()
         {
             if (PlayerLevelManager.Instance != null)
+            {
                 PlayerLevelManager.Instance.OnLevelUp += OnLevelUp;
+                // Seviye OnLevelUp tetiklenmeden de yükselmiş olabilir (cloud restore ile
+                // progress.json'ın yeni cihaza inmesi, ya da UnlockManager'ın henüz var
+                // olmadığı bir dönemde kazanılan seviyeler). OnLevelUp yalnızca artış
+                // ANINDA çalıştığı için burada bir kez mevcut seviyeye kadar tarama yapılır.
+                CatchUpToLevel(PlayerLevelManager.Instance.GetProgress().currentLevel);
+            }
         }
 
         private void OnDestroy()
@@ -77,7 +84,21 @@ namespace CosmicRumble.Economy
             }
         }
 
+        private void CatchUpToLevel(int level)
+        {
+            if (_db == null) return;
+            foreach (var item in _db.allItems)
+            {
+                if (item != null && item.unlockMethod == UnlockMethod.ByLevel
+                    && item.requiredLevel <= level && !_data.unlockedIds.Contains(item.itemId))
+                    ForceUnlock(item);
+            }
+        }
+
         public bool IsUnlocked(string itemId) => _data.unlockedIds.Contains(itemId);
+
+        /// <summary>Veritabanındaki item tanımına salt-okunur erişim (UI'da koşul göstermek için).</summary>
+        public UnlockableItem GetItemById(string itemId) => _db != null ? _db.GetById(itemId) : null;
 
         public UnlockCheckResult CanUnlock(string itemId)
         {
