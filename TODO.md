@@ -152,12 +152,47 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     Steamworks kurulumu.
 24. Büyüme fikirleri (spec dışı): 2v2/4 oyuncu, sezonluk lig sıfırlama, battle pass.
 
+## Sistem Bağlantı Geçişi — progression/ekonomi zinciri (2026-07-16)
+"Ana fikirden sapma / mantık hatası" kontrolünde bulunan kopukluklar: oyunun üç progression
+sistemi veri tarafında tamamdı ama oynanışa hiç bağlanmamıştı. Bu geçişte düzeltilenler
+(hepsi Editor'de canlı play-test edildi, ayrı atomik commit'ler):
+
+1. **Level artık silah/skill açıyor** (önceden Lv1 oyuncu 10 silahın hepsini kullanabiliyordu —
+   `UnlockManager` unlock'ları işliyordu ama hiçbir yer okumuyordu): yeni
+   `AbilitySlotCatalog` (slot ↔ itemId eşlemesi, `UnlockManager` yoksa fail-open — Game
+   sahnesi Editor'de doğrudan açılırsa kapı devre dışı), kapı tek seçim boğazında
+   (`CharacterAbilities.SelectSkill/ConfirmSkill` — klavye + dokunmatik ikisini de kapsar),
+   kilitli slot UI'da koyu renk + cephane sayacı yerine "LvN" etiketi. Online'da yalnızca
+   yerel oyuncunun kendi inputunu kısıtlar (ekonomi zaten client-authoritative, madde 22).
+   Play-test: Lv22 profilde unlock listesi bellekte kırpılıp antrenman maçında kilitli
+   slotların Lv2/6/8/10 etiketiyle çizildiği ve `SelectSkill`'in reddettiği doğrulandı.
+2. **`UnlockManager` level catch-up taraması**: `OnLevelUp` yalnız canlı artışta çalışıyordu —
+   cloud-restore ile gelen seviye (veya UnlockManager yokken kazanılmış seviyeler) hiçbir
+   zaman unlock üretmiyordu. `Start()`'ta mevcut seviyeye kadar tüm ByLevel item'lar bir kez
+   taranıyor. (Bu tarama, testte bellekten sökülen unlock'ların da kendini onarmasını sağlar.)
+3. **Ekonomiye ilk harcama yolu** (önceden `CurrencyManager.Spend`'i çağıran hiçbir UI yoktu —
+   Gold sonsuz birikiyordu ve IAP ile satılan Gem'in harcanabileceği tek akış bile yoktu, store
+   review açısından da düpedüz tuzaktı): mağazaya SANDIKLAR şeridi — Rare sandık 800 Gold,
+   Epic sandık 25 Gem (`ChestManager.TryPurchaseChest`, fiyatlar `ChestConfig`'te; günlük
+   galibiyet-sandığı limitinden tamamen bağımsız). Bakiye yetmeyince buton pasif; ödül mevcut
+   `RewardPopupManager` toast'uyla düşüyor. Play-test: iki satın alma da gerçek bakiye
+   değişimiyle doğrulandı (Rare: −800 Altın; Epic: −25 Gem; günlük sayaç 0'da kaldı).
+4. Küçük pürüz: sınırsız cephane (Pistol, -1) tray'de artık "-1" değil "∞".
+
+**Bilinçli ertelendi (kostüm tasarımıyla birlikte, kullanıcı kararı)**: ByLevel/ByGold/ByGem
+kostümlerin edinme akışı (`CostumeManager.TryPurchase`'ı çağıran UI yok, ByLevel kostüm grant
+edilmiyor) ve kuşanılan kostümün karakter/silah görünümüne yansıması (`GetEquipped`'i oyun içi
+okuyan kod yok) — kostüm sprite'ları üretilirken tek iş olarak ele alınacak. Çoklu gezegen
+sahneleri de (madde 10 — SampleScene'de 1 gezegen var, `YÖRÜNGE` başarımı mevcut haritada
+imkânsız) ayrı iş olarak duruyor.
+
 ## Güvenlik/Bug Denetimi — Tam Geçiş (2026-07-15)
 Tüm kod tabanı (136 script) güvenlik açığı/bug/eksik davranış için tarandı; bulunan HER şey
-düzeltildi ve 15 atomik commit olarak işlendi. **Henüz Editor'de derleme/play-test edilmedi —
-Unity kapalıydı; bir sonraki oturumda ilk iş derleme + hızlı play-test yapılmalı** (özellikle
-Bomb.prefab'a elle YAML ile eklenen NetworkObject/NetworkTransform/NetworkRigidbody2D — Unity
-import'ta `GlobalObjectIdHash`'i kendisi üretecek, diğer mermi prefab'larında da dosyada 0 duruyor).
+düzeltildi ve 15 atomik commit olarak işlendi. **Derleme/play-test borcu kapandı (2026-07-16)**:
+derleme temiz, misafir girişi + ana menü + antrenman maçı + mağaza Editor'de hatasız koştu.
+Bomb.prefab'ın `GlobalObjectIdHash`'i dosyada hâlâ 0 ama bu diğer çalışan mermi prefab'larıyla
+aynı desen (NGO runtime'da üretiyor); Bomb'un gerçek iki-client online ateşleme testi hâlâ
+yapılmadı (iki-cihazlı test kalemiyle birlikte, yol haritası madde 2).
 
 Düzeltilenler (commit sırasıyla):
 1. `movementLocked` kalıcı kilit: mermi havadayken Tab veya onaylı-ateşlenmemiş silahla süre
