@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using CosmicRumble.Economy;
 using CosmicRumble.Economy.IAP;
 using CosmicRumble.Localization;
 
@@ -9,7 +10,8 @@ using CosmicRumble.Localization;
 /// Ana menüdeki MARKET butonu → Gem satın alma paneli. Modern mobil mağaza düzeni:
 /// yan yana dikey paket kartları (gem ikonu + miktar + fiyatlı satın al butonu), popüler
 /// pakette rozet. IAPManager.GemPacks kataloğunu kullanır; mağaza bağlanmadıysa fiyat "--".
-/// UiKit stiliyle programatik Canvas kurar.
+/// Alt şeritte Gold/Gem ile sandık satın alma teklifleri (ekonominin harcama yolu —
+/// ChestManager.TryPurchaseChest). UiKit stiliyle programatik Canvas kurar.
 /// </summary>
 public class ShopPanelUI : MonoBehaviour
 {
@@ -30,18 +32,25 @@ public class ShopPanelUI : MonoBehaviour
 
     GameObject _panelRoot;
     TextMeshProUGUI[] _priceTexts;
+    Button _rareChestBtn, _epicChestBtn;
 
     void Awake()
     {
         if (Instance != null) { Destroy(gameObject); return; }
         Instance = this;
         BuildUI();
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged += HandleCurrencyChanged;
     }
 
     void OnDestroy()
     {
         if (Instance == this) Instance = null;
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged -= HandleCurrencyChanged;
     }
+
+    void HandleCurrencyChanged(CurrencyType type, long newBalance) => RefreshChestOffers();
 
     // ════════════════════════════════════════════════════════════════════
     //  PUBLIC API
@@ -50,6 +59,7 @@ public class ShopPanelUI : MonoBehaviour
     public void Show()
     {
         _panelRoot.SetActive(true);
+        RefreshChestOffers();
         StartCoroutine(RefreshPricesUntilReady());
     }
 
@@ -114,7 +124,7 @@ public class ShopPanelUI : MonoBehaviour
         UiKit.Pop(card);
         var cardRt = cardImg.rectTransform;
         cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
-        cardRt.sizeDelta = new Vector2(1060, 560);
+        cardRt.sizeDelta = new Vector2(1060, 700); // 560 → 700: altta sandık şeridi
         cardRt.anchoredPosition = Vector2.zero;
 
         var title = MakeText(card, "Title", Loc.T("SHOP"), 30,
@@ -135,11 +145,88 @@ public class ShopPanelUI : MonoBehaviour
         for (int i = 0; i < packs.Length; i++)
         {
             BuildPackCard(card, packs[i], i,
-                new Vector2(startX + i * (packW + gap), -40f), new Vector2(packW, 360f));
+                new Vector2(startX + i * (packW + gap), 30f), new Vector2(packW, 360f));
         }
+
+        BuildChestStrip(card);
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
         _panelRoot.SetActive(false);
+    }
+
+    // ── Sandık teklifleri (Gold/Gem harcama yolu) ─────────────────────────
+
+    void BuildChestStrip(GameObject card)
+    {
+        var header = MakeText(card, "ChestHeader", Loc.T("CHESTS"), 20,
+            new Vector2(0.5f, 0.5f), new Vector2(400, 30), BadgeGold);
+        header.fontStyle = FontStyles.Bold;
+        header.rectTransform.anchoredPosition = new Vector2(0, -190);
+
+        long rareGold = ChestManager.Instance != null
+            ? ChestManager.Instance.GetChestGoldPrice(ChestType.Rare) : 800;
+        long epicGem = ChestManager.Instance != null
+            ? ChestManager.Instance.GetChestGemPrice(ChestType.Epic) : 25;
+
+        _rareChestBtn = BuildChestOffer(card, "btn_chest_rare",
+            Loc.T("RARE CHEST"), string.Format(Loc.T("{0} Gold"), rareGold),
+            BadgeGold, new Vector2(-215, -270),
+            () => ChestManager.Instance?.TryPurchaseChest(ChestType.Rare));
+
+        _epicChestBtn = BuildChestOffer(card, "btn_chest_epic",
+            Loc.T("EPIC CHEST"), string.Format(Loc.T("{0} Gem"), epicGem),
+            GemColor, new Vector2(215, -270),
+            () => ChestManager.Instance?.TryPurchaseChest(ChestType.Epic));
+    }
+
+    Button BuildChestOffer(GameObject parent, string name, string title, string price,
+        Color accent, Vector2 pos, System.Action onBuy)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = Color.white;
+        UiKit.Round(img, 1.4f);
+        UiKit.Gradient(img, PackBgTop, PackBg);
+        UiKit.Shadow(go, 4f, 0.4f);
+        UiKit.Stroke(go, new Color(accent.r, accent.g, accent.b, 0.45f), 1.4f);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(390, 96);
+        rt.anchoredPosition = pos;
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.colors = UiKit.ButtonColors(Color.white);
+        btn.onClick.AddListener(() => onBuy?.Invoke());
+        UiKit.Press(go);
+        UiKit.Hover(go);
+
+        var titleTxt = MakeText(go, "Title", title, 19,
+            new Vector2(0.5f, 0.5f), new Vector2(360, 28), Color.white);
+        titleTxt.fontStyle = FontStyles.Bold;
+        titleTxt.rectTransform.anchoredPosition = new Vector2(0, 16);
+
+        MakeText(go, "Price", price, 16,
+            new Vector2(0.5f, 0.5f), new Vector2(360, 24), accent)
+            .rectTransform.anchoredPosition = new Vector2(0, -18);
+
+        return btn;
+    }
+
+    /// <summary>Bakiye yetmeyen teklifin butonunu pasifleştirir (yarım harcama zaten imkânsız, bu salt UX).</summary>
+    void RefreshChestOffers()
+    {
+        var cur   = CurrencyManager.Instance;
+        var chest = ChestManager.Instance;
+        bool ready = cur != null && chest != null;
+
+        if (_rareChestBtn != null)
+            _rareChestBtn.interactable = ready
+                && cur.Get(CurrencyType.Gold) >= chest.GetChestGoldPrice(ChestType.Rare);
+        if (_epicChestBtn != null)
+            _epicChestBtn.interactable = ready
+                && cur.Get(CurrencyType.Gem) >= chest.GetChestGemPrice(ChestType.Epic);
     }
 
     /// <summary>Tek paket kartı: gradyanlı zemin, gem dairesi, miktar, ad, fiyatlı SATIN AL.</summary>

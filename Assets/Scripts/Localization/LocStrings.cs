@@ -125,6 +125,11 @@ namespace CosmicRumble.Localization
             ["POPULAR"]          = new[] { "POPÜLER", "热门", "POPULAR", "人気", "인기", "BELIEBT" },
             ["BEST VALUE"]       = new[] { "EN İYİ DEĞER", "超值", "MEJOR VALOR", "お得", "최고 가치", "BESTER WERT" },
             ["BUY"]              = new[] { "SATIN AL", "购买", "COMPRAR", "購入", "구매", "KAUFEN" },
+            ["CHESTS"]           = new[] { "SANDIKLAR", "宝箱", "COFRES", "チェスト", "상자", "TRUHEN" },
+            ["RARE CHEST"]       = new[] { "NADİR SANDIK", "稀有宝箱", "COFRE RARO", "レアチェスト", "레어 상자", "SELTENE TRUHE" },
+            ["EPIC CHEST"]       = new[] { "EPİK SANDIK", "史诗宝箱", "COFRE ÉPICO", "エピックチェスト", "에픽 상자", "EPISCHE TRUHE" },
+            ["{0} Gold"]         = new[] { "{0} Altın", "{0} 金币", "{0} de oro", "{0}ゴールド", "{0} 골드", "{0} Gold" },
+            ["{0} Gem"]          = new[] { "{0} Gem", "{0} 宝石", "{0} gemas", "{0}ジェム", "{0} 젬", "{0} Edelsteine" },
 
             // ── Leaderboard ──────────────────────────────────────────────────
             ["REFRESH"]          = new[] { "YENİLE", "刷新", "ACTUALIZAR", "更新", "새로고침", "AKTUALISIEREN" },
