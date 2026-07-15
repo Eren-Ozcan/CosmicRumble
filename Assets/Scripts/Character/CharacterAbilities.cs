@@ -354,6 +354,12 @@ public class CharacterAbilities : NetworkBehaviour
     {
         if (idx < 0 || idx >= abilitySlots.Length) return;
 
+        // Level kilidi: seçim tüm giriş yollarının (klavye ActivationKey, dokunmatik ikon)
+        // ortak boğazı olduğu için kapı buradadır. UnlockManager yoksa fail-open — bkz.
+        // AbilitySlotCatalog.IsSlotUnlocked. Online'da bu yalnızca yerel oyuncunun kendi
+        // profilini kısıtlar (ekonomi zaten client-authoritative, bkz. TODO madde 22).
+        if (!CosmicRumble.Economy.AbilitySlotCatalog.IsSlotUnlocked(idx)) return;
+
         // tümünü kapat + iptal
         for (int i = 0; i < abilitySlots.Length; i++)
         {
@@ -381,6 +387,7 @@ public class CharacterAbilities : NetworkBehaviour
     public void ConfirmSkill(int idx)
     {
         if (idx < 0 || idx >= abilitySlots.Length) return;
+        if (!CosmicRumble.Economy.AbilitySlotCatalog.IsSlotUnlocked(idx)) return;
         abilitySlots[idx]?.Confirm();
     }
 

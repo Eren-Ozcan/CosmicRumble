@@ -45,6 +45,7 @@ public class UIManager : MonoBehaviour
     public Color confirmColor = new Color(0, 1, 0, 0.5f);   // yeşil
     public Color emptyColor = new Color(1, 0, 0, 0.5f);   // kırmızı
     public Color noneColor = new Color(0, 0, 0, 0f);     // şeffaf
+    public Color lockedColor = new Color(0.12f, 0.12f, 0.16f, 0.85f); // level kilidi (koyu)
 
     private CharacterAbilities currentAb;
     private int selectedIndex = -1;
@@ -111,6 +112,18 @@ public class UIManager : MonoBehaviour
 
     private void OnSkillChanged(int slotIndex) => UpdateSlot(slotIndex);
 
+    // ── Level kilidi yardımcıları ────────────────────────────────────────
+    private static bool IsSlotLocked(int idx) =>
+        !CosmicRumble.Economy.AbilitySlotCatalog.IsSlotUnlocked(idx);
+
+    /// <summary>Seçili olmayan bir slotun "dinlenme" rengi: kilitli > stok bitti > normal.</summary>
+    private Color StockColor(int idx)
+    {
+        if (IsSlotLocked(idx)) return lockedColor;
+        int remaining = currentAb?.GetSkillRemaining(idx) ?? 0;
+        return remaining == 0 ? emptyColor : noneColor;
+    }
+
     public void ClearSkillColor(int slotIndex, bool isEmpty)
     {
         if (!IsValidSlot(slotIndex)) return;
@@ -123,6 +136,16 @@ public class UIManager : MonoBehaviour
 
         filterImages[slotIndex].gameObject.SetActive(true);
         countTexts[slotIndex].gameObject.SetActive(true);
+
+        // Level kilidi: sayaç yerine gereken seviyeyi göster, seçim highlight'ı hiç uygulanmaz
+        // (kilitli slot CharacterAbilities.SelectSkill kapısından zaten geçemez).
+        if (IsSlotLocked(slotIndex))
+        {
+            int req = CosmicRumble.Economy.AbilitySlotCatalog.GetRequiredLevel(slotIndex);
+            countTexts[slotIndex].text = req > 0 ? $"Lv{req}" : "—";
+            filterImages[slotIndex].color = lockedColor;
+            return;
+        }
 
         int left = currentAb.GetSkillRemaining(slotIndex);
         countTexts[slotIndex].text = left.ToString();
@@ -154,8 +177,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (!IsValidSlot(i)) continue;
-            int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
-            filterImages[i].color = (remaining == 0) ? emptyColor : noneColor;
+            filterImages[i].color = StockColor(i);
         }
     }
 
@@ -166,8 +188,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (!IsValidSlot(i) || i == slot) continue;
-            int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
-            filterImages[i].color = (remaining == 0) ? emptyColor : noneColor;
+            filterImages[i].color = StockColor(i);
         }
 
         // sonra hedefi sarı yap
@@ -191,8 +212,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (!IsValidSlot(i) || i == slot) continue;
-            int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
-            filterImages[i].color = (remaining == 0) ? emptyColor : noneColor;
+            filterImages[i].color = StockColor(i);
         }
 
         if (IsValidSlot(slot))
@@ -215,6 +235,7 @@ public class UIManager : MonoBehaviour
     public void OnSkillIconTapped(int idx)
     {
         if (currentAb == null) return;
+        if (IsSlotLocked(idx)) return; // kilitli slot dokunmatikten de seçilemez
 
         if (selectedIndex == idx)
             currentAb.ConfirmSkill(idx);
@@ -235,8 +256,7 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < filterImages.Length; i++)
         {
             if (!IsValidSlot(i)) continue;
-            int remaining = currentAb?.GetSkillRemaining(i) ?? 0;
-            filterImages[i].color = (remaining == 0) ? emptyColor : noneColor;
+            filterImages[i].color = StockColor(i);
         }
     }
 
