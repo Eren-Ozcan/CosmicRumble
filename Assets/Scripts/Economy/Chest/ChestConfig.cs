@@ -28,5 +28,13 @@ namespace CosmicRumble.Economy
         [Header("Kostüm drop şansı (0-1)")]
         public float rareCosstumeProbability  = 0.05f;
         public float epicCostumeProbability   = 0.15f;
+
+        [Header("Mağaza fiyatları (sandık satın alma — 0 = satılmaz)")]
+        // Fiyatlar içerik beklentisinin üstünde tutulur ki satın alma net bir para
+        // yutucusu (sink) olsun: Rare 200-400 Gold + 5 Gem döndürür, Epic 500-800 Gold
+        // + 15 Gem döndürür. Mevcut ChestConfig.asset bu alanları içermediği için
+        // Unity yüklerken buradaki varsayılanlar geçerli olur.
+        public int rareChestGoldPrice = 800;
+        public int epicChestGemPrice  = 25;
     }
 }

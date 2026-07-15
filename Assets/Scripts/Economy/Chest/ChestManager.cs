@@ -71,11 +71,55 @@ namespace CosmicRumble.Economy
             }
 
             ChestType type = RollChestType();
+
+            _data.todaysCount++;
+            Save();
+
+            GrantChestContents(type);
+        }
+
+        // ─── Mağaza satın alma (Gold/Gem harcama yolu) ────────────────────────
+
+        /// <summary>Sandığın mağaza Gold fiyatı (0 = Gold ile satılmaz).</summary>
+        public long GetChestGoldPrice(ChestType type) =>
+            type == ChestType.Rare ? (_cfg != null ? _cfg.rareChestGoldPrice : 800) : 0;
+
+        /// <summary>Sandığın mağaza Gem fiyatı (0 = Gem ile satılmaz).</summary>
+        public long GetChestGemPrice(ChestType type) =>
+            type == ChestType.Epic ? (_cfg != null ? _cfg.epicChestGemPrice : 25) : 0;
+
+        /// <summary>
+        /// Mağazadan sandık satın alma — TryGrantChest'in aksine günlük galibiyet limitine
+        /// dahil DEĞİLDİR ve onu saymaz (limit "maç kazanarak bedava sandık" hakkıdır,
+        /// satın alma ayrı bir yol). Bedel peşin düşer; bakiye yetmiyorsa hiçbir şey olmaz.
+        /// Kostüm mağazası gelene kadar ekonomideki tek Gold/Gem harcama noktası budur.
+        /// </summary>
+        public bool TryPurchaseChest(ChestType type)
+        {
+            if (CurrencyManager.Instance == null) return false;
+
+            long goldPrice = GetChestGoldPrice(type);
+            long gemPrice  = GetChestGemPrice(type);
+            if (goldPrice <= 0 && gemPrice <= 0) return false; // bu tip satılık değil
+
+            // Önce her iki bakiyeyi de doğrula, sonra düş — yarım harcama olmasın
+            if (CurrencyManager.Instance.Get(CurrencyType.Gold) < goldPrice) return false;
+            if (CurrencyManager.Instance.Get(CurrencyType.Gem)  < gemPrice)  return false;
+
+            if (goldPrice > 0 && !CurrencyManager.Instance.Spend(CurrencyType.Gold, goldPrice)) return false;
+            if (gemPrice  > 0 && !CurrencyManager.Instance.Spend(CurrencyType.Gem,  gemPrice))  return false;
+
+            GrantChestContents(type);
+            return true;
+        }
+
+        /// <summary>Sandık içeriğini üretip verir ve OnChestGranted'ı ateşler (limitten bağımsız).</summary>
+        private void GrantChestContents(ChestType type)
+        {
             long gold      = RollGold(type);
             long gem       = GetGem(type);
             string costume = TryRollCostume(type);
 
-            // Grant rewards
             if (CurrencyManager.Instance != null)
             {
                 if (gold > 0) CurrencyManager.Instance.Add(CurrencyType.Gold, gold);
@@ -84,9 +128,6 @@ namespace CosmicRumble.Economy
 
             if (!string.IsNullOrEmpty(costume) && CostumeManager.Instance != null)
                 CostumeManager.Instance.GrantCostumeById(costume);
-
-            _data.todaysCount++;
-            Save();
 
             OnChestGranted?.Invoke(type, gold, gem, costume ?? "");
 #if UNITY_EDITOR
