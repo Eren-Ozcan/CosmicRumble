@@ -68,12 +68,37 @@ namespace CosmicRumble.Economy
         {
             if (AchievementManager.Instance != null)
                 AchievementManager.Instance.OnAchievementUnlocked += OnAchievementUnlocked;
+
+            if (PlayerLevelManager.Instance != null)
+            {
+                PlayerLevelManager.Instance.OnLevelUp += OnLevelUp;
+                // UnlockManager.CatchUpToLevel ile aynı gerekçe: seviye OnLevelUp
+                // tetiklenmeden yükselmiş olabilir (cloud restore, ya da ByLevel grant'in
+                // hiç var olmadığı dönemde kazanılan seviyeler) — bir kez tarama yap.
+                GrantLevelCostumesUpTo(PlayerLevelManager.Instance.GetProgress().currentLevel);
+            }
         }
 
         private void OnDestroy()
         {
             if (AchievementManager.Instance != null)
                 AchievementManager.Instance.OnAchievementUnlocked -= OnAchievementUnlocked;
+            if (PlayerLevelManager.Instance != null)
+                PlayerLevelManager.Instance.OnLevelUp -= OnLevelUp;
+        }
+
+        private void OnLevelUp(int oldLevel, int newLevel) => GrantLevelCostumesUpTo(newLevel);
+
+        /// <summary>ByLevel kostümler seviye gelince otomatik verilir (satın alma yok, koşul salt seviye).</summary>
+        private void GrantLevelCostumesUpTo(int level)
+        {
+            if (_db == null) return;
+            foreach (var c in _db.allCostumes)
+            {
+                if (c != null && c.unlockMethod == CostumeUnlock.ByLevel
+                    && c.requiredLevel <= level && !IsOwned(c.costumeId))
+                    GrantCostume(c);
+            }
         }
 
         // ─── Public API ──────────────────────────────────────────────────────
