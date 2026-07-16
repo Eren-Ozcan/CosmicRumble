@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -6,34 +7,36 @@ using CosmicRumble.Economy;
 using CosmicRumble.Localization;
 
 /// <summary>
-/// Ana menüdeki GARDIROP butonu → sahip olunan kostümlerin paneli.
-/// Yalnızca SAHİP OLUNAN kostümler listelenir — kilitli/satın alınmamış olanlar hiç görünmez
-/// (mağaza/kilit açma ayrı iş; burası oyuncunun koleksiyonu). KARAKTER/SİLAH sekmeleri,
-/// rarity çerçeveli grid kartları; karta dokunmak kostümü kuşandırır.
-/// UiKit stiliyle (yuvarlatık kart + pill sekmeler + pop animasyonu + köşe X) programatik Canvas kurar.
+/// Ana menüdeki GARDIROP butonu → kostüm paneli. 2026-07-16 yeniden tasarımı:
+/// 5 karakter sütunu × 3 kademe (Standard/Advanced/Elite), TOPLAM 15 kostüm.
+/// Eski "yalnızca sahip olunanlar" davranışının aksine kilitli kostümler de görünür:
+/// Gold/Gem olanlar fiyat + satın alma (CostumeManager.TryPurchase, bakiye yetmiyorsa pasif),
+/// Level/Sandık/Başarım olanlar koşul etiketiyle listelenir. Sahip olunana dokunmak kuşandırır.
+/// UiKit stiliyle (yuvarlatık kart + pop animasyonu + köşe X) programatik Canvas kurar.
 /// </summary>
 public class WardrobePanelUI : MonoBehaviour
 {
     public static WardrobePanelUI Instance { get; private set; }
 
+    const int CharacterCount = 5;
+
     // ── Renk paleti (UiKit mobil teması — QuestsPanelUI ile aynı) ─────────
     static readonly Color CardBg     = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color PrimaryBtn = new Color(0.12f,  0.68f,  0.22f,  1f);
-    static readonly Color TabOff     = new Color(0.15f,  0.15f,  0.27f,  1f);
     static readonly Color CellBg     = new Color(0.11f,  0.11f,  0.21f,  1f);
+    static readonly Color CellBgLock = new Color(0.085f, 0.085f, 0.16f,  1f);
     static readonly Color EquippedGr = new Color(0.30f,  0.85f,  0.40f,  1f);
+    static readonly Color PillOff    = new Color(0.15f,  0.15f,  0.27f,  1f);
+    static readonly Color GoldCol    = new Color(1.00f,  0.72f,  0.00f,  1f);
+    static readonly Color GemCol     = new Color(0.60f,  0.85f,  1.00f,  1f);
     static readonly Color TextSec    = new Color(0.533f, 0.533f, 0.667f, 1f);
     static readonly Color StrokeCol  = new Color(1f, 1f, 1f, 0.09f);
     static readonly Color TitleGold  = new Color(1f, 0.80f, 0.20f, 1f);
-
-    CostumeType _currentTab = CostumeType.Character;
 
     // ── Referanslar ───────────────────────────────────────────────────────
     GameObject      _panelRoot;
     GameObject      _contentParent;
     TextMeshProUGUI _countText;
     TextMeshProUGUI _emptyText;
-    Button          _tabCharBtn, _tabWeaponBtn;
 
     void Awake()
     {
@@ -49,6 +52,8 @@ public class WardrobePanelUI : MonoBehaviour
             CostumeManager.Instance.OnCostumePurchased += HandleCostumeChanged;
             CostumeManager.Instance.OnCostumeEquipped  += HandleCostumeChanged;
         }
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged += HandleCurrencyChanged;
     }
 
     void OnDisable()
@@ -58,6 +63,8 @@ public class WardrobePanelUI : MonoBehaviour
             CostumeManager.Instance.OnCostumePurchased -= HandleCostumeChanged;
             CostumeManager.Instance.OnCostumeEquipped  -= HandleCostumeChanged;
         }
+        if (CurrencyManager.Instance != null)
+            CurrencyManager.Instance.OnCurrencyChanged -= HandleCurrencyChanged;
     }
 
     void OnDestroy()
@@ -67,6 +74,12 @@ public class WardrobePanelUI : MonoBehaviour
 
     void HandleCostumeChanged(CostumeDefinition def)
     {
+        if (_panelRoot != null && _panelRoot.activeSelf) Populate();
+    }
+
+    void HandleCurrencyChanged(CurrencyType type, long newBalance)
+    {
+        // Satın alınabilir kartların pasif/aktif durumu bakiyeye bağlı
         if (_panelRoot != null && _panelRoot.activeSelf) Populate();
     }
 
@@ -120,56 +133,18 @@ public class WardrobePanelUI : MonoBehaviour
 
         UiKit.CloseButton(card, Hide);
 
-        BuildTabs(card);
-
         _countText = MakeTxt(card, "CountInfo", "", 13, TextSec,
-            new Vector2(0.5f, 0.765f), new Vector2(680, 20));
+            new Vector2(0.5f, 0.855f), new Vector2(680, 20));
 
         BuildScrollView(card);
 
-        // Boş durum mesajı — grid'in DIŞINDA (GridLayoutGroup hücre boyutuna hapsetmesin)
+        // Boş durum mesajı — yalnızca veritabanı/manager yoksa (normalde 15 kostüm hep görünür)
         _emptyText = MakeTxt(card, "EmptyMsg", "", 16, TextSec,
             new Vector2(0.5f, 0.45f), new Vector2(640, 80));
         _emptyText.gameObject.SetActive(false);
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
         _panelRoot.SetActive(false);
-    }
-
-    void BuildTabs(GameObject parent)
-    {
-        float y = 0.845f;
-        _tabCharBtn   = MakeTabBtn(parent, "tab_character", Loc.T("CHARACTER"), new Vector2(0.38f, y), () => SwitchTab(CostumeType.Character));
-        _tabWeaponBtn = MakeTabBtn(parent, "tab_weapon",    Loc.T("WEAPON"),    new Vector2(0.62f, y), () => SwitchTab(CostumeType.Weapon));
-    }
-
-    Button MakeTabBtn(GameObject parent, string name, string label, Vector2 anchor, UnityEngine.Events.UnityAction cb)
-    {
-        var go  = new GameObject(name);
-        go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        UiKit.Round(img, 1.1f); // pill görünüm
-        var btn = go.AddComponent<Button>();
-        btn.targetGraphic = img;
-        btn.onClick.AddListener(cb);
-        UiKit.Press(go);
-        UiKit.Hover(go);
-        var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta        = new Vector2(164, 44);
-        rt.anchoredPosition = Vector2.zero;
-
-        var lbl = MakeTxt(go, "Lbl", label, 15, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);
-        lbl.fontStyle = FontStyles.Bold;
-        StretchFull(lbl.rectTransform);
-        return btn;
-    }
-
-    void SwitchTab(CostumeType tab)
-    {
-        AudioManager.Instance?.PlayClick();
-        _currentTab = tab;
-        Populate();
     }
 
     void BuildScrollView(GameObject parent)
@@ -184,8 +159,8 @@ public class WardrobePanelUI : MonoBehaviour
         var scrollRt = scrollGO.GetComponent<RectTransform>();
         scrollRt.anchorMin = new Vector2(0.5f, 0.5f);
         scrollRt.anchorMax = new Vector2(0.5f, 0.5f);
-        scrollRt.sizeDelta        = new Vector2(790, 420);
-        scrollRt.anchoredPosition = new Vector2(0, -70);
+        scrollRt.sizeDelta        = new Vector2(800, 470);
+        scrollRt.anchoredPosition = new Vector2(0, -45);
 
         var vpGO  = new GameObject("Viewport");
         vpGO.transform.SetParent(scrollGO.transform, false);
@@ -198,16 +173,18 @@ public class WardrobePanelUI : MonoBehaviour
         vpRt.offsetMin = vpRt.offsetMax = Vector2.zero;
         scrollRect.viewport = vpRt;
 
+        // İçerik: 5 karakter sütunu yan yana (her sütun kendi dikey grubu)
         var contentGO = new GameObject("Content");
         contentGO.transform.SetParent(vpGO.transform, false);
 
-        var grid = contentGO.AddComponent<GridLayoutGroup>();
-        grid.cellSize        = new Vector2(180, 214);
-        grid.spacing         = new Vector2(14, 14);
-        grid.padding         = new RectOffset(4, 4, 4, 4);
-        grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
-        grid.constraintCount = 4;
-        grid.childAlignment  = TextAnchor.UpperCenter;
+        var hlg = contentGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing                = 10f;
+        hlg.padding                = new RectOffset(4, 4, 4, 4);
+        hlg.childAlignment         = TextAnchor.UpperCenter;
+        hlg.childControlWidth      = false;
+        hlg.childControlHeight     = false;
+        hlg.childForceExpandWidth  = false;
+        hlg.childForceExpandHeight = false;
 
         var csf = contentGO.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -223,15 +200,13 @@ public class WardrobePanelUI : MonoBehaviour
     }
 
     // ════════════════════════════════════════════════════════════════════
-    //  POPULATE — yalnızca sahip olunan kostümler
+    //  POPULATE — 5 karakter × 3 kademe, kilitliler dahil
     // ════════════════════════════════════════════════════════════════════
 
     void Populate()
     {
         foreach (Transform child in _contentParent.transform)
             Destroy(child.gameObject);
-
-        RefreshTabHighlight();
 
         var mgr = CostumeManager.Instance;
         var db  = Resources.Load<CostumeDatabase>("Economy/CostumeDatabase");
@@ -241,28 +216,66 @@ public class WardrobePanelUI : MonoBehaviour
             if (_countText) _countText.text = "";
             return;
         }
-
-        var owned = new List<CostumeDefinition>();
-        int totalInTab = 0;
-        foreach (var c in db.allCostumes)
-        {
-            if (c == null || c.costumeType != _currentTab) continue;
-            totalInTab++;
-            if (mgr.IsOwned(c.costumeId)) owned.Add(c);
-        }
-
-        _countText.text = string.Format(Loc.T("Owned: {0} / {1}"), owned.Count, totalInTab);
-
-        if (owned.Count == 0)
-        {
-            ShowEmpty(Loc.T("You don't have any costumes in this category yet.\nEarn costumes from chests, achievements, and leveling up."));
-            return;
-        }
         _emptyText.gameObject.SetActive(false);
 
-        var equipped = mgr.GetEquipped(_currentTab);
-        foreach (var def in owned)
-            BuildCell(def, equipped != null && equipped.costumeId == def.costumeId);
+        int total = 0, ownedCount = 0;
+        foreach (var c in db.allCostumes)
+        {
+            if (c == null) continue;
+            total++;
+            if (mgr.IsOwned(c.costumeId)) ownedCount++;
+        }
+        _countText.text = string.Format(Loc.T("Owned: {0} / {1}"), ownedCount, total);
+
+        var equipped = mgr.GetEquipped(CostumeType.Character);
+
+        for (int ch = 1; ch <= CharacterCount; ch++)
+        {
+            var column = BuildColumn(ch);
+            var costumes = db.allCostumes
+                .Where(c => c != null && c.characterId == ch)
+                .OrderBy(c => c.costumeId)
+                .ToList();
+            foreach (var def in costumes)
+                BuildCell(column, def,
+                    equipped != null && equipped.costumeId == def.costumeId,
+                    mgr.IsOwned(def.costumeId));
+        }
+    }
+
+    GameObject BuildColumn(int characterIndex)
+    {
+        var col = new GameObject($"Col_Char{characterIndex}");
+        col.transform.SetParent(_contentParent.transform, false);
+
+        var vlg = col.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing                = 10f;
+        vlg.childAlignment         = TextAnchor.UpperCenter;
+        vlg.childControlWidth      = false;
+        vlg.childControlHeight     = false;
+        vlg.childForceExpandWidth  = false;
+        vlg.childForceExpandHeight = false;
+
+        var le = col.AddComponent<LayoutElement>();
+        le.preferredWidth = 150;
+
+        var csf = col.AddComponent<ContentSizeFitter>();
+        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var headGO = new GameObject("Header");
+        headGO.transform.SetParent(col.transform, false);
+        var headLe = headGO.AddComponent<LayoutElement>();
+        headLe.preferredWidth  = 150;
+        headLe.preferredHeight = 26;
+        var head = headGO.AddComponent<TextMeshProUGUI>();
+        head.text      = string.Format(Loc.T("CHARACTER {0}"), characterIndex);
+        head.fontSize  = 13;
+        head.fontStyle = FontStyles.Bold;
+        head.color     = TitleGold;
+        head.alignment = TextAlignmentOptions.Center;
+        head.overflowMode = TextOverflowModes.Ellipsis;
+
+        return col;
     }
 
     void ShowEmpty(string msg)
@@ -271,48 +284,67 @@ public class WardrobePanelUI : MonoBehaviour
         _emptyText.gameObject.SetActive(true);
     }
 
-    void RefreshTabHighlight()
-    {
-        SetTabVisual(_tabCharBtn,   _currentTab == CostumeType.Character);
-        SetTabVisual(_tabWeaponBtn, _currentTab == CostumeType.Weapon);
-    }
+    // ════════════════════════════════════════════════════════════════════
+    //  HÜCRE
+    // ════════════════════════════════════════════════════════════════════
 
-    static void SetTabVisual(Button btn, bool active)
-    {
-        if (btn == null) return;
-        var img = btn.GetComponent<Image>();
-        Color c = active ? PrimaryBtn : TabOff;
-        img.color  = c;
-        btn.colors = UiKit.ButtonColors(c);
-    }
-
-    void BuildCell(CostumeDefinition def, bool equipped)
+    void BuildCell(GameObject column, CostumeDefinition def, bool equipped, bool owned)
     {
         Color rarityCol = RarityColor(def.rarity);
 
         var cell = new GameObject($"Cell_{def.costumeId}");
-        cell.transform.SetParent(_contentParent.transform, false);
+        cell.transform.SetParent(column.transform, false);
+        var le = cell.AddComponent<LayoutElement>();
+        le.preferredWidth  = 150;
+        le.preferredHeight = 196;
+
         var bg = cell.AddComponent<Image>();
-        bg.color = CellBg;
+        bg.color = owned ? CellBg : CellBgLock;
         UiKit.Round(bg, 1.6f);
-        UiKit.Stroke(cell, equipped ? EquippedGr : new Color(rarityCol.r, rarityCol.g, rarityCol.b, 0.55f), 1.6f);
+        UiKit.Stroke(cell,
+            equipped ? EquippedGr
+                     : new Color(rarityCol.r, rarityCol.g, rarityCol.b, owned ? 0.55f : 0.22f), 1.6f);
+
+        bool purchasable = !owned &&
+            (def.unlockMethod == CostumeUnlock.ByGold || def.unlockMethod == CostumeUnlock.ByGem);
 
         var btn = cell.AddComponent<Button>();
         btn.targetGraphic = bg;
-        btn.colors = UiKit.ButtonColors(CellBg);
+        btn.colors = UiKit.ButtonColors(owned ? CellBg : CellBgLock);
         string id = def.costumeId;
-        btn.onClick.AddListener(() =>
+
+        if (owned)
         {
-            if (CostumeManager.Instance == null) return;
-            var eq = CostumeManager.Instance.GetEquipped(_currentTab);
-            if (eq != null && eq.costumeId == id) return; // zaten kuşanılı
-            AudioManager.Instance?.PlayClick();
-            CostumeManager.Instance.Equip(id); // OnCostumeEquipped → Populate
-        });
+            btn.onClick.AddListener(() =>
+            {
+                if (CostumeManager.Instance == null) return;
+                var eq = CostumeManager.Instance.GetEquipped(CostumeType.Character);
+                if (eq != null && eq.costumeId == id) return; // zaten kuşanılı
+                AudioManager.Instance?.PlayClick();
+                CostumeManager.Instance.Equip(id); // OnCostumeEquipped → Populate
+            });
+        }
+        else if (purchasable)
+        {
+            btn.onClick.AddListener(() =>
+            {
+                if (CostumeManager.Instance == null) return;
+                if (CostumeManager.Instance.TryPurchase(id)) // OnCostumePurchased → Populate
+                    AudioManager.Instance?.PlayClick();
+            });
+            btn.interactable = CostumeManager.Instance != null
+                && CostumeManager.Instance.CanPurchase(id).canUnlock;
+        }
+        else
+        {
+            btn.interactable = false; // Level/Sandık/Başarım: oynayarak kazanılır, tıklanmaz
+        }
         UiKit.Press(cell, 0.96f);
         UiKit.Hover(cell);
 
         // Önizleme: sprite varsa göster, yoksa rarity renkli daire + baş harf rozeti
+        // (kilitlilerde soluk — "henüz senin değil" hissi)
+        float previewAlpha = owned ? 1f : 0.35f;
         if (def.previewSprite != null)
         {
             var prevGO  = new GameObject("Preview");
@@ -321,6 +353,7 @@ public class WardrobePanelUI : MonoBehaviour
             prevImg.sprite         = def.previewSprite;
             prevImg.preserveAspect = true;
             prevImg.raycastTarget  = false;
+            prevImg.color          = new Color(1f, 1f, 1f, previewAlpha);
             PlacePreview(prevImg.rectTransform);
         }
         else
@@ -329,44 +362,82 @@ public class WardrobePanelUI : MonoBehaviour
             prevGO.transform.SetParent(cell.transform, false);
             var prevImg = prevGO.AddComponent<Image>();
             prevImg.sprite        = UiKit.CircleSprite;
-            prevImg.color         = rarityCol;
+            prevImg.color         = new Color(rarityCol.r, rarityCol.g, rarityCol.b, previewAlpha);
             prevImg.raycastTarget = false;
             PlacePreview(prevImg.rectTransform);
 
             string localizedName = Loc.T(def.displayName);
             string letter = string.IsNullOrEmpty(localizedName) ? "?" : localizedName.Substring(0, 1).ToUpperInvariant();
-            var lbl = MakeTxt(prevGO, "Lbl", letter, 40, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);
+            var lbl = MakeTxt(prevGO, "Lbl", letter, 34, new Color(1f, 1f, 1f, owned ? 1f : 0.5f),
+                new Vector2(0.5f, 0.5f), Vector2.zero);
             UiKit.BrawlText(lbl);
             lbl.raycastTarget = false;
             StretchFull(lbl.rectTransform);
         }
 
-        var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 14, Color.white,
-            new Vector2(0.5f, 0f), new Vector2(168, 20));
-        nameTxt.rectTransform.anchoredPosition = new Vector2(0, 74);
+        var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 13,
+            owned ? Color.white : TextSec, new Vector2(0.5f, 0f), new Vector2(140, 18));
+        nameTxt.rectTransform.anchoredPosition = new Vector2(0, 70);
         nameTxt.fontStyle     = FontStyles.Bold;
         nameTxt.raycastTarget = false;
 
-        var rarityTxt = MakeTxt(cell, "Rarity", RarityName(def.rarity), 11, rarityCol,
-            new Vector2(0.5f, 0f), new Vector2(168, 16));
-        rarityTxt.rectTransform.anchoredPosition = new Vector2(0, 54);
+        var rarityTxt = MakeTxt(cell, "Rarity", RarityName(def.rarity), 10, rarityCol,
+            new Vector2(0.5f, 0f), new Vector2(140, 14));
+        rarityTxt.rectTransform.anchoredPosition = new Vector2(0, 52);
         rarityTxt.raycastTarget = false;
 
-        // Alt pill: kuşanılı ise yeşil KUŞANILDI, değilse koyu KUŞAN (dokunma ipucu)
+        BuildStatePill(cell, def, equipped, owned, purchasable);
+    }
+
+    /// <summary>Alt pill: KUŞANILDI/KUŞAN (sahipli), fiyat (satın alınabilir) ya da kazanma koşulu.</summary>
+    void BuildStatePill(GameObject cell, CostumeDefinition def, bool equipped, bool owned, bool purchasable)
+    {
+        string label;
+        Color pillCol, lblCol = Color.white;
+
+        if (owned)
+        {
+            label   = equipped ? Loc.T("EQUIPPED") : Loc.T("EQUIP");
+            pillCol = equipped ? EquippedGr : PillOff;
+            if (equipped) lblCol = new Color(0.03f, 0.15f, 0.05f, 1f);
+        }
+        else if (purchasable && def.unlockMethod == CostumeUnlock.ByGold)
+        {
+            label   = string.Format(Loc.T("{0} Gold"), def.goldCost);
+            pillCol = new Color(GoldCol.r * 0.45f, GoldCol.g * 0.45f, GoldCol.b * 0.45f, 1f);
+            lblCol  = GoldCol;
+        }
+        else if (purchasable) // ByGem
+        {
+            label   = string.Format(Loc.T("{0} Gem"), def.gemCost);
+            pillCol = new Color(GemCol.r * 0.30f, GemCol.g * 0.30f, GemCol.b * 0.30f, 1f);
+            lblCol  = GemCol;
+        }
+        else
+        {
+            label = def.unlockMethod switch
+            {
+                CostumeUnlock.ByLevel       => string.Format(Loc.T("Lv {0}"), def.requiredLevel),
+                CostumeUnlock.ByChest       => Loc.T("Chest drop"),
+                CostumeUnlock.ByAchievement => Loc.T("Achievement reward"),
+                _                           => Loc.T("Locked"),
+            };
+            pillCol = PillOff;
+            lblCol  = TextSec;
+        }
+
         var pillGO  = new GameObject("StatePill");
         pillGO.transform.SetParent(cell.transform, false);
         var pillImg = pillGO.AddComponent<Image>();
-        pillImg.color         = equipped ? EquippedGr : TabOff;
+        pillImg.color         = pillCol;
         pillImg.raycastTarget = false;
         UiKit.Round(pillImg, 2.5f);
         var pillRt = pillImg.rectTransform;
         pillRt.anchorMin = pillRt.anchorMax = new Vector2(0.5f, 0f);
-        pillRt.sizeDelta        = new Vector2(120, 28);
-        pillRt.anchoredPosition = new Vector2(0, 20);
+        pillRt.sizeDelta        = new Vector2(132, 26);
+        pillRt.anchoredPosition = new Vector2(0, 18);
 
-        var pillLbl = MakeTxt(pillGO, "Lbl", equipped ? Loc.T("EQUIPPED") : Loc.T("EQUIP"), 12,
-            equipped ? new Color(0.03f, 0.15f, 0.05f, 1f) : Color.white,
-            new Vector2(0.5f, 0.5f), Vector2.zero);
+        var pillLbl = MakeTxt(pillGO, "Lbl", label, 11, lblCol, new Vector2(0.5f, 0.5f), Vector2.zero);
         pillLbl.fontStyle     = FontStyles.Bold;
         pillLbl.raycastTarget = false;
         StretchFull(pillLbl.rectTransform);
@@ -375,8 +446,8 @@ public class WardrobePanelUI : MonoBehaviour
     static void PlacePreview(RectTransform rt)
     {
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.sizeDelta        = new Vector2(92, 92);
-        rt.anchoredPosition = new Vector2(0, -58);
+        rt.sizeDelta        = new Vector2(80, 80);
+        rt.anchoredPosition = new Vector2(0, -52);
     }
 
     // ════════════════════════════════════════════════════════════════════
