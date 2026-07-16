@@ -251,22 +251,21 @@ public class WardrobePanelUI : MonoBehaviour
         var vlg = col.AddComponent<VerticalLayoutGroup>();
         vlg.spacing                = 10f;
         vlg.childAlignment         = TextAnchor.UpperCenter;
+        // childControl=false: layout, çocukların KENDİ RectTransform boyutunu kullanır —
+        // bu yüzden aşağıda her çocuğa sizeDelta açıkça veriliyor (LayoutElement etkisiz olurdu).
         vlg.childControlWidth      = false;
         vlg.childControlHeight     = false;
         vlg.childForceExpandWidth  = false;
         vlg.childForceExpandHeight = false;
 
-        var le = col.AddComponent<LayoutElement>();
-        le.preferredWidth = 150;
+        var colRt = col.GetComponent<RectTransform>();
+        colRt.sizeDelta = new Vector2(150, 0); // genişlik HLG için; yükseklik CSF'den
 
         var csf = col.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var headGO = new GameObject("Header");
         headGO.transform.SetParent(col.transform, false);
-        var headLe = headGO.AddComponent<LayoutElement>();
-        headLe.preferredWidth  = 150;
-        headLe.preferredHeight = 26;
         var head = headGO.AddComponent<TextMeshProUGUI>();
         head.text      = string.Format(Loc.T("CHARACTER {0}"), characterIndex);
         head.fontSize  = 13;
@@ -274,6 +273,7 @@ public class WardrobePanelUI : MonoBehaviour
         head.color     = TitleGold;
         head.alignment = TextAlignmentOptions.Center;
         head.overflowMode = TextOverflowModes.Ellipsis;
+        head.rectTransform.sizeDelta = new Vector2(150, 26);
 
         return col;
     }
@@ -294,11 +294,9 @@ public class WardrobePanelUI : MonoBehaviour
 
         var cell = new GameObject($"Cell_{def.costumeId}");
         cell.transform.SetParent(column.transform, false);
-        var le = cell.AddComponent<LayoutElement>();
-        le.preferredWidth  = 150;
-        le.preferredHeight = 196;
 
         var bg = cell.AddComponent<Image>();
+        bg.rectTransform.sizeDelta = new Vector2(150, 196); // VLG childControl=false → rect boyutu geçerli
         bg.color = owned ? CellBg : CellBgLock;
         UiKit.Round(bg, 1.6f);
         UiKit.Stroke(cell,
