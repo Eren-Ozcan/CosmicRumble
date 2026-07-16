@@ -12,6 +12,11 @@ namespace CosmicRumble.Localization
     {
         public static readonly Dictionary<string, string[]> Table = new Dictionary<string, string[]>
         {
+            // ── Costumes (15: 5 karakter × 3 kademe, 2026-07-16 yeniden tasarımı) ──
+            ["Standard"] = new[] { "Standart", "标准", "Estándar", "スタンダード", "스탠더드", "Standard" },
+            ["Advanced"] = new[] { "Gelişmiş", "进阶", "Avanzado", "アドバンス", "어드밴스드", "Fortgeschritten" },
+            ["Elite"]    = new[] { "Elit", "精英", "Élite", "エリート", "엘리트", "Elite" },
+
             // ── Achievements ─────────────────────────────────────────────────
             ["Number One"] = new[] { "Bir Numara", "第一名", "Número Uno", "ナンバーワン", "넘버원", "Nummer Eins" },
             ["Reach the top of the leaderboard"] = new[] { "Liderlik tablosunun zirvesine ulaş", "登上排行榜榜首", "Alcanza la cima de la clasificación", "リーダーボードの首位に立つ", "리더보드 1위를 달성하세요", "Erreiche die Spitze der Rangliste" },
