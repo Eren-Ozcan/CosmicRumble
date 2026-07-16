@@ -152,6 +152,40 @@ tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin
     Steamworks kurulumu.
 24. Büyüme fikirleri (spec dışı): 2v2/4 oyuncu, sezonluk lig sıfırlama, battle pass.
 
+## Kostüm Yeniden Tasarımı — 5 karakter × 3 kademe = 15 kostüm (2026-07-16, 2. tur)
+Kullanıcı kararı: 150 kostüm 15'e indirildi — 5 karakter, her birinde 3 kademe
+(Standard/Advanced/Elite). Silah kostümleri tamamen kalktı. Karakter isimleri ŞİMDİLİK JENERİK
+("Character 1..5") — gerçek isim/tema kostüm sanatı tasarlanırken verilecek (yalnız asset
+alanı, kod değişikliği gerekmez). 8 atomik commit, Editor'de canlı play-test edildi.
+
+- **Veri**: `CostumeDefinition.characterId` (1-5) eklendi; `CostumeAssetGenerator` yeniden
+  yazıldı (15 üretir + eski seti kendisi siler), 150 eski asset silinip c1_1..c5_3 üretildi.
+- **Dağılım** (kullanıcı "Gold/Gem dahil + satın alma UI" seçti): 5× Default Standard;
+  Advanced'ler ByGold 800 (c1_2) / ByChest (c2_2, c5_2 — bilinçli Uncommon, sandık filtresi
+  yalnız Common/Uncommon seçebiliyor) / ByLevel 10 (c3_2) / ByGold 1200 (c4_2); Elite'ler
+  ByLevel 20 (c1_3) / ByGem 50 (c2_3) / ByAchievement EFSANE (c3_3, Legendary) /
+  ByGem 80 (c4_3) / ByLevel 35 (c5_3). Böylece 15 kostümün TAMAMI bugün fiilen kazanılabilir.
+- **Başarım temizliği**: 12 başarımın `rewardCostumeId`'si silinen id'lere işaret ediyordu
+  (sessiz no-op olurdu) — EFSANE → c3_3'e bağlandı, kalan 11 temizlendi.
+- **ByLevel kostüm auto-grant**: `CostumeManager` artık `OnLevelUp` + Start'ta catch-up
+  taraması yapıyor (UnlockManager deseni) — önceden ByLevel kostümler hiç verilemiyordu.
+- **Gardırop yeniden yazıldı**: KARAKTER/SİLAH sekmeleri yerine 5 karakter sütunu × 3 kademe;
+  kilitli kostümler artık GÖRÜNÜR — Gold/Gem olanlar fiyat pill'i + doğrudan satın alma
+  (`TryPurchase`, bakiye yetmezse pasif, `OnCurrencyChanged` ile tazelenir), Level/Sandık/
+  Başarım olanlar koşul etiketi. Bir layout bug'ı bulundu ve düzeltildi: `childControl=false`
+  layout grubu `LayoutElement`'ı yok sayıp RectTransform boyutunu okur — hücreler 100×100
+  varsayılanında kalmıştı, sizeDelta açıkça verildi.
+- **Loc**: 15 kostüm ismi + koşul etiketleri 7 dilde — "150 kostüm ismi çevrilmedi" backlog
+  kalemi geçersizleşti (yeni set tam çevirili çıkıyor).
+- **Play-test (Editor, misafir Lv22 profili)**: 15 kostüm doğru veriyle listelendi; defaults
+  (5) + ByLevel catch-up (c3_2, c1_3) = 7 sahipli açılış; c1_2 satın alma −800 Altın ve
+  kuşanma çalıştı; c2_3 (50 Gem, bakiye yetersiz) pasif; sayaç 8/15; konsolda yalnız bilinen
+  zararsız hatalar (NGO stop-play temizliği, Coplay screenshot artefaktı).
+- **Kalan**: kostüm sprite'ları hâlâ placeholder (renk+harf); kuşanılan kostümün oyun içi
+  karakter görünümüne yansıması hâlâ bağlı değil — ikisi tek iş olarak kostüm sanatıyla
+  birlikte yapılacak (artık 150 değil yalnız 15 görsel gerekiyor). Eski oyuncu save'lerindeki
+  c001/c002 id'leri zararsız (IsOwned listede kalır, db'de bulunamaz, hiçbir yol patlamaz).
+
 ## Sistem Bağlantı Geçişi — progression/ekonomi zinciri (2026-07-16)
 "Ana fikirden sapma / mantık hatası" kontrolünde bulunan kopukluklar: oyunun üç progression
 sistemi veri tarafında tamamdı ama oynanışa hiç bağlanmamıştı. Bu geçişte düzeltilenler
