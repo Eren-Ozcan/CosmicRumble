@@ -47,6 +47,12 @@ Store listing, feature graphic, ikon, ekran görüntüsü gibi pazarlama görsel
 2. Private yedek repo: `C:\Projects\pictures\CosmicRumble\` (private `Eren-Ozcan/pictures`
    reposunun yerel clone'u) — oraya kopyalanıp o repoda commit+push edilir.
 
+## Stüdyo geneli bilgiler
+
+Google hesabı, Play Console geliştirici hesabı, yilkgames.com/yilkgames_web durumu
+gibi stüdyo geneli (bu oyuna özel olmayan) sorular için `C:\Projects\pictures\STUDIO.md`
+tek kaynak — burada tekrarlanmaz.
+
 ## Commit Alışkanlığı
 Commit atmak önemli — kullanıcı GitHub profilinin aktif/kalabalık görünmesini istiyor. Buna göre:
 - Anlamlı her adımdan sonra ayrı ayrı commit at (tek dev seansında birden fazla iş kalemi varsa,
