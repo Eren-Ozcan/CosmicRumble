@@ -38,6 +38,15 @@ Assets/Scripts/
 ## Backlog
 Ertelenen işler (kostümler, quest içeriği, ses içeriği, multiplayer, tam tuş rebinding, cloud save vb.) için `TODO.md`'ye bak.
 
+## Store / Pazarlama Görselleri
+
+Store listing, feature graphic, ikon, ekran görüntüsü gibi pazarlama görselleri
+**asla bu public repo'ya commit edilmez**. İki yere kaydedilir:
+
+1. Yerel, gitignore'lu kopya: `docs/store-assets-originals/`.
+2. Private yedek repo: `C:\Projects\pictures\CosmicRumble\` (private `Eren-Ozcan/pictures`
+   reposunun yerel clone'u) — oraya kopyalanıp o repoda commit+push edilir.
+
 ## Commit Alışkanlığı
 Commit atmak önemli — kullanıcı GitHub profilinin aktif/kalabalık görünmesini istiyor. Buna göre:
 - Anlamlı her adımdan sonra ayrı ayrı commit at (tek dev seansında birden fazla iş kalemi varsa,
