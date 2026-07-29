@@ -20,9 +20,9 @@ public class DestructiblePlanet : MonoBehaviour
 
     [Header("Collider Performance")]
     [Tooltip("Collider'ın alfa hattı bu kadar küçültülmüş bir texture'dan üretilir (görsel etkilenmez, " +
-             "yalnızca fizik şekli). 8 => 1280px bir gezegen 160px'ten üretilir; patlama başına maliyeti " +
-             "~kare oranında düşürür (ölçüldü: 1280px'te 8x ile patlama başına ~4-7ms, bkz. " +
-             "RebuildColliderFromAlpha). Karakter ölçeğinde collider hassasiyeti kaybı fark edilmez.")]
+             "yalnızca fizik şekli). 8 => 1280px bir gezegen 160px'ten üretilir; Sprite.Create'in tam " +
+             "çözünürlükte taraması yerine küçük texture üzerinde çalışır (bkz. RebuildColliderFromAlpha). " +
+             "Karakter ölçeğinde collider hassasiyeti kaybı fark edilmez.")]
     [Range(1, 12)]
     public int physicsDownsampleFactor = 8;
 
@@ -31,6 +31,7 @@ public class DestructiblePlanet : MonoBehaviour
     private Color32[] pixels;   // runtimeTex ile birebir aynalanan, GetPixel/SetPixel yerine dizi üzerinden mutasyona uğrayan buffer
     private PolygonCollider2D poly;
     private float ppu; // pixels per unit
+    private Texture2D _physTexCache; // RebuildColliderFromAlpha'nın tekrar kullandığı downsample texture'ı
 
     // Çekirdek dışındaki (yıkılabilir) piksel sayısı — sıfıra inince gezegen "tamamen yok edilmiş" sayılır.
     private int nonCorePixelsRemaining = -1;
@@ -87,6 +88,11 @@ public class DestructiblePlanet : MonoBehaviour
 
         // 5) Çekirdek dışındaki yıkılabilir piksel sayısını hesapla (achievement/quest için)
         nonCorePixelsRemaining = CountNonCorePixels();
+    }
+
+    private void OnDestroy()
+    {
+        if (_physTexCache != null) Destroy(_physTexCache);
     }
 
     /// <summary>
@@ -260,8 +266,8 @@ public class DestructiblePlanet : MonoBehaviour
     /// Collider'ı, tam çözünürlüklü runtimeTex yerine physicsDownsampleFactor kadar küçültülmüş
     /// tek seferlik bir yardımcı texture'dan üretir. Unity'nin generateFallbackPhysicsShape alfa-hattı
     /// taraması maliyeti texture piksel sayısıyla orantılı olduğundan (ölçüldü: 1280x1280'de patlama
-    /// yarıçapından bağımsız ~90-140ms), 8x küçültme (160x160) bunu ~90-140ms'den ~4-7ms'ye düşürür
-    /// (ölçüldü). Küçültülmüş sprite'ın pixelsPerUnit'i de aynı oranda küçültülüyor (ppu/factor)
+    /// yarıçapından bağımsız ~90-140ms), 8x küçültme (160x160) bunu belirgin şekilde düşürür.
+    /// Küçültülmüş sprite'ın pixelsPerUnit'i de aynı oranda küçültülüyor (ppu/factor)
     /// — bu sayede GetPhysicsShape'in döndürdüğü noktalar otomatik olarak tam çözünürlüklü sprite'ın
     /// üreteceğiyle AYNI local-unit uzayına düşer, elle ölçekleme gerekmez. Görsel kaliteyi etkilemez
     /// (sr.sprite/runtimeTex bu metoda hiç dokunulmaz) — yalnızca collider'ın köşe hassasiyeti
@@ -275,20 +281,50 @@ public class DestructiblePlanet : MonoBehaviour
         int smallW = Mathf.Max(1, w / factor);
         int smallH = Mathf.Max(1, h / factor);
 
+        // Blok içinde TEK pikseli örnekleyip (nearest-neighbor) o pikseli şeffaf yakalarsa,
+        // downsample edilmiş collider görsel siluetin İÇİNE çöker — karakter fiziksel olarak
+        // görsel yüzeyin biraz üstünde durur ("yere tam değmiyor"). Bunun yerine blok içindeki
+        // pikselleri OR'layıp (herhangi biri opak ise sonuç opak) collider'ı asla görselden
+        // küçük üretme: en kötü ihtimalle collider görselden biraz büyük olur (karakter yüzeye
+        // tam basar), asla küçük olup boşlukta durmaz.
         var smallPixels = new Color32[smallW * smallH];
         for (int sy = 0; sy < smallH; sy++)
         {
-            int sourceY = Mathf.Min(sy * factor, h - 1);
-            int sourceRowBase = sourceY * w;
             int destRowBase = sy * smallW;
+            int srcYStart = sy * factor;
+            int srcYEnd = Mathf.Min(srcYStart + factor, h);
             for (int sx = 0; sx < smallW; sx++)
             {
-                int sourceX = Mathf.Min(sx * factor, w - 1);
-                smallPixels[destRowBase + sx] = pixels[sourceRowBase + sourceX];
+                int srcXStart = sx * factor;
+                int srcXEnd = Mathf.Min(srcXStart + factor, w);
+
+                byte maxAlpha = 0;
+                for (int yy = srcYStart; yy < srcYEnd && maxAlpha == 0; yy++)
+                {
+                    int rowBase = yy * w;
+                    for (int xx = srcXStart; xx < srcXEnd; xx++)
+                    {
+                        if (pixels[rowBase + xx].a != 0)
+                        {
+                            maxAlpha = 255;
+                            break;
+                        }
+                    }
+                }
+
+                smallPixels[destRowBase + sx] = new Color32(255, 255, 255, maxAlpha);
             }
         }
 
-        var physTex = new Texture2D(smallW, smallH, TextureFormat.RGBA32, false);
+        // Texture2D her patlamada yeniden Instantiate/Destroy edilmek yerine boyutu sabit
+        // olduğundan (factor runtime'da değişmiyor) tek sefer oluşturulup yeniden kullanılır —
+        // GC baskısını azaltır.
+        if (_physTexCache == null || _physTexCache.width != smallW || _physTexCache.height != smallH)
+        {
+            if (_physTexCache != null) Destroy(_physTexCache);
+            _physTexCache = new Texture2D(smallW, smallH, TextureFormat.RGBA32, false);
+        }
+        var physTex = _physTexCache;
         physTex.SetPixels32(smallPixels);
         physTex.Apply();
 
@@ -316,8 +352,9 @@ public class DestructiblePlanet : MonoBehaviour
             poly.SetPath(i, path);
         }
 
+        // physTex artık _physTexCache üzerinden yeniden kullanılıyor — burada Destroy EDİLMEZ
+        // (aksi halde bir sonraki patlamada boş bir texture referansı kalır).
         Destroy(physSprite);
-        Destroy(physTex);
     }
 
     private void ApplyExplosionForce(Vector2 worldPos, float radiusWorld, float forceStrength)
