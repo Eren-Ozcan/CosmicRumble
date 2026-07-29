@@ -90,7 +90,7 @@ MonoBehaviour:
   planetDamageRadius: 0.6
   planetDamageForce: 2
   planetDamageMultiplier: 1
-  useElongatedPlanetDamage: 1
+  useElongatedPlanetDamage: 0
   ovalLength: 6
   ovalWidth: 3
   ovalStamps: 7
