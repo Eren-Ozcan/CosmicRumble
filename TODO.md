@@ -186,6 +186,38 @@ alanı, kod değişikliği gerekmez). 8 atomik commit, Editor'de canlı play-tes
   birlikte yapılacak (artık 150 değil yalnız 15 görsel gerekiyor). Eski oyuncu save'lerindeki
   c001/c002 id'leri zararsız (IsOwned listede kalır, db'de bulunamaz, hiçbir yol patlamaz).
 
+### Tema/Konsept Kararı — "Galaktik Şov Arenası" (2026-07-30)
+Kullanıcıyla tür pazar araştırması (Worms-tarzı artillery oyunları, Brawl Stars skin ekonomisi,
+2026 mobil oyun trendleri) yapılıp jenerik "Character 1..5" için tema seçildi. Kod tarafında
+DEĞİŞİKLİK YAPILMADI — bu yalnızca sanat/isimlendirme pası başladığında kullanılacak referans karar.
+
+- **Konsept**: "Galactic Rumble Show" — gezegenler arası, televizyona/yayına açık bir arena şovu.
+  Karakterler bu şovun ünlü yarışmacıları/kontestanları, silahlar sahne gösterisinin parçası
+  (RPG=roket şov, BlackHole=finale efekti), yıkılan gezegenler = sahne dekoru. Ton: Brawl Stars'ın
+  renkli/eğlenceli/spektakl öncelikli havasıyla tutarlı (UI tasarım tercihiyle örtüşüyor,
+  bkz. memory `ui-design-preferences`).
+- **5 karakter kozmetik-only olduğu doğrulandı** (`CostumeDefinition.characterId` yalnızca görsel
+  skin hattı — silah/yetenek seçimiyle bağlı değil, her oyuncu 9 silahın hepsini level'a göre
+  açıyor). Bu yüzden karakter kimlikleri persona/görsel motif olarak tasarlandı, belirli bir
+  silaha kilitlenmedi. Mevcut 16 kozmik avatar ismiyle (Nova, Pulsar, Comet... — profil ikonu
+  sistemi, ayrı) çakışmasın diye karakterlere farklı isimler seçildi (Nova ismi kasıtlı olarak
+  her iki sistemde de var — ana maskot karakteri, marka tutarlılığı için):
+  1. **Nova** — karizmatik şov lideri/maskot (parlak, ateşli, altın/kırmızı)
+  2. **Blitz** — hızlı/enerjik akrobat (neon mavi, elektrik efektleri)
+  3. **Titan** — ağır/zırhlı güç gösterisi (metalik gri, kaba hatlar)
+  4. **Scope** — soğukkanlı keskin nişancı (minimal, teknik, koyu yeşil)
+  5. **Vex** — gizemli kontrol ustası (mor/siyah, kara delik motifleri)
+- **Kademe adları** (mevcut Standard/Advanced/Elite unlock mantığına birebir oturuyor, kod
+  değişikliği gerektirmez — yalnız `displayName`/loc string'leri): **Çaylak → Yıldız → Efsane**
+  (Rookie → Star → Legend).
+- **Ertelenen alternatifler** (kullanıcı reddetmedi, kayıt için): Uzay Kaçakları/Ödül Avcıları
+  (daha gritty/sinematik ton — mevcut renkli UI hedefiyle gerilir), Yıldız Türleri/alien
+  faction roster (lore-ağır, üretim maliyeti daha yüksek — 5 tamamen farklı tür sprite'ı),
+  Kozmik Spor Ligi (forma-tarzı kostüm üretimi ucuz ama daha jenerik/az özgün).
+- **Sıradaki adım**: bu isim/persona kararı `CostumeAssetGenerator`/`CostumeDatabase`'e
+  (madde 9) ve gerçek sprite üretimine (madde 9'daki askıya alınmış görsel üretim sorunu)
+  geçildiğinde temel referans olarak kullanılacak — henüz uygulanmadı.
+
 ## Sistem Bağlantı Geçişi — progression/ekonomi zinciri (2026-07-16)
 "Ana fikirden sapma / mantık hatası" kontrolünde bulunan kopukluklar: oyunun üç progression
 sistemi veri tarafında tamamdı ama oynanışa hiç bağlanmamıştı. Bu geçişte düzeltilenler
