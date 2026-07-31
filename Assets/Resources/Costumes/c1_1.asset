@@ -15,7 +15,7 @@ MonoBehaviour:
   costumeId: c1_1
   displayName: Standard
   characterId: 1
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: 3baf19f22e1c4c71a0f4b9f1bf9628b8, type: 3}
   costumeType: 0
   rarity: 0
   theme: 9

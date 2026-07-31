@@ -15,7 +15,7 @@ MonoBehaviour:
   costumeId: c1_3
   displayName: Elite
   characterId: 1
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: c780556a39204f9d8ff499d47bcc1064, type: 3}
   costumeType: 0
   rarity: 3
   theme: 9

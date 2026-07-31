@@ -15,7 +15,7 @@ MonoBehaviour:
   costumeId: c2_2
   displayName: Advanced
   characterId: 2
-  previewSprite: {fileID: 0}
+  previewSprite: {fileID: 21300000, guid: 2a473a413ee34c8c88e000a1dbd78862, type: 3}
   costumeType: 0
   rarity: 1
   theme: 9
