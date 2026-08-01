@@ -1,102 +1,108 @@
-# CosmicRumble — Görsel Üretim Master Prompt (v2)
+# CosmicRumble — Art Generation Master Prompt (v2)
 
-> v1'den farkı: Coplay (paralı) çıkarıldı — tüm promptlar araç bağımsız yazıldı ve ücretsiz
-> araçlarla çalışacak şekilde negative prompt + tutarlılık teknikleri eklendi. Base karakter
-> tasarımı netleştirildi: **tür-nötr maskot astronot** (insan/hayvan/böcek değil). Kostüm
-> üretimi hue-shift ekonomisiyle yeniden planlandı, öncelik sırası değişti (önce base karakter).
+> Difference from v1: Coplay (paid) was dropped — all prompts are written tool-agnostically and
+> negative-prompt + consistency techniques were added so they work with free tools. The base
+> character design was nailed down: **species-neutral mascot astronaut** (not human/animal/insect).
+> Costume production was re-planned around hue-shift economics, and the priority order changed
+> (base character first).
 
 ---
 
-## 0. Bu Doküman Nasıl Kullanılır
+## 0. How to Use This Document
 
-1. Görsel üretim aracına önce **Bölüm 1**'i (oyun context'i) ver — araç "neden böyle" sorusunun
-   cevabını bilsin.
-2. Her üretimde **Bölüm 2.1** stil bloğunu prompta ekle; araç destekliyorsa **Bölüm 2.2**
-   negative bloğunu da ekle.
-3. İlk iş **Bölüm 3** (base karakter). Base onaylanmadan başka hiçbir şey üretme — kostümler,
-   ikonlar, avatarlar hepsi base'in şekil dilinden türeyecek.
-4. Kostümlerde **Bölüm 4.3**'teki üretim stratejisine uy: Common/Uncommon'ların çoğu üretim
-   değil, hue-shift/katman işi.
+1. Give the art tool **Section 1** first (the game context) — the tool should know the answer to
+   "why is it like this".
+2. Add the **Section 2.1** style block to every prompt; if the tool supports it, add the
+   **Section 2.2** negative block too.
+3. First task is **Section 3** (base character). Produce nothing else until the base is approved —
+   costumes, icons and avatars will all derive from the base's shape language.
+4. For costumes, follow the production strategy in **Section 4.3**: most Common/Uncommon items are
+   not generation work, they are hue-shift/layer work.
 
-### 0.1 Araç seçimi (ücretsiz seçenekler)
+### 0.1 Tool selection (free options)
 
-Coplay kullanılmayacak (ücretli). Ücretsiz katmanı olan alternatifler (erişim/fiyat koşulları
-zamanla değişebilir, kullanmadan önce doğrula):
+Coplay will not be used (paid). Alternatives with a free tier (access/pricing terms may change over
+time, verify before using):
 
-- **Bing / Microsoft Copilot Designer (DALL·E)** — tamamen ücretsiz, günlük "boost" limiti var.
-  Negative prompt desteklemez; istenmeyenleri pozitif promptta "no ..." olarak yaz.
-- **Leonardo.ai** — günlük ücretsiz token; img2img + reference image destekler (tutarlılık için
-  en kullanışlısı).
-- **Ideogram / Recraft** — ücretsiz katman; Recraft "vector/flat" stilinde bu projeye çok uygun
-  çıktı verir.
-- **Stable Diffusion (yerel, ör. A1111/ComfyUI)** — tamamen ücretsiz ve sınırsız; ControlNet ile
-  aynı silüet üzerine kostüm giydirmek (Bölüm 4.3) en sağlıklı burada çalışır. GPU ister.
+- **Bing / Microsoft Copilot Designer (DALL·E)** — completely free, has a daily "boost" limit.
+  Doesn't support negative prompts; write unwanted elements into the positive prompt as "no ...".
+- **Leonardo.ai** — daily free tokens; supports img2img + reference images (the most useful one for
+  consistency).
+- **Ideogram / Recraft** — free tier; Recraft's "vector/flat" style produces output that fits this
+  project very well.
+- **Stable Diffusion (local, e.g. A1111/ComfyUI)** — completely free and unlimited; dressing the
+  same silhouette in costumes via ControlNet (Section 4.3) works most reliably here. Requires a GPU.
 
-### 0.2 Karakter tutarlılığı (150 kostümün aynı karaktere ait görünmesi)
+### 0.2 Character consistency (making 150 costumes look like the same character)
 
-- Base karakter onaylanınca **1 adet referans PNG** sabitlenir (`Assets/Art/Reference/base_mascot.png`).
-- Sonraki tüm karakter üretimlerinde bu görsel **img2img / image reference** girdisi olarak verilir
-  (Leonardo "Image Guidance", SD "img2img/ControlNet lineart", Copilot'ta mümkün değil — Copilot'u
-  yalnız ikonlar/gezegenler gibi silüet bağımsız işlerde kullan).
-- Prompta her seferinde şu cümle eklenir:
+- Once the base character is approved, **one reference PNG** is locked in
+  (`Assets/Art/Reference/base_mascot.png`).
+- All subsequent character generations feed this image as an **img2img / image reference** input
+  (Leonardo "Image Guidance", SD "img2img/ControlNet lineart"; not possible in Copilot — use Copilot
+  only for silhouette-independent work like icons/planets).
+- Add this sentence to the prompt every time:
   `same character as the reference image, identical silhouette, identical helmet and eyes, only the costume/outfit changes`
-- Denominasyon: her üretimden 4+ varyant al, en tutarlı olanı seç, gerekirse Krita/GIMP/Photopea
-  (ücretsiz) ile küçük rötuş yap.
+- Selection: take 4+ variants from each generation, pick the most consistent one, and if needed do
+  small touch-ups in Krita/GIMP/Photopea (free).
 
-### 0.3 Post-process boru hattı (her asset için)
+### 0.3 Post-process pipeline (for every asset)
 
-1. Arka planı temizle (üretim aracı şeffaf vermezse: Photopea / rembg / birdsiz ücretsiz bg-removal).
-2. Kenar temizliği: outline dışında yarı saydam piksel artığı kalmasın (Unity'de beyaz hale yapar).
-3. Boyutlandır (Bölüm 0.4) ve `Assets/Art/Sprites/...` altına adlandırma şemasıyla koy
-   (kostüm: `costume_{id}.png`, avatar: `avatar_{id}.png`, ikon: `icon_{ad}.png`).
-4. Unity import: Sprite (2D and UI) · PPU tüm oyun sprite'larında **100** (UI ikonları serbest) ·
-   karakter pivot = **Bottom Center** (radyal hizalama kafayı gezegen merkezinden dışarı bakacak
-   şekilde döndürürken ayak yüzeye oturur) · tüm kostüm/ikon/avatarlar tek Sprite Atlas'ta.
+1. Clean up the background (if the generation tool doesn't output transparency: Photopea / rembg /
+   any free bg-removal tool).
+2. Edge cleanup: no semi-transparent pixel residue outside the outline (Unity turns it into a white
+   halo).
+3. Resize (Section 0.4) and place under `Assets/Art/Sprites/...` using the naming scheme
+   (costume: `costume_{id}.png`, avatar: `avatar_{id}.png`, icon: `icon_{name}.png`).
+4. Unity import: Sprite (2D and UI) · PPU **100** for all in-game sprites (UI icons are free-form) ·
+   character pivot = **Bottom Center** (radial alignment rotates the head to face outward from the
+   planet center while the feet stay planted on the surface) · all costumes/icons/avatars in a
+   single Sprite Atlas.
 
-### 0.4 Hedef çözünürlükler
+### 0.4 Target resolutions
 
-| Asset | Üretim | Oyun içi |
+| Asset | Generation | In-game |
 |---|---|---|
-| Base karakter & kostüm (character) | 1024×1024 | ~512px boy |
-| Kostüm (weapon) | 1024×1024 | ~256–384px en |
+| Base character & costume (character) | 1024×1024 | ~512px tall |
+| Costume (weapon) | 1024×1024 | ~256–384px wide |
 | Avatar | 512×512 | 256×256 |
-| Silah/yetenek HUD ikonu | 512×512 | 128–256 |
-| Gezegen | 2048×2048 | 1024+ (ekranın 1/3'ü, yakınlaşma yok) |
-| UI/ekonomi ikonları | 512×512 | 128–256 |
+| Weapon/ability HUD icon | 512×512 | 128–256 |
+| Planet | 2048×2048 | 1024+ (1/3 of the screen, no zoom) |
+| UI/economy icons | 512×512 | 128–256 |
 
 ---
 
-## 1. Oyun Nasıl Bir Şey (context — üretim aracına önce bunu ver)
+## 1. What Kind of Game This Is (context — give this to the art tool first)
 
-**Tek cümlede:** Küçük, yumruk büyüklüğünde yuvarlak gezegenlerin üzerinde oyuncuların sırayla
-birbirine ateş ettiği, Worms + Angry Birds Space + Brawl Stars karışımı gibi hissettiren, komik
-ve renkli bir mobil arena dövüş oyunu.
+**In one sentence:** A funny, colorful mobile arena combat game where players take turns shooting
+at each other on top of small, fist-sized round planets, feeling like a mix of Worms + Angry Birds
+Space + Brawl Stars.
 
-**Sahne (kamera/ölçek):** Kamera sabit, yandan; tüm gezegen ve karakterler aynı anda ekranda.
-Ortada küçük bir gezegen (ekranın ~1/4–1/3'ü), üzerinde minik ama iri kafalı karakterler; arka
-planda derin uzay + yıldızlar + uzak gezegen siluetleri. Karakterler gezegenin eğri yüzeyine
-yapışık durur, kafaları hep gezegen merkezinden dışarı bakar — **karşılıklı iki karakter
-birbirine baş aşağı görünebilir.** Bu, oyunun imza görseli ve tüm karakter tasarımını belirleyen
-kısıt: **siluet her açıda, ters çevrilmiş halde bile okunmalı.**
+**Scene (camera/scale):** Camera is fixed, side-on; the whole planet and all characters are on
+screen at once. A small planet in the center (~1/4–1/3 of the screen), with tiny but big-headed
+characters on it; deep space + stars + distant planet silhouettes in the background. Characters
+stick to the planet's curved surface, their heads always facing outward from the planet's center —
+**two opposing characters can appear upside down relative to each other.** This is the game's
+signature visual and the constraint that defines all character design: **the silhouette must read
+from every angle, even flipped upside down.**
 
-**Ton:** Komik, oyuncak gibi, çocuksu-enerjik. Asla gerçekçi/kanlı/karanlık değil. Patlamalar
-büyük ve gösterişli ama çizgi film usulü ("hasar aldım ama sersemledim" — kan yok, is karası ve
-şaşkın gözler var). Palet: doygun şekerleme tonları — neon mor/camgöbeği uzay + sıcak
-turuncu/sarı patlama. Asla gri-kahve realistik askeri palet değil.
+**Tone:** Funny, toylike, childlike-energetic. Never realistic/bloody/dark. Explosions are big and
+flashy but cartoon-style ("I took damage and got dazed" — no blood, just soot smudges and dizzy
+eyes). Palette: saturated candy tones — neon purple/cyan space + warm orange/yellow explosions.
+Never a gray-brown realistic military palette.
 
-**Referans oyunlar:** Brawl Stars (karakter oranları + UI — projenin UI'sı gerçek BS ekran
-görüntüleriyle birebir kıyaslanarak onaylandı: koyu antrasit paneller, Titan One font, kalın
-outline'lı beyaz başlıklar, sarı vurgular), Worms (silah çeşitliliği + yıkılabilir zemin +
-mizah), Angry Birds Space (küçük yuvarlak gezegen yerçekimi hissi), Clash Royale / King of
-Thieves (mobil f2p meta-ekonomi hissi).
+**Reference games:** Brawl Stars (character proportions + UI — the project's UI was approved by
+comparing it one-to-one against real BS screenshots: dark anthracite panels, Titan One font, thick
+outlined white headings, yellow highlights), Worms (weapon variety + destructible terrain + humor),
+Angry Birds Space (small round planet gravity feel), Clash Royale / King of Thieves (mobile f2p
+meta-economy feel).
 
-**Oynanış:** Sıra tabanlı; mermi custom yerçekimiyle gezegenin etrafında eğri yörünge çizer
-(gezegenin arkasına dolanabilir), isabet eden yüzey parça parça yok olur (destructible küre).
-Silahlar: Pistol, Shotgun, RPG, Grenade, Bomb. Yetenekler: BlackHole, Teleport, Shield,
-BatHammer, SuperJump. Meta: seviye/prestij, Gold/Gem, 150 kozmetik kostüm, 50 başarım,
-görevler, sandıklar, leaderboard, arkadaşlar, 7 dil. Platform: Android → iOS.
+**Gameplay:** Turn-based; projectiles trace curved trajectories around the planet with custom
+gravity (they can wrap around behind the planet), and the impacted surface is destroyed piece by
+piece (destructible sphere). Weapons: Pistol, Shotgun, RPG, Grenade, Bomb. Abilities: BlackHole,
+Teleport, Shield, BatHammer, SuperJump. Meta: level/prestige, Gold/Gem, 150 cosmetic costumes, 50
+achievements, quests, chests, leaderboard, friends, 7 languages. Platform: Android → iOS.
 
-**Mood-board anahtar kelimeleri:**
+**Mood-board keywords:**
 
 ```
 tiny round cartoon planet, whimsical space arena battle, toylike chibi space creature warriors,
@@ -107,9 +113,9 @@ family-friendly cartoon violence
 
 ---
 
-## 2. Evrensel Stil Blokları
+## 2. Universal Style Blocks
 
-### 2.1 Pozitif stil bloğu — HER prompta ekle
+### 2.1 Positive style block — add to EVERY prompt
 
 ```
 chunky cartoon mobile game art style, thick bold dark outlines, flat saturated vibrant colors,
@@ -119,7 +125,7 @@ capsules, no sharp realistic detail), centered composition, transparent backgrou
 high-quality 2D game asset, no text, no watermark
 ```
 
-### 2.2 Negative prompt bloğu — araç destekliyorsa ekle
+### 2.2 Negative prompt block — add if the tool supports it
 
 ```
 photorealistic, realistic human anatomy, painterly soft rendering, gritty, grimdark, blood, gore,
@@ -128,51 +134,56 @@ military camouflage realism, muddy desaturated colors, thin delicate limbs, tiny
 watermark, signature, frame, border
 ```
 
-(Negative prompt almayan araçlarda — ör. Copilot Designer — kritik olanları pozitif prompta
-"no photorealism, no text, no background" olarak ekle.)
+(On tools that don't accept negative prompts — e.g. Copilot Designer — add the critical ones to the
+positive prompt as "no photorealism, no text, no background".)
 
-### 2.3 Şekil dili kuralı (tüm assetler için tasarım pusulası)
+### 2.3 Shape language rule (the design compass for all assets)
 
-Oyunun her görseli aynı geometriden türer: **daire**. Gezegen yuvarlak → kask yuvarlak → gövde
-kapsül → patlama yuvarlak → avatar çerçevesi yuvarlak. Sivri/gerçekçi detay yalnız rarity
-yükseldikçe ve ölçülü girer (Epic/Legendary siluet parçaları). Bir asset dairelerle
-kurulamıyorsa stile aykırıdır, yeniden tasarla.
+Every visual in the game derives from the same geometry: the **circle**. Planet round → helmet round
+→ body capsule → explosion round → avatar frame round. Sharp/realistic detail enters only as rarity
+increases, and in moderation (Epic/Legendary silhouette pieces). If an asset can't be built out of
+circles, it's off-style — redesign it.
 
 ---
 
-## 3. Base Karakter — "Maskot Astronot" (ÖNCE BU; her şey bunun üzerine)
+## 3. Base Character — "Mascot Astronaut" (DO THIS FIRST; everything builds on it)
 
-### 3.1 Tasarım kararı ve gerekçesi
+### 3.1 Design decision and rationale
 
-Karakter **insan değil, hayvan değil, böcek değil** — türü kasten belirsiz, yuvarlak cam kasklı,
-tombul bir **maskot astronot yaratık**. Kaskın içinde yalnız iki kocaman göz görünür (burun,
-ağız, saç, ten yok).
+The character is **not human, not animal, not insect** — it's a deliberately species-ambiguous,
+chubby **mascot astronaut creature** with a round glass helmet. Only two huge eyes are visible
+inside the helmet (no nose, mouth, hair or skin).
 
-Gerekçe (üretim aracına da verilebilir, "neden" sorusunun cevabı):
+Rationale (can also be given to the art tool as the answer to "why"):
 
-1. **360° okunabilirlik:** Karakter gezegenin altında baş aşağı da durur. Yuvarlak kask + kapsül
-   gövde her açıda aynı okunur; ince uzuvlu insan/böcek ters döndüğünde silüeti dağılır.
-2. **150 kostüm tek silüete giyecek:** Tür-nötr bir yaratıkta kostüm, karakterin *kendisi* olur
-   (Phoenix kostümü giyen "phoenix'tir"); belirli bir insan/hayvanda ise "kıyafet giymiş adam"
-   gibi durur. Ayrıca yüz (göz katmanı) hiç değişmediği için renk-varyasyonu kostümler bedavaya
-   çıkar (Bölüm 4.3).
-3. **Küçük ekran ölçeği:** Kişiliği yalnız gözler ve kafa oranı taşıyabilir; detay taşımaz.
-4. **IP sahipliği:** Mevcut placeholder (`player_15.png`) Luigi'ye benziyor — yayınlanamaz.
-   Maskot tamamen orijinal olmalı; app icon'dan mağaza görseline kadar oyunun yüzü bu.
+1. **360° readability:** The character also stands upside down under the planet. A round helmet +
+   capsule body reads the same from every angle; a thin-limbed human/insect loses its silhouette
+   when flipped.
+2. **150 costumes on a single silhouette:** On a species-neutral creature the costume becomes the
+   character *itself* (the one wearing the Phoenix costume "is a phoenix"); on a specific
+   human/animal it just looks like "a guy in an outfit". Also, since the face (eye layer) never
+   changes, color-variation costumes come for free (Section 4.3).
+3. **Small-screen scale:** Only the eyes and head proportion can carry personality; detail can't.
+4. **IP ownership:** The current placeholder (`player_15.png`) looks like Luigi — unpublishable. The
+   mascot must be entirely original; it's the face of the game from the app icon to store artwork.
 
-### 3.2 Anatomi spesifikasyonu
+### 3.2 Anatomy specification
 
-- **Kask/kafa:** toplam boyun ~%55'i; şeffaf yuvarlak cam kubbe; camda tek parlak yansıma çizgisi.
-- **Gözler:** kask içinde iki iri oval göz (kaskın ~%40'ı); duygu motoru bunlar (Bölüm 3.4).
-- **Gövde:** kısa tombul kapsül; dar uzay tulumu; göğüste küçük yuvarlak panel/rozet
-  (kostümlerde tema amblemi buraya gelir).
-- **Kollar:** kısa güdük; iri yuvarlak eldivenler; tek el silah tutar.
-- **Botlar:** abartılı iri "ay botu" — hem sevimlilik hem "eğri yüzeye yapışma" fantezisi.
-- **Silah ölçeği:** gövdeyle aynı boyutta, gerçekçi değil — seçili silah bir bakışta anlaşılmalı.
-- **Renk (default/Gray Soldier):** açık gri-beyaz tulum, koyu antrasit detaylar, tek sıcak vurgu
-  (turuncu) — kostümlerin renkleri üstünde patlasın diye base nötr durur.
+- **Helmet/head:** ~55% of total height; transparent round glass dome; a single bright reflection
+  streak on the glass.
+- **Eyes:** two large oval eyes inside the helmet (~40% of the helmet); these are the emotion engine
+  (Section 3.4).
+- **Body:** short chubby capsule; snug space suit; a small round panel/badge on the chest (the theme
+  emblem goes here on costumes).
+- **Arms:** short and stubby; oversized round gloves; one hand holds the weapon.
+- **Boots:** exaggeratedly large "moon boots" — both cuteness and the "sticking to a curved surface"
+  fantasy.
+- **Weapon scale:** the same size as the body, not realistic — the selected weapon must be
+  identifiable at a glance.
+- **Color (default/Gray Soldier):** light gray-white suit, dark anthracite details, one warm accent
+  (orange) — the base stays neutral so costume colors pop on top of it.
 
-### 3.3 Ana prompt (idle poz)
+### 3.3 Main prompt (idle pose)
 
 ```
 a small chubby species-neutral mascot astronaut creature, 2D side-view mobile game character
@@ -182,89 +193,94 @@ deliberately ambiguous), short plump capsule-shaped body in a snug light-gray sp
 dark charcoal accents and one small round chest badge, stubby arms with oversized round gloves,
 very large chunky moon boots, standing in a confident idle combat stance holding a compact
 sci-fi pistol aimed sideways at arm's length, single warm orange accent color,
-[+ 2.1 stil bloğu] [+ 2.2 negative bloğu]
+[+ 2.1 style block] [+ 2.2 negative block]
 ```
 
-### 3.4 Poz ve ifade seti (base için üretilecek varyantlar)
+### 3.4 Pose and expression set (variants to produce for the base)
 
-Aynı referans görselle (Bölüm 0.2) şu varyantlar üretilir — animasyon Unity tarafında
-squash&stretch/döndürme ile yapılacağı için kare-kare sprite sheet GEREKMEZ, poz başına tek görsel yeter:
+The following variants are produced from the same reference image (Section 0.2) — since animation
+will be done on the Unity side with squash&stretch/rotation, a frame-by-frame sprite sheet is NOT
+required; one image per pose is enough:
 
-| Varyant | Prompt eki | Kullanım |
+| Variant | Prompt addition | Usage |
 |---|---|---|
-| idle | (3.3'teki hali) | sahne, gardırop önizleme |
-| aim | `aiming carefully, one eye squinted, arm extended` | nişan alma turu |
-| hurt | `dizzy knocked-back pose, swirly dazed eyes, small soot smudges, comedic, not gory` | hasar |
-| victory | `cheering with both arms up, star-shaped sparkling happy eyes` | maç sonu kazanan |
-| defeat | `slumped sitting pose, big teary sad eyes, cracked helmet glass (small comedic crack)` | maç sonu kaybeden |
-| panic | `being pulled sideways, panicked wide eyes, gripping the ground` | BlackHole çekimi |
+| idle | (as in 3.3) | scene, wardrobe preview |
+| aim | `aiming carefully, one eye squinted, arm extended` | aiming turn |
+| hurt | `dizzy knocked-back pose, swirly dazed eyes, small soot smudges, comedic, not gory` | damage |
+| victory | `cheering with both arms up, star-shaped sparkling happy eyes` | match-end winner |
+| defeat | `slumped sitting pose, big teary sad eyes, cracked helmet glass (small comedic crack)` | match-end loser |
+| panic | `being pulled sideways, panicked wide eyes, gripping the ground` | BlackHole pull |
 
-**Göz ifadeleri ayrı katman olarak da kırpılabilir** (Bölüm 3.5) — o zaman poz sayısı da düşer.
+**Eye expressions can also be cropped out as a separate layer** (Section 3.5) — which reduces the
+number of poses needed.
 
-### 3.5 Katmanlı üretim (kostüm ekonomisinin anahtarı)
+### 3.5 Layered production (the key to costume economics)
 
-Base onaylandıktan sonra Photopea/Krita'da tek sprite şu katmanlara ayrılır ve Unity'de ayrı
-SpriteRenderer'larla üst üste bindirilir:
+Once the base is approved, the single sprite is split in Photopea/Krita into the following layers
+and stacked in Unity with separate SpriteRenderers:
 
-1. **body_base** — tulum+botlar+eldivenler (kostümün boyayacağı/değiştireceği katman)
-2. **helmet_glass + eyes** — hiçbir kostümde değişmez (karakter kimliği)
-3. **costume_overlay** — Rare+ kostümlerde eklenen zırh/kanat/pelerin parçaları
-4. **weapon** — eldeki silah, tamamen bağımsız (silah kostümleri yalnız bunu değiştirir)
+1. **body_base** — suit+boots+gloves (the layer costumes recolor/replace)
+2. **helmet_glass + eyes** — never changes in any costume (character identity)
+3. **costume_overlay** — armor/wing/cape pieces added on Rare+ costumes
+4. **weapon** — the held weapon, fully independent (weapon costumes change only this)
 
-Kazanç: Common/Uncommon karakter kostümleri = body_base'e hue-shift/tint (üretim YOK);
-göz/mimik tüm kostümlerde otomatik aynı; silah skinleri karakterden bağımsız üretilir.
+Gain: Common/Uncommon character costumes = hue-shift/tint on body_base (NO generation); eyes/
+expressions are automatically identical across all costumes; weapon skins are produced independently
+of the character.
 
-### 3.6 Base onay checklist'i (geçmeden Bölüm 4'e başlama)
+### 3.6 Base approval checklist (don't start Section 4 before it passes)
 
-- [ ] 128px'e küçültüldüğünde silüet ve gözler hâlâ okunuyor
-- [ ] 180° döndürüldüğünde (baş aşağı) karakter olduğu anlaşılıyor
-- [ ] Gerçek gezegen sprite'ının üstüne konup ekran görüntüsünde denendi
-- [ ] Hue-shift testinde (3-4 farklı renge boyayınca) çirkinleşmiyor
-- [ ] Hiçbir mevcut IP'ye (Mario/Luigi, Among Us, Fall Guys vb.) "benziyor" denmiyor —
-      özellikle Among Us kontrolü: gözler + kask camı içeriden görünür olmalı, tek vizör DEĞİL
+- [ ] Silhouette and eyes still read when scaled down to 128px
+- [ ] Still recognizable as a character when rotated 180° (upside down)
+- [ ] Tested on top of the real planet sprite in a screenshot
+- [ ] Doesn't get ugly in the hue-shift test (recolored to 3-4 different colors)
+- [ ] Nobody says it "looks like" any existing IP (Mario/Luigi, Among Us, Fall Guys, etc.) —
+      especially the Among Us check: the eyes + inside of the helmet glass must be visible, NOT a
+      single visor
 
 ---
 
-## 4. Kostümler — 150 adet
+## 4. Costumes — 150 items
 
-### 4.1 Rarity görsel dili (UI'da zaten kodlanmış renkler)
+### 4.1 Rarity visual language (colors already coded in the UI)
 
-| Rarity | Hex | Materyal/detay dili | Prompt cümlesi |
+| Rarity | Hex | Material/detail language | Prompt phrase |
 |---|---|---|---|
-| Common | `#9EA6B2` gri | düz renk, mat, süsleme yok | `plain flat recolor, matte fabric, no ornaments` |
-| Uncommon | `#4DD966` yeşil | basit desen, hafif parlaklık | `simple pattern or texture detail, slight sheen` |
-| Rare | `#4088FF` mavi | belirgin siluet detayı, mavi rim light | `distinct silhouette accessory, soft blue rim light` |
-| Epic | `#A659FF` mor | dramatik siluet, enerji efektleri | `dramatic silhouette pieces, glowing purple energy particles` |
-| Legendary | `#FFCC33` altın | altın/prizmatik kaplama, aura | `ornate golden prismatic plating, dynamic radiant energy aura` |
+| Common | `#9EA6B2` gray | flat color, matte, no ornaments | `plain flat recolor, matte fabric, no ornaments` |
+| Uncommon | `#4DD966` green | simple pattern, slight sheen | `simple pattern or texture detail, slight sheen` |
+| Rare | `#4088FF` blue | distinct silhouette detail, blue rim light | `distinct silhouette accessory, soft blue rim light` |
+| Epic | `#A659FF` purple | dramatic silhouette, energy effects | `dramatic silhouette pieces, glowing purple energy particles` |
+| Legendary | `#FFCC33` gold | gold/prismatic plating, aura | `ornate golden prismatic plating, dynamic radiant energy aura` |
 
-### 4.2 Tip ve rarity dağılımı
+### 4.2 Type and rarity distribution
 
-| Rarity | Character | Weapon | Toplam |
+| Rarity | Character | Weapon | Total |
 |---|---|---|---|
 | Common | 24 | 16 | 40 |
 | Uncommon | 19 | 16 | 35 |
 | Rare | 18 | 17 | 35 |
 | Epic | 16 | 9 | 25 |
 | Legendary | 9 | 6 | 15 |
-| **TOPLAM** | **86** | **64** | **150** |
+| **TOTAL** | **86** | **64** | **150** |
 
-### 4.3 Üretim stratejisi — 150 üretim DEĞİL, ~70 üretim + hue-shift
+### 4.3 Production strategy — NOT 150 generations, ~70 generations + hue-shift
 
-| Katman | Kapsam | Yöntem | Gerçek üretim |
+| Layer | Scope | Method | Actual generations |
 |---|---|---|---|
-| Common character (24) | hepsi renk varyasyonu | body_base hue-shift/tint (Unity material veya Photopea) | **0** |
-| Common weapon (16) | renk varyasyonu | önce 5 base silah sprite'ı üret, sonra tint | **5** (base silahlar) |
-| Uncommon (35) | renk + basit desen | hue-shift + 8-10 adet desen overlay'i üret (kamuflaj, buz çatlağı, devre, yaprak...) ve karıştır | **~10** (overlay) |
-| Rare (35) | özgün detay | tek tek üret (img2img referansla) | 35 |
-| Epic (25) | dramatik siluet | tek tek üret | 25 |
-| Legendary (15) | tam özgün | tek tek üret, gerekirse 2-3 deneme | 15 |
+| Common character (24) | all color variations | hue-shift/tint on body_base (Unity material or Photopea) | **0** |
+| Common weapon (16) | color variation | first generate 5 base weapon sprites, then tint | **5** (base weapons) |
+| Uncommon (35) | color + simple pattern | hue-shift + generate 8-10 pattern overlays (camo, ice crack, circuit, leaf...) and mix | **~10** (overlays) |
+| Rare (35) | unique detail | generate one by one (img2img with reference) | 35 |
+| Epic (25) | dramatic silhouette | generate one by one | 25 |
+| Legendary (15) | fully unique | generate one by one, 2-3 attempts if needed | 15 |
 
-Toplam gerçek üretim ≈ **90 görsel** (150 yerine) ve Common/Uncommon anında, ücretsiz, %100
-tutarlı çıkar. Hue-shift renk hedefleri kostüm adından bellidir (ör. c005 Yellow Storm → sarı).
+Total actual generations ≈ **90 images** (instead of 150), and Common/Uncommon come out instantly,
+for free, and 100% consistent. Hue-shift color targets are obvious from the costume name (e.g. c005
+Yellow Storm → yellow).
 
-### 4.4 Tema descriptor sözlüğü ({THEME} yerine geçecek İngilizce blok)
+### 4.4 Theme descriptor dictionary (the English block that replaces {THEME})
 
-| Tema | Descriptor |
+| Theme | Descriptor |
 |---|---|
 | Space | `cosmic starfield pattern, swirling nebula colors, glowing constellation accents` |
 | Fantasy | `medieval fantasy armor, dragon scale texture, glowing runes, ornate engravings` |
@@ -277,26 +293,26 @@ tutarlı çıkar. Hue-shift renk hedefleri kostüm adından bellidir (ör. c005 
 | Myth | `ancient god motifs, laurel and gold ornaments, marble and divine radiant glow` |
 | Other | `clean bold single-color design` |
 
-### 4.5 Prompt şablonları
+### 4.5 Prompt templates
 
-**Character kostümü (Rare+):**
+**Character costume (Rare+):**
 
 ```
 same character as the reference image, identical silhouette, identical round glass helmet and
-big oval eyes, only the space suit costume changes: "{NAME}" costume, theme: {TEMA DESCRIPTOR},
-{RARITY PROMPT CÜMLESİ}, accent color {RARITY_HEX}, full-body side-view 2D game sprite,
-[+ 2.1 stil bloğu] [+ 2.2 negative bloğu]
+big oval eyes, only the space suit costume changes: "{NAME}" costume, theme: {THEME DESCRIPTOR},
+{RARITY PROMPT PHRASE}, accent color {RARITY_HEX}, full-body side-view 2D game sprite,
+[+ 2.1 style block] [+ 2.2 negative block]
 ```
 
-**Weapon kostümü:**
+**Weapon costume:**
 
 ```
 sci-fi cartoon {pistol|shotgun|rocket launcher|grenade|time bomb} weapon skin, "{NAME}",
-theme: {TEMA DESCRIPTOR}, {RARITY PROMPT CÜMLESİ}, accent color {RARITY_HEX}, side-view 2D game
+theme: {THEME DESCRIPTOR}, {RARITY PROMPT PHRASE}, accent color {RARITY_HEX}, side-view 2D game
 asset, chunky oversized toylike proportions, bold silhouette, [+ 2.1] [+ 2.2]
 ```
 
-**Doldurulmuş örnekler:**
+**Filled-in examples:**
 
 ```
 (e002 Dragon Lord — Epic Character)
@@ -313,10 +329,10 @@ dynamic radiant energy aura, a tiny swirling black hole visible inside the barre
 #FFCC33, side-view 2D game asset, chunky oversized toylike proportions, [+ 2.1] [+ 2.2]
 ```
 
-### 4.6 Tam liste (id · İsim · Tip · Tema)
+### 4.6 Full list (id · Name · Type · Theme)
 
-**COMMON (40)** — karakterler hue-shift, silahlar 5 base + tint (Bölüm 4.3):
-c001 Gray Soldier · C · Other (başlangıç) — c002 Standard Blue · C · Other (başlangıç) — c003 Red
+**COMMON (40)** — characters are hue-shifts, weapons are 5 base + tint (Section 4.3):
+c001 Gray Soldier · C · Other (starter) — c002 Standard Blue · C · Other (starter) — c003 Red
 Warrior · C · Other — c004 Green Camo · C · Nature — c005 Yellow Storm · C · Other — c006 Orange
 Ember · C · Fire — c007 Purple Night · C · Dark — c008 White Snow · C · Ice — c009 Brown Earth ·
 C · Nature — c010 Sky Blue · C · Space — c011 Steel Gray · W · Mech — c012 Rust Brown · W · Mech —
@@ -330,7 +346,7 @@ Other — c033 Thunder · W · Other — c034 Golden Yellow · W · Other — c0
 c036 Hedgehog Brown · C · Nature — c037 Titan Gray · W · Mech — c038 Maroon · C · Dark — c039
 Cobalt · W · Space — c040 Indigo Blue · C · Other
 
-**UNCOMMON (35)** — hue-shift + desen overlay:
+**UNCOMMON (35)** — hue-shift + pattern overlay:
 u001 Forest Warrior · C · Nature — u002 Ice Mage · C · Ice — u003 Flame Dancer · C · Fire — u004
 Night Watcher · C · Dark — u005 Lightning Runner · C · Other — u006 Sandstorm · C · Nature — u007
 Deep Space · C · Space — u008 Iron Fist · C · Mech — u009 Wind Spirit · C · Nature — u010 Cosmic
@@ -344,7 +360,7 @@ Fantasy — u029 Blue Crocodile · W · Nature — u030 Ember Blade · W · Fire
 W · Cyber — u032 Steel Dragon · W · Mech — u033 Crystal Bomb · W · Ice — u034 Root Texture · W ·
 Nature — u035 Storm Sail · C · Other
 
-**RARE (35)** — tek tek üretim:
+**RARE (35)** — generated one by one:
 r001 Galaxy Wanderer · C · Space — r002 Black Knight · C · Dark — r003 Neon Samurai · C · Cyber —
 r004 Dragon Hunter · C · Fantasy — r005 Ice God · C · Ice — r006 Lava Giant · C · Fire — r007
 Quantum Armor · C · Cyber — r008 Forest God · C · Nature — r009 Dark Sorcerer · C · Dark — r010
@@ -358,7 +374,7 @@ r028 Vortex Rifle · W · Space — r029 Shaman Staff · W · Myth — r030 Tita
 r031 Wind Blade · W · Nature — r032 Crystal Staff · W · Fantasy — r033 Laser Rifle · W · Cyber —
 r034 Dark Rune · W · Dark — r035 Mythic Archer · C · Myth
 
-**EPIC (25)** — tek tek üretim:
+**EPIC (25)** — generated one by one:
 e001 Nebula Warrior · C · Space — e002 Dragon Lord · C · Fantasy — e003 Cyber God · C · Cyber —
 e004 Death Spirit · C · Dark — e005 Volcano God · C · Fire — e006 Ice Storm · C · Ice — e007
 Forest Deity · C · Nature — e008 Titan Armor · C · Mech — e009 Olympian God · C · Myth — e010
@@ -369,7 +385,7 @@ Ice — e019 Nano Swarm · W · Mech — e020 Rune Burst · W · Fantasy — e02
 e022 Titan Laser · W · Mech — e023 Mythic Armor · C · Myth — e024 Crystal Golem · C · Ice — e025
 Crow King · C · Dark
 
-**LEGENDARY (15)** — tek tek üretim, en yüksek özen:
+**LEGENDARY (15)** — generated one by one, with the highest care:
 l001 Cosmic Master · C · Space — l002 Dragon Emperor · C · Fantasy — l003 Dark God · C · Dark —
 l004 Doom Lord · C · Dark — l005 Time Master · C · Myth — l006 Universe Warrior · C · Space —
 l007 Ancient Giant · C · Myth — l008 Bionic God · C · Mech — l009 Phoenix Warrior · C · Fire —
@@ -378,17 +394,17 @@ l013 Black Hole Cannon X · W · Space — l014 Doom Hammer · W · Dark — l01
 
 ---
 
-## 5. Profil Avatarları — 16 adet
+## 5. Profile Avatars — 16 items
 
-Prompt şablonu:
+Prompt template:
 
 ```
-circular game profile icon, {konsept}, dominant color {hex}, cosmic space phenomenon,
+circular game profile icon, {concept}, dominant color {hex}, cosmic space phenomenon,
 simple bold iconic shape readable at very small size, flat design with subtle glow,
-[+ 2.1 stil bloğu] [+ 2.2 negative bloğu]
+[+ 2.1 style block] [+ 2.2 negative block]
 ```
 
-| id | İsim | Hex | Konsept (İngilizce, prompta girecek) |
+| id | Name | Hex | Concept (English, goes into the prompt) |
 |---|---|---|---|
 | av01 | Nova | `#F24D59` | `exploding star burst, bright red radiant flash` |
 | av02 | Comet | `#40B2F2` | `blue comet with a glowing curved tail` |
@@ -407,21 +423,21 @@ simple bold iconic shape readable at very small size, flat design with subtle gl
 | av15 | Aurora | `#4DE6B2` | `turquoise northern-lights wave` |
 | av16 | Zenith | `#E64DCC` | `pink-purple star peak symbol` |
 
-Not: avatarlar karakter içermediği için referans görsel gerekmez — Copilot Designer gibi
-referanssız ücretsiz araçlarla üretilebilir.
+Note: since avatars contain no character, no reference image is needed — they can be produced with
+reference-free free tools like Copilot Designer.
 
 ---
 
-## 6. Silah & Yetenek HUD İkonları — 10 adet
+## 6. Weapon & Ability HUD Icons — 10 items
 
-Prompt şablonu:
+Prompt template:
 
 ```
-square game HUD ability icon, {konsept}, sci-fi space combat gear, bold silhouette readable
+square game HUD ability icon, {concept}, sci-fi space combat gear, bold silhouette readable
 at 64px, subtle dark vignette inside icon frame, [+ 2.1] [+ 2.2]
 ```
 
-| id | Konsept (İngilizce) |
+| id | Concept (English) |
 |---|---|
 | weapon_pistol | `compact fast sci-fi pistol, side view` |
 | weapon_shotgun | `heavy wide-barrel sci-fi shotgun, side view` |
@@ -434,83 +450,83 @@ at 64px, subtle dark vignette inside icon frame, [+ 2.1] [+ 2.2]
 | skill_bathammer | `heavy energy-charged baseball bat / hammer hybrid` |
 | skill_superjump | `energized boot sole with charge glow and speed lines pointing up` |
 
-Mevcut ikonlar (`Assets/Art/Sprites/UI/*_icon.png`) rastgele placeholder — hepsi bu setle
-değişecek. `fly_icon.png` SuperJump'a karşılık geliyor, yeni adlandırma şemasına geçir.
+The current icons (`Assets/Art/Sprites/UI/*_icon.png`) are random placeholders — all of them will be
+replaced by this set. `fly_icon.png` corresponds to SuperJump; migrate it to the new naming scheme.
 
 ---
 
-## 7. Gezegen / Harita Görselleri — 4 tema
+## 7. Planet / Map Art — 4 themes
 
-Yıkılabilir gezegen iki parça ister: **yüzey sprite'ı** + kraterlerde ortaya çıkacak **iç doku**
-(daha koyu kayaç kesiti). Prompt her tema için ikisini de üretmeli veya iç doku tek ortak
-görsel olabilir.
+A destructible planet needs two pieces: a **surface sprite** + an **inner texture** that gets exposed
+in craters (a darker rock cross-section). The prompt should produce both for each theme, or the
+inner texture can be a single shared image.
 
-Prompt şablonu:
+Prompt template:
 
 ```
 small round destructible cartoon planet, perfect circular silhouette, side-view 2D game asset,
-{tema}, chunky surface details on the rim (craters/rocks/vegetation reading in silhouette),
+{theme}, chunky surface details on the rim (craters/rocks/vegetation reading in silhouette),
 slightly darker core color hinting at the inner cross-section, deep space starfield behind,
 [+ 2.1] [+ 2.2]
 ```
 
-| Tema | {tema} bloğu |
+| Theme | {theme} block |
 |---|---|
-| Kayalık/Nötr (mevcut) | `gray-brown rocky asteroid surface with big cartoon craters` |
-| Buz | `white-cyan glacier surface, crystal ice spikes on the rim, frosty glow` |
-| Lav | `dark crimson cracked surface with glowing orange lava veins and small eruptions` |
-| Orman | `lush green mossy surface with giant mushrooms and tiny cartoon trees on the rim` |
+| Rocky/Neutral (existing) | `gray-brown rocky asteroid surface with big cartoon craters` |
+| Ice | `white-cyan glacier surface, crystal ice spikes on the rim, frosty glow` |
+| Lava | `dark crimson cracked surface with glowing orange lava veins and small eruptions` |
+| Forest | `lush green mossy surface with giant mushrooms and tiny cartoon trees on the rim` |
 
-Ek: arka plan yıldız alanı ayrı, kaydırılabilir (parallax) geniş görsel olarak üretilebilir:
+Extra: the background starfield can be produced separately as a wide, scrollable (parallax) image:
 
 ```
 deep space starfield background, distant silhouetted planets, purple-cyan nebula haze,
-subtle vignette, wide seamless game background, [+ 2.1 ama transparent background YERİNE
-"full-bleed background"] [+ 2.2]
+subtle vignette, wide seamless game background, [+ 2.1 but with "full-bleed background"
+INSTEAD OF transparent background] [+ 2.2]
 ```
 
 ---
 
-## 8. UI / Ekonomi İkonları
+## 8. UI / Economy Icons
 
-Hepsi 2.1 stil bloğu + `square game UI icon, bold silhouette readable at 64px` ekiyle:
+All with the 2.1 style block + the suffix `square game UI icon, bold silhouette readable at 64px`:
 
-| Asset | Konsept |
+| Asset | Concept |
 |---|---|
-| XP ikonu | `yellow-white star chevron badge` |
-| Gold ikonu | `shiny gold coin with star emboss` |
-| Gem ikonu | `purple-blue faceted crystal gem` |
-| Sandık Common | `simple wooden chest with bronze bands` |
-| Sandık Rare | `silver-blue metal chest with glowing seams` |
-| Sandık Epic | `ornate gold-purple chest with sparkle particles` |
-| Başarım rozeti ×4 | `circular achievement badge frame` + Bölüm 4.1 rarity renkleri |
+| XP icon | `yellow-white star chevron badge` |
+| Gold icon | `shiny gold coin with star emboss` |
+| Gem icon | `purple-blue faceted crystal gem` |
+| Chest Common | `simple wooden chest with bronze bands` |
+| Chest Rare | `silver-blue metal chest with glowing seams` |
+| Chest Epic | `ornate gold-purple chest with sparkle particles` |
+| Achievement badge ×4 | `circular achievement badge frame` + the rarity colors from Section 4.1 |
 | Trophy | `golden trophy cup with tiny planet on top` |
-| **Uygulama ikonu** | `tiny round planet with the mascot astronaut standing on top waving,
-  bold readable at 48px, app icon composition` — maskot onaylanınca ve referansla üretilir |
+| **App icon** | `tiny round planet with the mascot astronaut standing on top waving,
+  bold readable at 48px, app icon composition` — produced once the mascot is approved, using the reference |
 
-Mağaza görselleri (Play Console feature graphic, ekran görüntüleri çerçevesi) ayrı pazarlama
-işi — base + 2-3 kostüm + 1 gezegen hazır olmadan başlanmaz.
-
----
-
-## 9. Ses
-
-TODO.md'de tamamlandı olarak kayıtlı (20 SFX + menü müziği) — bu doküman kapsamı dışı,
-referans: v1 Bölüm 9.
+Store artwork (Play Console feature graphic, screenshot frames) is separate marketing work — don't
+start it before the base + 2-3 costumes + 1 planet are ready.
 
 ---
 
-## 10. Öncelik Sırası (v2 — değişti)
+## 9. Audio
 
-1. **Base maskot karakter** (Bölüm 3) — onay checklist'i geçmeden hiçbir şeye başlama;
-   Luigi-benzeri placeholder yayın engeli.
-2. **5 base silah sprite'ı** (Bölüm 4.3) — hem eldeki silah görseli hem 16 Common weapon
-   kostümünün tint kaynağı.
-3. **Silah/yetenek HUD ikonları** (Bölüm 6) — her maçta ekranda, mevcutlar rastgele.
-4. **16 avatar** (Bölüm 5) — kod tarafı hazır, yalnız görsel bekliyor; referanssız üretilebilir,
-   bağımsız/paralel iş.
-5. **Kostümler** (Bölüm 4) — sıra: Common (hue-shift, ~1 gün) → Uncommon (overlay) →
-   Legendary (15, vitrin değeri en yüksek) → Epic → Rare.
-6. **Gezegen çeşitliliği** (Bölüm 7) — 2-3 yeni tema.
-7. **Uygulama ikonu + mağaza görselleri** (Bölüm 8) — Play Console kaydı için zorunlu, ama
-   maskot kesinleşmeden yapılamaz.
+Recorded as completed in TODO.md (20 SFX + menu music) — out of scope for this document,
+reference: v1 Section 9.
+
+---
+
+## 10. Priority Order (v2 — changed)
+
+1. **Base mascot character** (Section 3) — start nothing before the approval checklist passes; the
+   Luigi-like placeholder is a release blocker.
+2. **5 base weapon sprites** (Section 4.3) — both the in-hand weapon art and the tint source for the
+   16 Common weapon costumes.
+3. **Weapon/ability HUD icons** (Section 6) — on screen in every match, the current ones are random.
+4. **16 avatars** (Section 5) — the code side is ready, only the art is missing; can be produced
+   without a reference, independent/parallel work.
+5. **Costumes** (Section 4) — order: Common (hue-shift, ~1 day) → Uncommon (overlay) →
+   Legendary (15, highest showcase value) → Epic → Rare.
+6. **Planet variety** (Section 7) — 2-3 new themes.
+7. **App icon + store artwork** (Section 8) — mandatory for Play Console registration, but can't be
+   done before the mascot is finalized.
