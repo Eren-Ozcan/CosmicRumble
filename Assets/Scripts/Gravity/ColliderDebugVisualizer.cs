@@ -8,6 +8,13 @@ public class ColliderDebugVisualizer : MonoBehaviour
     public Color inactiveColor = new Color(1f, 0.5f, 0f);  // turuncu
     public float duration = 0f;  // 0 = her frame yenile
 
+    [Header("Konsol Log")]
+    [Tooltip("Her collider için her frame tam stack-trace'li Debug.Log basar — sahnede birkaç " +
+             "collider olsa bile saniyede onlarca log üretir, konsolu doldurur ve Editor'ı zamanla " +
+             "gözle görülür şekilde yavaşlatır/kilitlenmiş hissettirir. Yalnızca collider "+
+             "kurulumunu (tetikleyici mi/katı mı, sınırlar) tek seferlik incelerken açın.")]
+    public bool logToConsole = false;
+
     void Update()
     {
         Collider2D[] colliders = FindObjectsByType<Collider2D>(FindObjectsSortMode.None);
@@ -62,14 +69,17 @@ public class ColliderDebugVisualizer : MonoBehaviour
             }
         }
 
-        // === LOG: hangi collider nerede ===
+        // === LOG: hangi collider nerede (varsayılan kapalı, bkz. logToConsole tooltip'i) ===
 #if UNITY_EDITOR
-        Debug.Log($"[Collider] {col.gameObject.name} | " +
-                  $"Type: {col.GetType().Name} | " +
-                  $"IsTrigger: {col.isTrigger} | " +
-                  $"Bounds center: {col.bounds.center} | " +
-                  $"Bounds size: {col.bounds.size}",
-                  col.gameObject);
+        if (logToConsole)
+        {
+            Debug.Log($"[Collider] {col.gameObject.name} | " +
+                      $"Type: {col.GetType().Name} | " +
+                      $"IsTrigger: {col.isTrigger} | " +
+                      $"Bounds center: {col.bounds.center} | " +
+                      $"Bounds size: {col.bounds.size}",
+                      col.gameObject);
+        }
 #endif
     }
 
