@@ -98,13 +98,30 @@ public class AudioManager : MonoBehaviour
         var clip = GetCached(_sfxCache, SfxResourcePath, clipId);
         if (clip == null) return null;
 
-        var src = target.GetComponent<AudioSource>() ?? target.AddComponent<AudioSource>();
-        src.clip        = clip;
-        src.loop         = true;
-        src.playOnAwake  = false;
-        src.volume       = CurrentSfxVolume();
-        src.Play();
-        return src;
+        // AddComponent<AudioSource>() bazı prefab/import durumlarında (gözlemlenen: yeni eklenen
+        // mermi prefab'ları) native tarafta tam kurulmamış bir bileşen döndürüp src.clip atamasında
+        // MissingComponentException fırlatabiliyor. Bu, dosyanın kendi yukarıdaki sözleşmesini
+        // ("hata fırlatmaz, sessizce no-op olur") bozar ve — kritik olarak — çağıran taraf
+        // (ör. HandGrenadeProjectile.Init) bu satırdan sonraki kodu (patlama zamanlayıcısını
+        // kuran Invoke çağrısı!) hiç çalıştıramadan yarıda kesilir. Try/catch bu sözleşmeyi korur:
+        // ses çalmazsa çalmaz, ama arayan taraf asla bundan dolayı kesintiye uğramaz.
+        try
+        {
+            var src = target.GetComponent<AudioSource>() ?? target.AddComponent<AudioSource>();
+            src.clip        = clip;
+            src.loop         = true;
+            src.playOnAwake  = false;
+            src.volume       = CurrentSfxVolume();
+            src.Play();
+            return src;
+        }
+        catch (MissingComponentException e)
+        {
+#if UNITY_EDITOR
+            Debug.LogWarning($"[AudioManager] PlayLoopingSfxOnObject('{clipId}') on '{target.name}' failed, continuing without sound: {e.Message}");
+#endif
+            return null;
+        }
     }
 
     float CurrentSfxVolume()
