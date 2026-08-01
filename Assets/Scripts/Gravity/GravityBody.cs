@@ -86,6 +86,14 @@ public class GravityBody : NetworkBehaviour
     private float _edgeTimer  = 0f;
     private int   _planetMask;
 
+    /// <summary>GravitySource.FixedUpdate, uyuyan (Rigidbody2D.IsSleeping) body'lere performans için
+    /// kuvvet uygulamayı atlıyor — ama bu yalnızca GERÇEKTEN zemine değen bir body için güvenli.
+    /// Karmaşık/çentikli terrain collider'ında (ör. bir notch/çukur kenarında) bir karakter zemine
+    /// tam temas etmeden düşük hızda uyuyabilir; bu durumda bir daha hiç kuvvet almaz ve havada
+    /// kalıcı olarak asılı kalır (hiçbir şey onu tekrar uyandırmaz). GravitySource bu property'i
+    /// kontrol ederek yalnızca gerçekten grounded body'lerin uykusuna dokunmaz.</summary>
+    public bool IsGrounded => _isGrounded;
+
     private Collider2D            _col;
     private readonly ContactPoint2D[] _contacts = new ContactPoint2D[8];
     private readonly RaycastHit2D[]   _rayHits  = new RaycastHit2D[4];

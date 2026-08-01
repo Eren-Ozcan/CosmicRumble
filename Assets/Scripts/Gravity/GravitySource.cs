@@ -91,7 +91,16 @@ public class GravitySource : MonoBehaviour
             if (rb == null) continue;
             if (!_seenBodies.Add(rb)) continue;                     // aynı body'ye çift kuvvet yok
             if (rb.bodyType != RigidbodyType2D.Dynamic) continue;   // kinematic/static: AddForce no-op
-            if (rb.IsSleeping()) continue;                          // uyuyan body'leri uyandırma
+            if (rb.IsSleeping())
+            {
+                // Uyuyan body'leri boşuna uyandırmamak performans için önemli, ama bu yalnızca
+                // GERÇEKTEN zemine değen bir body için güvenli. Çentikli/karmaşık terrain
+                // collider'ında (bkz. GravityBody.IsGrounded dokümantasyonu) bir karakter zemine
+                // tam temas etmeden uyuyabilir — GravityBody yoksa (mermi vb.) veya varsa ama
+                // grounded değilse, kuvveti uygulamaya devam et (bu AddForce onu otomatik uyandırır).
+                var gb = rb.GetComponent<GravityBody>();
+                if (gb == null || gb.IsGrounded) continue;
+            }
 
             Vector2 direction = center - rb.position;
             float distance = direction.magnitude;
