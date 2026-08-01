@@ -1,20 +1,20 @@
-CosmicRumble için /commit — .claude/commands/commit.md
+/commit for CosmicRumble — .claude/commands/commit.md
 ---
-Staged değişiklikleri analiz et ve semantic commit mesajı oluştur.
+Analyze the staged changes and generate a semantic commit message.
 
 Format: <type>(<scope>): <description>
 
 Types: feat, fix, refactor, perf, test, docs
 Scopes: gravity, character, ability, projectile, ui, turn, planet, manager
 
-Örnekler:
+Examples:
   feat(gravity): add multi-planet vectoral force summation
   fix(turn): clear ability state on turn end
   refactor(ability): extract IAbility base implementation
 
-Commit öncesi kontrol:
-  - Physics2D.gravity kullanımı var mı?
-  - velocity direkt set var mı?
-  - Test geçti mi?
+Pre-commit checks:
+  - Is Physics2D.gravity used anywhere?
+  - Is velocity set directly anywhere?
+  - Did the tests pass?
 
-Temizse: git commit -m "[mesaj]"
+If clean: git commit -m "[message]"

@@ -1,11 +1,11 @@
-CosmicRumble için /review — .claude/commands/review.md
+/review for CosmicRumble — .claude/commands/review.md
 ---
 Review the specified file or recent changes with 5 lenses:
 
-1. PHYSICS: Physics2D.gravity kapalı mı? velocity direkt set var mı? AddForce kullanılıyor mu?
-2. ARCHITECTURE: IAbility implement edilmiş mi? Single responsibility var mı? Interface'ler korunuyor mu?
-3. PERFORMANCE: Update içinde FindObjectOfType var mı? Event leak var mı? Gereksiz allocation?
-4. UNITY: FixedUpdate/Update ayrımı doğru mu? SerializeField parametreler var mı?
-5. GAMEPLAY: TurnManager senkronizasyonu doğru mu? Ability state temizleniyor mu?
+1. PHYSICS: Is Physics2D.gravity disabled? Is velocity set directly anywhere? Is AddForce used?
+2. ARCHITECTURE: Is IAbility implemented? Is single responsibility respected? Are the interfaces preserved?
+3. PERFORMANCE: Any FindObjectOfType inside Update? Any event leaks? Unnecessary allocations?
+4. UNITY: Is the FixedUpdate/Update split correct? Are parameters SerializeField?
+5. GAMEPLAY: Is TurnManager synchronization correct? Is ability state cleared?
 
-Her sorun için: Dosya.cs:satır → sorun → neden yanlış → nasıl düzeltilir
+For each problem: File.cs:line → problem → why it's wrong → how to fix it
