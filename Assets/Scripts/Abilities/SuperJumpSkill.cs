@@ -53,6 +53,7 @@ public class SuperJumpSkill : AbilityBase
             else gravityBody.nextJumpIsSuper = true;
 
             charAbilities?.OnAbilityConsumed();
+            TurnManager.NotifyInstantAbilityUsed();
             cooldownTimer = cooldownTime;
             AchievementEvents.FireAbilityUsed("skill_superjump");
             AudioManager.Instance?.PlaySfx("skill_superjump");

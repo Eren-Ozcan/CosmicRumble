@@ -133,6 +133,24 @@ public class TurnManager : NetworkBehaviour
         Instance._currentShooter = null;
     }
 
+    /// <summary>
+    /// Mermi atmayan "anlık" yeteneklerin (ör. SuperJump) OnFireUpdate'i başarıyla tükettikten
+    /// hemen sonra çağırması gerekir. NotifyWeaponConfirmed hareketi kilitler ve bu kilidi normalde
+    /// yalnızca NotifyProjectileSettled açar — ama bu tür ability'ler hiç mermi/NotifyProjectileLaunched
+    /// üretmediği için o çağrı hiç gelmez ve movementLocked bir sonraki tur başlayana kadar (tüm tur
+    /// boyunca) takılı kalır, karakter yürüyemez hale gelir. (Shield kasıtlı olarak bunu ÇAĞIRMAZ —
+    /// kalkan açıkken hareketsiz kalmak tasarım gereği.)
+    /// </summary>
+    public static void NotifyInstantAbilityUsed()
+    {
+        if (Instance == null) return;
+        if (Instance._currentShooter != null)
+        {
+            Instance._currentShooter.movementLocked = false;
+            Instance._currentShooter = null;
+        }
+    }
+
     private void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(this); return; }
