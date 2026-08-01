@@ -1,20 +1,20 @@
 # CosmicRumble — Master Implementation Prompt
 # Achievement + Economy + Level + Costume Systems
-# Bu prompt Claude Code'a direkt verilecek şekilde hazırlanmıştır.
+# This prompt is written to be handed directly to Claude Code.
 
 ---
 
-## BAŞLAMADAN ÖNCE
+## BEFORE YOU START
 
-1. CLAUDE.md dosyasını oku ve mevcut proje yapısını anla
-2. Mevcut dosyaları incele: TurnManager, ProjectileBase, IAbility implementasyonları,
-   DestructiblePlanet — gerçek dosya yollarını tespit et
-3. Aşağıdaki sistemleri sırayla implement et; her bölüm bir öncekine bağımlıdır
-4. Her sistem tamamlandıktan sonra CLAUDE.md'i güncelle
+1. Read CLAUDE.md and understand the existing project structure
+2. Review the existing files: TurnManager, ProjectileBase, IAbility implementations,
+   DestructiblePlanet — identify the real file paths
+3. Implement the systems below in order; each section depends on the previous one
+4. Update CLAUDE.md after each system is completed
 
 ---
 
-# BÖLÜM 1 — PARA BİRİMLERİ VE CURRENCY SİSTEMİ
+# SECTION 1 — CURRENCIES AND CURRENCY SYSTEM
 
 ## 1.1 CurrencyType.cs
 `Scripts/Economy/Core/CurrencyType.cs`
@@ -27,27 +27,27 @@ public enum CurrencyType { XP, Gold, Gem }
 `Scripts/Economy/Core/CurrencyManager.cs`
 Singleton, DontDestroyOnLoad
 
-- `Add(CurrencyType type, long amount)` — ekler, event fırlatır
-- `Spend(CurrencyType type, long amount) → bool` — yeterliyse düşer
-- `Get(CurrencyType type) → long` — mevcut bakiye
+- `Add(CurrencyType type, long amount)` — adds, raises an event
+- `Spend(CurrencyType type, long amount) → bool` — deducts if the balance is sufficient
+- `Get(CurrencyType type) → long` — current balance
 - `OnCurrencyChanged` event: `Action<CurrencyType, long>` (type, newBalance)
 - Save: `Application.persistentDataPath/currency.json`
-- Gem log kuralı: her Gem.Add çağrısı Debug.Log ile kaydedilir
-  (IAP audit trail için)
+- Gem logging rule: every Gem.Add call is recorded via Debug.Log
+  (for the IAP audit trail)
 
 ---
 
-# BÖLÜM 2 — LEVEL & PRESTIGE SİSTEMİ
+# SECTION 2 — LEVEL & PRESTIGE SYSTEM
 
 ## 2.1 LevelConfig.cs
 `Scripts/Economy/Core/LevelConfig.cs`
 ScriptableObject — `Resources/Economy/LevelConfig`
 
-XP eşikleri (level başına gereken XP):
-- Lv   1–10  → 100 XP   (kümülatif toplam: 1.000)
-- Lv  11–50  → 500 XP   (kümülatif toplam: 21.000)
-- Lv  51–100 → 1.000 XP (kümülatif toplam: 71.000)
-- Lv 101+    → 2.000 XP (prestige dahil, sonsuz)
+XP thresholds (XP required per level):
+- Lv   1–10  → 100 XP   (cumulative total: 1,000)
+- Lv  11–50  → 500 XP   (cumulative total: 21,000)
+- Lv  51–100 → 1,000 XP (cumulative total: 71,000)
+- Lv 101+    → 2,000 XP (including prestige, unlimited)
 
 ```csharp
 public int GetXPForLevel(int level)
@@ -57,8 +57,8 @@ public int GetXPForLevel(int level)
     if (level <= 100) return 1000;
     return 2000;
 }
-public long GetTotalXPForLevel(int level) { /* kümülatif */ }
-public int  GetLevelFromTotalXP(long totalXP) { /* ters hesap */ }
+public long GetTotalXPForLevel(int level) { /* cumulative */ }
+public int  GetLevelFromTotalXP(long totalXP) { /* inverse calculation */ }
 public const int MaxLevelBeforePrestige = 100;
 ```
 
@@ -82,18 +82,18 @@ public class PlayerProgressData
 `Scripts/Economy/Core/PlayerLevelManager.cs`
 Singleton, DontDestroyOnLoad
 
-- CurrencyManager.OnCurrencyChanged(XP) subscribe eder
-- `CheckLevelUp()` — birden fazla level atlayabilir
+- Subscribes to CurrencyManager.OnCurrencyChanged(XP)
+- `CheckLevelUp()` — can skip multiple levels at once
 - `OnLevelUp` event: `Action<int, int>` (oldLevel, newLevel)
 - `OnPrestige` event: `Action<int>` (newPrestigeRank)
-- Level 100 tamamlanınca bir sonraki XP'de otomatik prestige başlar
-- Prestige'de level 101, 102... diye devam eder (sıfırlanmaz)
+- Once level 100 is completed, prestige starts automatically on the next XP gain
+- With prestige, levels continue as 101, 102... (they are not reset)
 - `GetProgress() → PlayerProgressData`
 - Save: `Application.persistentDataPath/progress.json`
 
 ---
 
-# BÖLÜM 3 — UNLOCK SİSTEMİ
+# SECTION 3 — UNLOCK SYSTEM
 
 ## 3.1 UnlockableItem.cs
 `Scripts/Economy/Unlocks/UnlockableItem.cs`
@@ -105,7 +105,7 @@ public class UnlockableItem : ScriptableObject
 {
     public string        itemId;
     public string        displayName;
-    public Sprite        icon;          // null olabilir, UI buna göre placeholder gösterir
+    public Sprite        icon;          // may be null, the UI shows a placeholder accordingly
     public UnlockableType  type;        // Weapon, Skill, Cosmetic
     public UnlockMethod    unlockMethod;// Default, ByLevel, ByGold, ByGem, ByAchievement
     public int   requiredLevel;
@@ -128,7 +128,7 @@ public struct UnlockCheckResult
     public bool isLevelMet;
     public bool isCurrencyMet;
     public bool isAchievementMet;
-    public bool canUnlock;        // tüm şartlar tamam mı
+    public bool canUnlock;        // are all conditions satisfied
     public long missingGold;
     public long missingGem;
     public int  missingLevel;
@@ -150,18 +150,18 @@ public class UnlockDatabase : ScriptableObject
 }
 ```
 
-Aşağıdaki item'ları ScriptableObject olarak oluştur ve database'e ekle:
+Create the following items as ScriptableObjects and add them to the database:
 
-### Silahlar (Weapons):
+### Weapons:
 | itemId           | displayName      | unlockMethod | requiredLevel | isDefault |
 |------------------|------------------|--------------|---------------|-----------|
-| weapon_pistol    | Tabanca          | Default      | —             | true      |
-| weapon_shotgun   | Pompalı Tüfek    | Default      | —             | true      |
-| weapon_rpg       | Roket Fırlatıcı  | Default      | —             | true      |
-| weapon_bomb      | Bomba            | ByLevel      | 2             | false     |
-| weapon_grenade   | El Bombası       | ByLevel      | 6             | false     |
+| weapon_pistol    | Pistol           | Default      | —             | true      |
+| weapon_shotgun   | Shotgun          | Default      | —             | true      |
+| weapon_rpg       | Rocket Launcher  | Default      | —             | true      |
+| weapon_bomb      | Bomb             | ByLevel      | 2             | false     |
+| weapon_grenade   | Grenade          | ByLevel      | 6             | false     |
 
-### Skill'ler:
+### Skills:
 | itemId           | displayName      | unlockMethod | requiredLevel |
 |------------------|------------------|--------------|---------------|
 | skill_superjump  | Super Jump       | ByLevel      | 4             |
@@ -170,16 +170,16 @@ Aşağıdaki item'ları ScriptableObject olarak oluştur ve database'e ekle:
 | skill_teleport   | Teleport         | ByLevel      | 10            |
 | skill_bathammer  | Bat Hammer       | ByLevel      | 10            |
 
-### Kozmetikler (level + gold):
+### Cosmetics (level + gold):
 | itemId                | displayName       | requiredLevel | goldCost |
 |-----------------------|-------------------|---------------|----------|
-| skin_cosmic_blue      | Kozmik Mavi       | 15            | 500      |
-| skin_fire_red         | Ateş Kırmızısı    | 20            | 800      |
-| skin_void_dark        | Void Karası       | 30            | 1200     |
-| skin_golden_legend    | Altın Efsane      | 45            | 2000     |
-| skin_neon_pulse       | Neon Nabzı        | 60            | 3000     |
-| skin_prestige_shadow  | Prestij Gölgesi   | 80            | 5000     |
-| skin_cosmic_master    | Kozmik Usta       | 100           | 0 (100 Gem) |
+| skin_cosmic_blue      | Cosmic Blue       | 15            | 500      |
+| skin_fire_red         | Fire Red          | 20            | 800      |
+| skin_void_dark        | Void Dark         | 30            | 1200     |
+| skin_golden_legend    | Golden Legend     | 45            | 2000     |
+| skin_neon_pulse       | Neon Pulse        | 60            | 3000     |
+| skin_prestige_shadow  | Prestige Shadow   | 80            | 5000     |
+| skin_cosmic_master    | Cosmic Master     | 100           | 0 (100 Gem) |
 
 ## 3.4 UnlockManager.cs
 `Scripts/Economy/Unlocks/UnlockManager.cs`
@@ -187,16 +187,16 @@ Singleton, DontDestroyOnLoad
 
 - `IsUnlocked(string itemId) → bool`
 - `CanUnlock(string itemId) → UnlockCheckResult`
-- `TryUnlock(string itemId) → bool` (currency düşer, kaydeder)
+- `TryUnlock(string itemId) → bool` (deducts currency, saves)
 - `GetAllUnlocked() → List<UnlockableItem>`
 - `OnItemUnlocked` event: `Action<UnlockableItem>`
-- PlayerLevelManager.OnLevelUp subscribe → level unlock'larını otomatik kontrol et
-- Başlangıçta tüm isDefault==true item'ları unlock et
+- Subscribe to PlayerLevelManager.OnLevelUp → automatically check level unlocks
+- Unlock all items with isDefault==true at startup
 - Save: `Application.persistentDataPath/unlocks.json`
 
 ---
 
-# BÖLÜM 4 — KOSTÜM SİSTEMİ (150 KOSTÜM)
+# SECTION 4 — COSTUME SYSTEM (150 COSTUMES)
 
 ## 4.1 CostumeRarity.cs
 `Scripts/Economy/Costumes/CostumeRarity.cs`
@@ -218,18 +218,18 @@ public class CostumeDefinition : ScriptableObject
 {
     public string        costumeId;
     public string        displayName;
-    public Sprite        previewSprite;   // null-safe: UI placeholder gösterir
+    public Sprite        previewSprite;   // null-safe: the UI shows a placeholder
     public CostumeType   costumeType;
     public CostumeRarity rarity;
     public CostumeTheme  theme;
     public CostumeUnlock unlockMethod;
 
-    // Unlock koşulları (unlockMethod'a göre dolu olan kullanılır)
+    // Unlock conditions (whichever is populated for the given unlockMethod is used)
     public int    requiredLevel;
     public long   goldCost;
     public long   gemCost;
     public string requiredAchievementId;
-    public string unlockDescription;     // UI'da gösterilecek koşul metni
+    public string unlockDescription;     // condition text to display in the UI
 }
 ```
 
@@ -249,178 +249,178 @@ public class CostumeDatabase : ScriptableObject
 }
 ```
 
-Aşağıdaki 150 kostümü ScriptableObject olarak oluştur ve CostumeDatabase'e ekle.
-`previewSprite` alanı null bırakılacak — UI sistemi otomatik placeholder gösterir.
+Create the following 150 costumes as ScriptableObjects and add them to CostumeDatabase.
+The `previewSprite` field is to be left null — the UI system shows a placeholder automatically.
 
-### COMMON (40 kostüm)
-| costumeId | displayName | costumeType | theme | unlockMethod | Koşul |
+### COMMON (40 costumes)
+| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| c001 | Gri Asker | Character | Other | Default | Başlangıç |
-| c002 | Standart Mavi | Character | Other | Default | Başlangıç |
-| c003 | Kırmızı Savaşçı | Character | Other | ByLevel | Lv 3 |
-| c004 | Yeşil Kamuflaj | Character | Nature | ByLevel | Lv 5 |
-| c005 | Sarı Fırtına | Character | Other | ByGold | 200 Gold |
-| c006 | Turuncu Kor | Character | Fire | ByGold | 200 Gold |
-| c007 | Mor Gece | Character | Dark | ByGold | 250 Gold |
-| c008 | Beyaz Kar | Character | Ice | ByGold | 250 Gold |
-| c009 | Kahve Toprak | Character | Nature | ByLevel | Lv 7 |
-| c010 | Gök Mavisi | Character | Space | ByLevel | Lv 9 |
-| c011 | Çelik Gri | Weapon | Mech | ByGold | 150 Gold |
-| c012 | Pas Kahvesi | Weapon | Mech | ByGold | 150 Gold |
-| c013 | Orman Yeşili | Weapon | Nature | ByLevel | Lv 6 |
-| c014 | Lav Kırmızısı | Weapon | Fire | ByGold | 175 Gold |
-| c015 | Buz Mavisi | Weapon | Ice | ByGold | 175 Gold |
-| c016 | Gece Siyahı | Weapon | Dark | ByLevel | Lv 8 |
-| c017 | Güneş Sarısı | Weapon | Other | ByGold | 200 Gold |
-| c018 | Mercan Pembesi | Character | Other | ByGold | 200 Gold |
-| c019 | Deniz Tealı | Character | Other | ByLevel | Lv 11 |
-| c020 | Lavanta | Character | Other | ByGold | 225 Gold |
-| c021 | Bakır Parlak | Weapon | Mech | ByGold | 175 Gold |
-| c022 | Çöl Kumu | Character | Nature | ByLevel | Lv 13 |
-| c023 | Fıstık Yeşili | Character | Nature | ByGold | 200 Gold |
-| c024 | Deniz Köpüğü | Weapon | Ice | ByGold | 150 Gold |
-| c025 | Sis Grisi | Character | Dark | ByLevel | Lv 15 |
-| c026 | Gün Batımı | Character | Fire | ByGold | 250 Gold |
-| c027 | Yıldız Tozu | Weapon | Space | ByLevel | Lv 12 |
-| c028 | Okyanusun Dibi | Weapon | Other | ByChest | Common Sandık |
-| c029 | Kireç Beyazı | Character | Other | ByChest | Common Sandık |
-| c030 | Antrasit | Character | Dark | ByChest | Common Sandık |
-| c031 | Nane Yeşili | Weapon | Nature | ByGold | 175 Gold |
-| c032 | Pembe Şeker | Character | Other | ByGold | 200 Gold |
-| c033 | Gök Gürültüsü | Weapon | Other | ByLevel | Lv 14 |
-| c034 | Altın Sarısı | Weapon | Other | ByGold | 225 Gold |
-| c035 | Zümrüt | Character | Nature | ByLevel | Lv 16 |
-| c036 | Kirpi Kahvesi | Character | Nature | ByChest | Common Sandık |
-| c037 | Titan Grisi | Weapon | Mech | ByChest | Common Sandık |
-| c038 | Bordo | Character | Dark | ByGold | 200 Gold |
-| c039 | Kobalt | Weapon | Space | ByGold | 200 Gold |
-| c040 | Çivit Mavisi | Character | Other | ByLevel | Lv 18 |
+| c001 | Gray Soldier | Character | Other | Default | Starter |
+| c002 | Standard Blue | Character | Other | Default | Starter |
+| c003 | Red Warrior | Character | Other | ByLevel | Lv 3 |
+| c004 | Green Camo | Character | Nature | ByLevel | Lv 5 |
+| c005 | Yellow Storm | Character | Other | ByGold | 200 Gold |
+| c006 | Orange Ember | Character | Fire | ByGold | 200 Gold |
+| c007 | Purple Night | Character | Dark | ByGold | 250 Gold |
+| c008 | White Snow | Character | Ice | ByGold | 250 Gold |
+| c009 | Brown Earth | Character | Nature | ByLevel | Lv 7 |
+| c010 | Sky Blue | Character | Space | ByLevel | Lv 9 |
+| c011 | Steel Gray | Weapon | Mech | ByGold | 150 Gold |
+| c012 | Rust Brown | Weapon | Mech | ByGold | 150 Gold |
+| c013 | Forest Green | Weapon | Nature | ByLevel | Lv 6 |
+| c014 | Lava Red | Weapon | Fire | ByGold | 175 Gold |
+| c015 | Ice Blue | Weapon | Ice | ByGold | 175 Gold |
+| c016 | Night Black | Weapon | Dark | ByLevel | Lv 8 |
+| c017 | Sun Yellow | Weapon | Other | ByGold | 200 Gold |
+| c018 | Coral Pink | Character | Other | ByGold | 200 Gold |
+| c019 | Sea Teal | Character | Other | ByLevel | Lv 11 |
+| c020 | Lavender | Character | Other | ByGold | 225 Gold |
+| c021 | Bright Copper | Weapon | Mech | ByGold | 175 Gold |
+| c022 | Desert Sand | Character | Nature | ByLevel | Lv 13 |
+| c023 | Pistachio Green | Character | Nature | ByGold | 200 Gold |
+| c024 | Sea Foam | Weapon | Ice | ByGold | 150 Gold |
+| c025 | Fog Gray | Character | Dark | ByLevel | Lv 15 |
+| c026 | Sunset | Character | Fire | ByGold | 250 Gold |
+| c027 | Stardust | Weapon | Space | ByLevel | Lv 12 |
+| c028 | Ocean Depths | Weapon | Other | ByChest | Common Chest |
+| c029 | Chalk White | Character | Other | ByChest | Common Chest |
+| c030 | Anthracite | Character | Dark | ByChest | Common Chest |
+| c031 | Mint Green | Weapon | Nature | ByGold | 175 Gold |
+| c032 | Candy Pink | Character | Other | ByGold | 200 Gold |
+| c033 | Thunder | Weapon | Other | ByLevel | Lv 14 |
+| c034 | Golden Yellow | Weapon | Other | ByGold | 225 Gold |
+| c035 | Emerald | Character | Nature | ByLevel | Lv 16 |
+| c036 | Hedgehog Brown | Character | Nature | ByChest | Common Chest |
+| c037 | Titan Gray | Weapon | Mech | ByChest | Common Chest |
+| c038 | Maroon | Character | Dark | ByGold | 200 Gold |
+| c039 | Cobalt | Weapon | Space | ByGold | 200 Gold |
+| c040 | Indigo Blue | Character | Other | ByLevel | Lv 18 |
 
-### UNCOMMON (35 kostüm)
-| costumeId | displayName | costumeType | theme | unlockMethod | Koşul |
+### UNCOMMON (35 costumes)
+| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| u001 | Orman Savaşçısı | Character | Nature | ByLevel | Lv 20 |
-| u002 | Buz Büyücüsü | Character | Ice | ByLevel | Lv 22 |
-| u003 | Alev Dansçısı | Character | Fire | ByLevel | Lv 24 |
-| u004 | Gece Gözcüsü | Character | Dark | ByGold | 500 Gold |
-| u005 | Şimşek Koşucusu | Character | Other | ByGold | 500 Gold |
-| u006 | Kum Fırtınası | Character | Nature | ByLevel | Lv 26 |
-| u007 | Derin Uzay | Character | Space | ByLevel | Lv 28 |
-| u008 | Demir Yumruk | Character | Mech | ByGold | 550 Gold |
-| u009 | Rüzgar Ruhu | Character | Nature | ByGold | 550 Gold |
-| u010 | Kozmik Mor | Character | Space | ByLevel | Lv 30 |
-| u011 | Ejder Dişi | Weapon | Fantasy | ByGold | 500 Gold |
-| u012 | Uzay Tüfeği | Weapon | Space | ByLevel | Lv 25 |
-| u013 | Buz Kılıcı | Weapon | Ice | ByGold | 500 Gold |
-| u014 | Alev Mızrağı | Weapon | Fire | ByLevel | Lv 27 |
-| u015 | Gölge Bıçağı | Weapon | Dark | ByGold | 525 Gold |
-| u016 | Sis Tabancası | Weapon | Dark | ByChest | Rare Sandık |
-| u017 | Plazma Tüp | Weapon | Cyber | ByLevel | Lv 29 |
-| u018 | Doğa Kalkanı | Weapon | Nature | ByGold | 500 Gold |
-| u019 | Şimşek Topu | Weapon | Other | ByChest | Rare Sandık |
-| u020 | Demir Kalkan | Weapon | Mech | ByGold | 550 Gold |
-| u021 | Kristal Savaşçı | Character | Ice | ByAchievement | achievement_ice_master |
-| u022 | Volkan Adamı | Character | Fire | ByAchievement | achievement_patlama_uzmani |
-| u023 | Siber Ninja | Character | Cyber | ByLevel | Lv 32 |
-| u024 | Taş Golem | Character | Nature | ByLevel | Lv 34 |
-| u025 | Neon Ceket | Character | Cyber | ByGold | 600 Gold |
-| u026 | Köpük Denizci | Character | Other | ByChest | Rare Sandık |
-| u027 | Bozkır Eri | Character | Nature | ByLevel | Lv 36 |
-| u028 | Gümüş Şövalye | Character | Fantasy | ByGold | 600 Gold |
-| u029 | Mavi Timsah | Weapon | Nature | ByChest | Rare Sandık |
-| u030 | Kor Bıçağı | Weapon | Fire | ByLevel | Lv 31 |
-| u031 | Hologram Silah | Weapon | Cyber | ByGold | 575 Gold |
-| u032 | Çelik Ejder | Weapon | Mech | ByLevel | Lv 33 |
-| u033 | Kristal Bomba | Weapon | Ice | ByGold | 550 Gold |
-| u034 | Kök Dokusu | Weapon | Nature | ByAchievement | PLANET_KILLER |
-| u035 | Fırtına Yelkeni | Character | Other | ByGold | 600 Gold |
+| u001 | Forest Warrior | Character | Nature | ByLevel | Lv 20 |
+| u002 | Ice Mage | Character | Ice | ByLevel | Lv 22 |
+| u003 | Flame Dancer | Character | Fire | ByLevel | Lv 24 |
+| u004 | Night Watcher | Character | Dark | ByGold | 500 Gold |
+| u005 | Lightning Runner | Character | Other | ByGold | 500 Gold |
+| u006 | Sandstorm | Character | Nature | ByLevel | Lv 26 |
+| u007 | Deep Space | Character | Space | ByLevel | Lv 28 |
+| u008 | Iron Fist | Character | Mech | ByGold | 550 Gold |
+| u009 | Wind Spirit | Character | Nature | ByGold | 550 Gold |
+| u010 | Cosmic Purple | Character | Space | ByLevel | Lv 30 |
+| u011 | Dragon Fang | Weapon | Fantasy | ByGold | 500 Gold |
+| u012 | Space Rifle | Weapon | Space | ByLevel | Lv 25 |
+| u013 | Ice Sword | Weapon | Ice | ByGold | 500 Gold |
+| u014 | Flame Spear | Weapon | Fire | ByLevel | Lv 27 |
+| u015 | Shadow Blade | Weapon | Dark | ByGold | 525 Gold |
+| u016 | Fog Pistol | Weapon | Dark | ByChest | Rare Chest |
+| u017 | Plasma Tube | Weapon | Cyber | ByLevel | Lv 29 |
+| u018 | Nature Shield | Weapon | Nature | ByGold | 500 Gold |
+| u019 | Lightning Orb | Weapon | Other | ByChest | Rare Chest |
+| u020 | Iron Shield | Weapon | Mech | ByGold | 550 Gold |
+| u021 | Crystal Warrior | Character | Ice | ByAchievement | achievement_ice_master |
+| u022 | Volcano Man | Character | Fire | ByAchievement | achievement_patlama_uzmani |
+| u023 | Cyber Ninja | Character | Cyber | ByLevel | Lv 32 |
+| u024 | Stone Golem | Character | Nature | ByLevel | Lv 34 |
+| u025 | Neon Jacket | Character | Cyber | ByGold | 600 Gold |
+| u026 | Foam Sailor | Character | Other | ByChest | Rare Chest |
+| u027 | Steppe Soldier | Character | Nature | ByLevel | Lv 36 |
+| u028 | Silver Knight | Character | Fantasy | ByGold | 600 Gold |
+| u029 | Blue Crocodile | Weapon | Nature | ByChest | Rare Chest |
+| u030 | Ember Blade | Weapon | Fire | ByLevel | Lv 31 |
+| u031 | Hologram Weapon | Weapon | Cyber | ByGold | 575 Gold |
+| u032 | Steel Dragon | Weapon | Mech | ByLevel | Lv 33 |
+| u033 | Crystal Bomb | Weapon | Ice | ByGold | 550 Gold |
+| u034 | Root Texture | Weapon | Nature | ByAchievement | PLANET_KILLER |
+| u035 | Storm Sail | Character | Other | ByGold | 600 Gold |
 
-### RARE (35 kostüm)
-| costumeId | displayName | costumeType | theme | unlockMethod | Koşul |
+### RARE (35 costumes)
+| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| r001 | Galaksi Gezgini | Character | Space | ByLevel | Lv 40 |
-| r002 | Kara Şövalye | Character | Dark | ByLevel | Lv 42 |
-| r003 | Neon Samuray | Character | Cyber | ByLevel | Lv 44 |
-| r004 | Ejder Avcısı | Character | Fantasy | ByLevel | Lv 45 |
-| r005 | Buz Tanrısı | Character | Ice | ByGold | 1200 Gold |
-| r006 | Lav Devi | Character | Fire | ByGold | 1200 Gold |
-| r007 | Kuantum Zırhı | Character | Cyber | ByLevel | Lv 48 |
-| r008 | Orman Tanrısı | Character | Nature | ByGold | 1300 Gold |
-| r009 | Karanlık Büyücü | Character | Dark | ByAchievement | VETERAN_10 |
-| r010 | Meteor Savaşçısı | Character | Space | ByLevel | Lv 50 |
-| r011 | Plazma Tüfek | Weapon | Cyber | ByLevel | Lv 41 |
-| r012 | Ejder Alevi | Weapon | Fantasy | ByGold | 1100 Gold |
-| r013 | Kara Delik Topu | Weapon | Space | ByLevel | Lv 43 |
-| r014 | Buz Kalkanı | Weapon | Ice | ByGold | 1100 Gold |
-| r015 | Kor Bombası | Weapon | Fire | ByAchievement | PATLAMA_UZMANI |
-| r016 | Nano Bıçak | Weapon | Cyber | ByGold | 1200 Gold |
-| r017 | Rün Mızrağı | Weapon | Fantasy | ByLevel | Lv 46 |
-| r018 | Gölge Oku | Weapon | Dark | ByChest | Epic Sandık |
-| r019 | Zümrüt Ejder | Weapon | Fantasy | ByGold | 1250 Gold |
-| r020 | Yıldız Kılıcı | Weapon | Space | ByLevel | Lv 47 |
+| r001 | Galaxy Wanderer | Character | Space | ByLevel | Lv 40 |
+| r002 | Black Knight | Character | Dark | ByLevel | Lv 42 |
+| r003 | Neon Samurai | Character | Cyber | ByLevel | Lv 44 |
+| r004 | Dragon Hunter | Character | Fantasy | ByLevel | Lv 45 |
+| r005 | Ice God | Character | Ice | ByGold | 1200 Gold |
+| r006 | Lava Giant | Character | Fire | ByGold | 1200 Gold |
+| r007 | Quantum Armor | Character | Cyber | ByLevel | Lv 48 |
+| r008 | Forest God | Character | Nature | ByGold | 1300 Gold |
+| r009 | Dark Sorcerer | Character | Dark | ByAchievement | VETERAN_10 |
+| r010 | Meteor Warrior | Character | Space | ByLevel | Lv 50 |
+| r011 | Plasma Rifle | Weapon | Cyber | ByLevel | Lv 41 |
+| r012 | Dragon Flame | Weapon | Fantasy | ByGold | 1100 Gold |
+| r013 | Black Hole Cannon | Weapon | Space | ByLevel | Lv 43 |
+| r014 | Ice Shield | Weapon | Ice | ByGold | 1100 Gold |
+| r015 | Ember Bomb | Weapon | Fire | ByAchievement | PATLAMA_UZMANI |
+| r016 | Nano Blade | Weapon | Cyber | ByGold | 1200 Gold |
+| r017 | Rune Spear | Weapon | Fantasy | ByLevel | Lv 46 |
+| r018 | Shadow Arrow | Weapon | Dark | ByChest | Epic Chest |
+| r019 | Emerald Dragon | Weapon | Fantasy | ByGold | 1250 Gold |
+| r020 | Star Sword | Weapon | Space | ByLevel | Lv 47 |
 | r021 | Titanium Golem | Character | Mech | ByLevel | Lv 52 |
-| r022 | Işık Hızı | Character | Space | ByGold | 1400 Gold |
-| r023 | Deniz Canavarı | Character | Nature | ByAchievement | SOSYAL_KELEBEK |
-| r024 | Fırtına Tanrısı | Character | Myth | ByLevel | Lv 54 |
-| r025 | Kızıl Şaman | Character | Myth | ByGold | 1400 Gold |
-| r026 | Siber Samurai | Character | Cyber | ByLevel | Lv 56 |
-| r027 | Biyonik Savaşçı | Character | Mech | ByGold | 1500 Gold |
-| r028 | Vorteks Tüfek | Weapon | Space | ByChest | Epic Sandık |
-| r029 | Şaman Asası | Weapon | Myth | ByLevel | Lv 49 |
-| r030 | Titan Çekici | Weapon | Mech | ByGold | 1300 Gold |
-| r031 | Rüzgar Bıçağı | Weapon | Nature | ByAchievement | CEVRECI |
-| r032 | Kristal Asa | Weapon | Fantasy | ByLevel | Lv 51 |
-| r033 | Lazer Tüfek | Weapon | Cyber | ByGold | 1350 Gold |
-| r034 | Karanlık Rün | Weapon | Dark | ByLevel | Lv 53 |
-| r035 | Mitoloji Okçusu | Character | Myth | ByAchievement | SAVAS_MAKINESI |
+| r022 | Light Speed | Character | Space | ByGold | 1400 Gold |
+| r023 | Sea Monster | Character | Nature | ByAchievement | SOSYAL_KELEBEK |
+| r024 | Storm God | Character | Myth | ByLevel | Lv 54 |
+| r025 | Crimson Shaman | Character | Myth | ByGold | 1400 Gold |
+| r026 | Cyber Samurai | Character | Cyber | ByLevel | Lv 56 |
+| r027 | Bionic Warrior | Character | Mech | ByGold | 1500 Gold |
+| r028 | Vortex Rifle | Weapon | Space | ByChest | Epic Chest |
+| r029 | Shaman Staff | Weapon | Myth | ByLevel | Lv 49 |
+| r030 | Titan Hammer | Weapon | Mech | ByGold | 1300 Gold |
+| r031 | Wind Blade | Weapon | Nature | ByAchievement | CEVRECI |
+| r032 | Crystal Staff | Weapon | Fantasy | ByLevel | Lv 51 |
+| r033 | Laser Rifle | Weapon | Cyber | ByGold | 1350 Gold |
+| r034 | Dark Rune | Weapon | Dark | ByLevel | Lv 53 |
+| r035 | Mythic Archer | Character | Myth | ByAchievement | SAVAS_MAKINESI |
 
-### EPIC (25 kostüm)
-| costumeId | displayName | costumeType | theme | unlockMethod | Koşul |
+### EPIC (25 costumes)
+| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| e001 | Nebula Savaşçısı | Character | Space | ByLevel | Lv 60 |
-| e002 | Ejder Lordu | Character | Fantasy | ByLevel | Lv 63 |
-| e003 | Siber Tanrı | Character | Cyber | ByGem | 50 Gem |
-| e004 | Ölüm Ruhu | Character | Dark | ByLevel | Lv 66 |
-| e005 | Volkan Tanrısı | Character | Fire | ByGem | 60 Gem |
-| e006 | Buz Fırtınası | Character | Ice | ByLevel | Lv 70 |
-| e007 | Ormantanrı | Character | Nature | ByAchievement | EFSANE |
-| e008 | Titan Zırhı | Character | Mech | ByGem | 70 Gem |
-| e009 | Olimpos Tanrısı | Character | Myth | ByLevel | Lv 73 |
-| e010 | Kuantum Gölgesi | Character | Cyber | ByGem | 75 Gem |
-| e011 | Galaktik İmparator | Character | Space | ByLevel | Lv 76 |
-| e012 | Kadim Ejder | Character | Fantasy | ByAchievement | KARA_DELIK_USTASI |
-| e013 | Neon İblis | Character | Dark | ByGem | 80 Gem |
-| e014 | Plazma Tanrısı | Weapon | Cyber | ByLevel | Lv 61 |
-| e015 | Ejder Nefesi | Weapon | Fantasy | ByGem | 50 Gem |
-| e016 | Karanlık Yıldız | Weapon | Dark | ByLevel | Lv 64 |
-| e017 | Volkan Topu | Weapon | Fire | ByGem | 55 Gem |
-| e018 | Buz Kristali | Weapon | Ice | ByAchievement | DOKUNULMAZ |
+| e001 | Nebula Warrior | Character | Space | ByLevel | Lv 60 |
+| e002 | Dragon Lord | Character | Fantasy | ByLevel | Lv 63 |
+| e003 | Cyber God | Character | Cyber | ByGem | 50 Gem |
+| e004 | Death Spirit | Character | Dark | ByLevel | Lv 66 |
+| e005 | Volcano God | Character | Fire | ByGem | 60 Gem |
+| e006 | Ice Storm | Character | Ice | ByLevel | Lv 70 |
+| e007 | Forest Deity | Character | Nature | ByAchievement | EFSANE |
+| e008 | Titan Armor | Character | Mech | ByGem | 70 Gem |
+| e009 | Olympian God | Character | Myth | ByLevel | Lv 73 |
+| e010 | Quantum Shadow | Character | Cyber | ByGem | 75 Gem |
+| e011 | Galactic Emperor | Character | Space | ByLevel | Lv 76 |
+| e012 | Ancient Dragon | Character | Fantasy | ByAchievement | KARA_DELIK_USTASI |
+| e013 | Neon Demon | Character | Dark | ByGem | 80 Gem |
+| e014 | Plasma God | Weapon | Cyber | ByLevel | Lv 61 |
+| e015 | Dragon Breath | Weapon | Fantasy | ByGem | 50 Gem |
+| e016 | Dark Star | Weapon | Dark | ByLevel | Lv 64 |
+| e017 | Volcano Cannon | Weapon | Fire | ByGem | 55 Gem |
+| e018 | Ice Crystal | Weapon | Ice | ByAchievement | DOKUNULMAZ |
 | e019 | Nano Swarm | Weapon | Mech | ByLevel | Lv 68 |
-| e020 | Rün Patlaması | Weapon | Fantasy | ByGem | 65 Gem |
-| e021 | Nebula Bombası | Weapon | Space | ByLevel | Lv 71 |
-| e022 | Titan Lazer | Weapon | Mech | ByGem | 70 Gem |
-| e023 | Mitoloji Zırhı | Character | Myth | ByAchievement | FIRTINA_TANRISI |
-| e024 | Kristal Golem | Character | Ice | ByGem | 75 Gem |
-| e025 | Karga Kral | Character | Dark | ByLevel | Lv 80 |
+| e020 | Rune Burst | Weapon | Fantasy | ByGem | 65 Gem |
+| e021 | Nebula Bomb | Weapon | Space | ByLevel | Lv 71 |
+| e022 | Titan Laser | Weapon | Mech | ByGem | 70 Gem |
+| e023 | Mythic Armor | Character | Myth | ByAchievement | FIRTINA_TANRISI |
+| e024 | Crystal Golem | Character | Ice | ByGem | 75 Gem |
+| e025 | Crow King | Character | Dark | ByLevel | Lv 80 |
 
-### LEGENDARY (15 kostüm)
-| costumeId | displayName | costumeType | theme | unlockMethod | Koşul |
+### LEGENDARY (15 costumes)
+| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| l001 | Kozmik Efendi | Character | Space | ByLevel | Lv 100 |
-| l002 | Ejder İmparatoru | Character | Fantasy | ByGem | 200 Gem |
-| l003 | Karanlık Tanrı | Character | Dark | ByAchievement | COSMIC_100 |
-| l004 | Kıyamet Lordu | Character | Dark | ByGem | 250 Gem |
-| l005 | Zaman Efendisi | Character | Myth | ByLevel | Prestige 1 (Lv 101) |
-| l006 | Evren Savaşçısı | Character | Space | ByGem | 300 Gem |
-| l007 | Kadim Dev | Character | Myth | ByAchievement | GALAKSININ_EFSANESI |
-| l008 | Biyonik Tanrı | Character | Mech | ByGem | 250 Gem |
-| l009 | Fenix Savaşçısı | Character | Fire | ByLevel | Prestige 2 (Lv 102) |
-| l010 | Kozmik Yıkıcı | Weapon | Space | ByLevel | Lv 100 |
-| l011 | Tanrı Kılıcı | Weapon | Myth | ByGem | 200 Gem |
-| l012 | Ejder Kalbi | Weapon | Fantasy | ByAchievement | EJDER_AVCI |
-| l013 | Kara Delik Topu X | Weapon | Space | ByGem | 250 Gem |
-| l014 | Kıyamet Çekici | Weapon | Dark | ByAchievement | HOME_RUN |
-| l015 | Yaratıcı Gücü | Weapon | Myth | ByLevel | Prestige 3 (Lv 103) |
+| l001 | Cosmic Master | Character | Space | ByLevel | Lv 100 |
+| l002 | Dragon Emperor | Character | Fantasy | ByGem | 200 Gem |
+| l003 | Dark God | Character | Dark | ByAchievement | COSMIC_100 |
+| l004 | Doom Lord | Character | Dark | ByGem | 250 Gem |
+| l005 | Time Master | Character | Myth | ByLevel | Prestige 1 (Lv 101) |
+| l006 | Universe Warrior | Character | Space | ByGem | 300 Gem |
+| l007 | Ancient Giant | Character | Myth | ByAchievement | GALAKSININ_EFSANESI |
+| l008 | Bionic God | Character | Mech | ByGem | 250 Gem |
+| l009 | Phoenix Warrior | Character | Fire | ByLevel | Prestige 2 (Lv 102) |
+| l010 | Cosmic Destroyer | Weapon | Space | ByLevel | Lv 100 |
+| l011 | God Sword | Weapon | Myth | ByGem | 200 Gem |
+| l012 | Dragon Heart | Weapon | Fantasy | ByAchievement | EJDER_AVCI |
+| l013 | Black Hole Cannon X | Weapon | Space | ByGem | 250 Gem |
+| l014 | Doom Hammer | Weapon | Dark | ByAchievement | HOME_RUN |
+| l015 | Creator's Power | Weapon | Myth | ByLevel | Prestige 3 (Lv 103) |
 
 ## 4.4 CostumeManager.cs
 `Scripts/Economy/Costumes/CostumeManager.cs`
@@ -433,12 +433,12 @@ Singleton, DontDestroyOnLoad
 - `Equip(string costumeId)`
 - `OnCostumePurchased` event: `Action<CostumeDefinition>`
 - `OnCostumeEquipped` event: `Action<CostumeDefinition>`
-- Achievement unlock'larını AchievementManager.OnAchievementUnlocked'tan dinle
+- Listen for achievement unlocks via AchievementManager.OnAchievementUnlocked
 - Save: `Application.persistentDataPath/costumes.json`
 
 ---
 
-# BÖLÜM 5 — ACHIEVEMENT SİSTEMİ
+# SECTION 5 — ACHIEVEMENT SYSTEM
 
 ## 5.1 AchievementDefinition.cs
 `Scripts/Achievements/Core/AchievementDefinition.cs`
@@ -457,20 +457,20 @@ public class AchievementDefinition : ScriptableObject
     public int                targetValue;
     public bool               isSecret;
 
-    // Ödüller
+    // Rewards
     public long rewardXP;
     public long rewardGold;
     public long rewardGem;
 
-    // Kostüm ödülü (opsiyonel)
-    public string rewardCostumeId;  // boşsa kostüm ödülü yok
+    // Costume reward (optional)
+    public string rewardCostumeId;  // empty means no costume reward
 }
 
 public enum AchievementRarity      { Common, Rare, Epic, Legendary }
 public enum AchievementTriggerType { SingleUnlock, Cumulative, SpecialAction }
 ```
 
-Ödül tablosu rarity'e göre:
+Reward table by rarity:
 | Rarity    | XP    | Gold  | Gem |
 |-----------|-------|-------|-----|
 | Common    | 100   | 50    | 0   |
@@ -482,100 +482,100 @@ public enum AchievementTriggerType { SingleUnlock, Cumulative, SpecialAction }
 `Scripts/Achievements/Core/AchievementDatabase.cs`
 ScriptableObject — `Resources/Achievements/AchievementDatabase`
 
-Aşağıdaki 50 achievement'ı ScriptableObject olarak oluştur ve database'e ekle:
+Create the following 50 achievements as ScriptableObjects and add them to the database:
 
-### SAVAŞ (10)
+### COMBAT (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| FIRST_BLOOD | İlk Kan | İlk galibiyetini kazan | Common | SingleUnlock | 1 | — |
-| VETERAN_10 | Veteran | 10 maç kazan | Rare | Cumulative | 10 | r009 |
-| SAVAS_MAKINESI | Savaş Makinesi | 25 maç kazan | Rare | Cumulative | 25 | r035 |
-| EFSANE | Efsane | 50 maç kazan | Epic | Cumulative | 50 | e007 |
-| COSMIC_100 | Kozmik Efendi | 100 maç kazan | Legendary | Cumulative | 100 | l003 |
-| FLAWLESS | Flawless | Hiç hasar almadan bir maç kazan | Epic | SingleUnlock | 1 | — |
-| UNDERDOG | Underdog | Tüm düşmanlar fazla HP'deyken kazan | Rare | SingleUnlock | 1 | — |
-| HIZLI_BITIR | Hızlı Bitir | 5 turda bir maç kazan | Rare | SingleUnlock | 1 | — |
-| SAMPIYONLAR | Şampiyonlar Ligi | 8 kişilik lobbyde kazan | Epic | SingleUnlock | 1 | — |
-| SON_NEFES | Son Nefes | 1 HP'de maçı kazan | Legendary | SingleUnlock | 1 | — |
+| FIRST_BLOOD | First Blood | Win your first match | Common | SingleUnlock | 1 | — |
+| VETERAN_10 | Veteran | Win 10 matches | Rare | Cumulative | 10 | r009 |
+| SAVAS_MAKINESI | War Machine | Win 25 matches | Rare | Cumulative | 25 | r035 |
+| EFSANE | Legend | Win 50 matches | Epic | Cumulative | 50 | e007 |
+| COSMIC_100 | Cosmic Master | Win 100 matches | Legendary | Cumulative | 100 | l003 |
+| FLAWLESS | Flawless | Win a match without taking any damage | Epic | SingleUnlock | 1 | — |
+| UNDERDOG | Underdog | Win while all enemies have more HP | Rare | SingleUnlock | 1 | — |
+| HIZLI_BITIR | Quick Finish | Win a match in 5 turns | Rare | SingleUnlock | 1 | — |
+| SAMPIYONLAR | Champions League | Win in an 8-player lobby | Epic | SingleUnlock | 1 | — |
+| SON_NEFES | Last Breath | Win a match at 1 HP | Legendary | SingleUnlock | 1 | — |
 
-### İSTATİSTİK (10)
+### STATISTICS (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| DAMAGE_1K | Hasarcı | Toplam 1.000 hasar ver | Common | Cumulative | 1000 | — |
-| DAMAGE_50K | Yıkım Makinesi | Toplam 50.000 hasar ver | Rare | Cumulative | 50000 | — |
-| DAMAGE_250K | Atom Bombası | Toplam 250.000 hasar ver | Epic | Cumulative | 250000 | — |
-| SHOTS_100 | Çılgın Atıcı | 100 atış yap | Common | Cumulative | 100 | — |
-| SHOTS_1K | Mermi Fabrikası | 1.000 atış yap | Rare | Cumulative | 1000 | — |
-| TETIKCI | Tetikçi | Tek maçta 30 atış yap | Rare | Cumulative | 30 | — |
-| ISABETLI | İsabetli | %80 isabet oranıyla bitir (min 10 atış) | Epic | SingleUnlock | 1 | — |
-| SAGLAMDURUG | Sağlam Duruş | Toplam 10.000 hasar al hayatta kal | Rare | Cumulative | 10000 | — |
-| GEZEGEN_KATILI | Gezegen Katili | Toplamda 10 gezegen yok et | Epic | Cumulative | 10 | u034 |
-| GALAKSI_TAMIRCISI | Galaksi Tamircisi | Toplamda 100 maç oyna | Common | Cumulative | 100 | — |
+| DAMAGE_1K | Damage Dealer | Deal 1,000 total damage | Common | Cumulative | 1000 | — |
+| DAMAGE_50K | Destruction Machine | Deal 50,000 total damage | Rare | Cumulative | 50000 | — |
+| DAMAGE_250K | Atom Bomb | Deal 250,000 total damage | Epic | Cumulative | 250000 | — |
+| SHOTS_100 | Trigger Happy | Fire 100 shots | Common | Cumulative | 100 | — |
+| SHOTS_1K | Ammo Factory | Fire 1,000 shots | Rare | Cumulative | 1000 | — |
+| TETIKCI | Gunslinger | Fire 30 shots in a single match | Rare | Cumulative | 30 | — |
+| ISABETLI | Accurate | Finish with an 80% hit rate (min 10 shots) | Epic | SingleUnlock | 1 | — |
+| SAGLAMDURUG | Solid Stance | Take 10,000 total damage and survive | Rare | Cumulative | 10000 | — |
+| GEZEGEN_KATILI | Planet Killer | Destroy 10 planets in total | Epic | Cumulative | 10 | u034 |
+| GALAKSI_TAMIRCISI | Galaxy Mechanic | Play 100 matches in total | Common | Cumulative | 100 | — |
 
-### SİLAH (10)
+### WEAPONS (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| TABANCALI | Tabancalı | Tabancayla 50 düşman vur | Common | Cumulative | 50 | — |
-| KESKIN_NISANCI | Keskin Nişancı | Tabancayla 10 headshot yap | Rare | Cumulative | 10 | — |
-| ROKETCI | Roketçi | RPG ile tek atışta 3+ düşmana hasar ver | Rare | SingleUnlock | 1 | r015 |
-| PATLAMA_UZMANI | Patlama Uzmanı | RPG ile toplam 100 atış yap | Rare | Cumulative | 100 | u022 |
-| SAÇMA_YAGMURU | Saçma Yağmuru | Shotgun tüm pellet'leri isabet ettir | Epic | SingleUnlock | 1 | — |
-| POMPACI | Pompacı | Shotgun ile 5 düşmanı arka arkaya vur | Rare | SingleUnlock | 1 | — |
-| EL_BOMBACI | El Bombacı | El bombasıyla 2+ düşmanı tek vur | Rare | SingleUnlock | 1 | — |
-| PIM_CEKICI | Pim Çekici | El bombası ile 25 atış yap | Common | Cumulative | 25 | — |
-| BOMBA_IMHA | Bomba İmha | Bomba ile gezegen yüzeyini yok et | Epic | SingleUnlock | 1 | — |
-| TAM_CEPHANE | Tam Cephane | Bir maçta 5 silahın tamamını kullan | Epic | SingleUnlock | 1 | — |
+| TABANCALI | Pistolero | Hit 50 enemies with the pistol | Common | Cumulative | 50 | — |
+| KESKIN_NISANCI | Sharpshooter | Land 10 headshots with the pistol | Rare | Cumulative | 10 | — |
+| ROKETCI | Rocketeer | Damage 3+ enemies with a single RPG shot | Rare | SingleUnlock | 1 | r015 |
+| PATLAMA_UZMANI | Explosion Expert | Fire 100 total shots with the RPG | Rare | Cumulative | 100 | u022 |
+| SAÇMA_YAGMURU | Pellet Rain | Land every pellet of a shotgun blast | Epic | SingleUnlock | 1 | — |
+| POMPACI | Pumper | Hit 5 enemies in a row with the shotgun | Rare | SingleUnlock | 1 | — |
+| EL_BOMBACI | Grenadier | Hit 2+ enemies with a single grenade | Rare | SingleUnlock | 1 | — |
+| PIM_CEKICI | Pin Puller | Throw 25 grenades | Common | Cumulative | 25 | — |
+| BOMBA_IMHA | Demolition | Destroy the planet surface with a bomb | Epic | SingleUnlock | 1 | — |
+| TAM_CEPHANE | Full Arsenal | Use all 5 weapons in one match | Epic | SingleUnlock | 1 | — |
 
-### SKİLL (10)
+### SKILLS (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| KARA_DELIK_USTASI | Kara Delik Ustası | Black Hole ile 3 düşmanı tek çek | Epic | SingleUnlock | 1 | e012 |
-| OLAY_UFKU | Olay Ufku | Black Hole ile 50 düşman çek | Rare | Cumulative | 50 | — |
-| ISINLANAN | Işınlanan | Teleport ile düşmanın arkasına geç ve vur | Rare | SingleUnlock | 1 | — |
-| KUANTUM | Kuantum | Teleport'u tek maçta 5 kez kullan | Common | Cumulative | 5 | — |
-| DOKUNULMAZ | Dokunulmaz | Shield ile 500 hasar blokla | Rare | Cumulative | 500 | e018 |
-| KALKAN_DUVARI | Kalkan Duvarı | Shield ile 3 saldırıyı blokla | Rare | SingleUnlock | 1 | — |
-| CEKIC_ZAMANI | Çekiç Zamanı | Bat Hammer ile düşmanı gezegen dışına fırlat | Epic | SingleUnlock | 1 | — |
-| HOME_RUN | Home Run | Bat Hammer vurduğun düşman başkasına çarpsın | Legendary | SingleUnlock | 1 | l014 |
-| SUPER_KAHRAMAN | Süper Kahraman | Super Jump ile düşmanın üstüne inerek hasar ver | Rare | SingleUnlock | 1 | — |
-| YÖRÜNGE | Yörünge | Super Jump ile gezegen değiştirerek atış yap | Common | SingleUnlock | 1 | — |
+| KARA_DELIK_USTASI | Black Hole Master | Pull 3 enemies with a single Black Hole | Epic | SingleUnlock | 1 | e012 |
+| OLAY_UFKU | Event Horizon | Pull 50 enemies with Black Hole | Rare | Cumulative | 50 | — |
+| ISINLANAN | Teleported | Teleport behind an enemy and hit them | Rare | SingleUnlock | 1 | — |
+| KUANTUM | Quantum | Use Teleport 5 times in a single match | Common | Cumulative | 5 | — |
+| DOKUNULMAZ | Untouchable | Block 500 damage with Shield | Rare | Cumulative | 500 | e018 |
+| KALKAN_DUVARI | Shield Wall | Block 3 attacks with Shield | Rare | SingleUnlock | 1 | — |
+| CEKIC_ZAMANI | Hammer Time | Knock an enemy off the planet with Bat Hammer | Epic | SingleUnlock | 1 | — |
+| HOME_RUN | Home Run | Make a Bat Hammer-struck enemy collide with another | Legendary | SingleUnlock | 1 | l014 |
+| SUPER_KAHRAMAN | Super Hero | Deal damage by landing on an enemy with Super Jump | Rare | SingleUnlock | 1 | — |
+| YÖRÜNGE | Orbit | Change planets with Super Jump and take a shot | Common | SingleUnlock | 1 | — |
 
-### SOSYAL (10)
+### SOCIAL (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| SOSYAL_KELEBEK | Sosyal Kelebek | 8 farklı oyuncuyla maç oyna | Common | Cumulative | 8 | r023 |
-| REKABETCI | Rekabetçi | Sıralama maçında ilk 3'e gir | Rare | SingleUnlock | 1 | — |
-| KOZMIK_AVCI | Kozmik Avcı | Leaderboard top 10'a gir | Epic | SingleUnlock | 1 | — |
-| BIR_NUMARA | Bir Numara | Leaderboard zirvesine çık | Legendary | SingleUnlock | 1 | — |
-| DUELLO_SAMPIYONU | Düello Şampiyonu | 1v1 modunda 10 galibiyet al | Rare | Cumulative | 10 | — |
-| OGRETMEN | Öğretmen | Yeni oyuncuyu tutorial'dan geçir | Common | SingleUnlock | 1 | — |
-| KOZMIK_EKIP | Kozmik Ekip | Aynı 3 kişiyle 5 maç oyna | Rare | Cumulative | 5 | — |
-| INTIKAM | İntikam | Seni öldüreni bir sonraki maçta yenebilir | Rare | SingleUnlock | 1 | — |
-| HERKESE_MEYDAN | Herkese Meydan | Aynı maçta 7 farklı oyuncuya hasar ver | Epic | SingleUnlock | 1 | — |
-| GALAKSININ_EFSANESI | Galaksinin Efsanesi | Tüm 49 achievement'ı tamamla | Legendary | SingleUnlock | 1 | l007 |
+| SOSYAL_KELEBEK | Social Butterfly | Play matches with 8 different players | Common | Cumulative | 8 | r023 |
+| REKABETCI | Competitor | Finish top 3 in a ranked match | Rare | SingleUnlock | 1 | — |
+| KOZMIK_AVCI | Cosmic Hunter | Reach the leaderboard top 10 | Epic | SingleUnlock | 1 | — |
+| BIR_NUMARA | Number One | Reach the top of the leaderboard | Legendary | SingleUnlock | 1 | — |
+| DUELLO_SAMPIYONU | Duel Champion | Win 10 matches in 1v1 mode | Rare | Cumulative | 10 | — |
+| OGRETMEN | Teacher | Guide a new player through the tutorial | Common | SingleUnlock | 1 | — |
+| KOZMIK_EKIP | Cosmic Squad | Play 5 matches with the same 3 people | Rare | Cumulative | 5 | — |
+| INTIKAM | Revenge | Beat the player who killed you in the next match | Rare | SingleUnlock | 1 | — |
+| HERKESE_MEYDAN | Challenge Everyone | Damage 7 different players in the same match | Epic | SingleUnlock | 1 | — |
+| GALAKSININ_EFSANESI | Legend of the Galaxy | Complete all 49 achievements | Legendary | SingleUnlock | 1 | l007 |
 
 ## 5.3 AchievementEvents.cs
 `Scripts/Achievements/Core/AchievementEvents.cs`
-Static event bus — hiçbir sistem başka sisteme doğrudan referans vermez
+Static event bus — no system references another system directly
 
 ```csharp
 public static class AchievementEvents
 {
     public static event Action OnMatchWon;
     public static event Action OnMatchLost;
-    public static event Action<int>    OnDamageDealt;       // hasar miktarı
+    public static event Action<int>    OnDamageDealt;       // damage amount
     public static event Action<int>    OnDamageTaken;
     public static event Action<string> OnWeaponUsed;        // weapon itemId
     public static event Action<string> OnAbilityUsed;       // skill itemId
     public static event Action         OnHeadshotLanded;
-    public static event Action<int>    OnMatchCompleted;    // toplam atış sayısı
+    public static event Action<int>    OnMatchCompleted;    // total shot count
     public static event Action         OnPlanetDestroyed;
     public static event Action<bool>   OnShotFired;         // bool: isHit
-    public static event Action<int>    OnTurnCompleted;     // tur sayısı
-    public static event Action<int>    OnPlayerCountInMatch;// lobbydeki oyuncu sayısı
-    public static event Action<string> OnPlayerDefeated;    // yenilen oyuncunun id'si
+    public static event Action<int>    OnTurnCompleted;     // turn count
+    public static event Action<int>    OnPlayerCountInMatch;// player count in the lobby
+    public static event Action<string> OnPlayerDefeated;    // id of the defeated player
 
-    // Fire metodları (null-safe)
+    // Fire methods (null-safe)
     public static void FireMatchWon()                      => OnMatchWon?.Invoke();
     public static void FireMatchLost()                     => OnMatchLost?.Invoke();
     public static void FireDamageDealt(int amount)         => OnDamageDealt?.Invoke(amount);
@@ -594,35 +594,35 @@ public static class AchievementEvents
 
 ## 5.4 AchievementTracker.cs
 `Scripts/Achievements/Core/AchievementTracker.cs`
-Singleton, DontDestroyOnLoad — event'leri dinler, sayaçları tutar
+Singleton, DontDestroyOnLoad — listens to events, keeps the counters
 
-Takip edilecek kümülatif sayaçlar:
+Cumulative counters to track:
 - totalMatchesWon, totalMatchesPlayed
 - totalDamageDealt, totalDamageTaken
 - totalShotsFired, totalShotsHit
 - totalHeadshots, totalPlanetsDestroyed
-- weaponsUsedInCurrentMatch (HashSet) → TAM_CEPHANE için
+- weaponsUsedInCurrentMatch (HashSet) → for TAM_CEPHANE
 - uniqueOpponentsPlayed (HashSet)
 - blackHolePullsInCurrentAbility
 - shieldBlockedDamage
 - consecutiveShotgunVictims
 
-OnDestroy'da tüm event aboneliklerini temizle.
+Clear all event subscriptions in OnDestroy.
 
 ## 5.5 AchievementManager.cs
 `Scripts/Achievements/Core/AchievementManager.cs`
 Singleton, DontDestroyOnLoad
 
-- `UnlockAchievement(string id)` — tek public unlock noktası
-  - Daha önce unlock edilmişse çık
-  - Ödülleri ver: CurrencyManager.Add(XP, Gold, Gem)
-  - Kostüm ödülü varsa CostumeManager'a bildir
-  - `OnAchievementUnlocked` event: `Action<AchievementDefinition>` fırlat
-- `UpdateProgress(string id, int value)` — cumulative için
+- `UnlockAchievement(string id)` — the single public unlock entry point
+  - Return early if already unlocked
+  - Grant the rewards: CurrencyManager.Add(XP, Gold, Gem)
+  - Notify CostumeManager if there is a costume reward
+  - Raise the `OnAchievementUnlocked` event: `Action<AchievementDefinition>`
+- `UpdateProgress(string id, int value)` — for cumulative achievements
 - `IsUnlocked(string id) → bool`
 - Save: `Application.persistentDataPath/achievements.json`
 
-## 5.6 Platform Provider'lar
+## 5.6 Platform Providers
 `Scripts/Achievements/Providers/`
 
 **IAchievementProvider.cs**
@@ -639,11 +639,11 @@ public interface IAchievementProvider
 
 **LocalAchievementProvider.cs** — editor/fallback
 **SteamAchievementProvider.cs** — `#if UNITY_STANDALONE`
-  - Facepunch.Steamworks stub (gerçek entegrasyon ayrı görev)
+  - Facepunch.Steamworks stub (real integration is a separate task)
 **GooglePlayAchievementProvider.cs** — `#if UNITY_ANDROID` (placeholder)
 **AppStoreAchievementProvider.cs** — `#if UNITY_IOS` (placeholder)
 
-Platform detection AchievementManager.Awake():
+Platform detection in AchievementManager.Awake():
 ```csharp
 #if UNITY_STANDALONE && !UNITY_EDITOR
     _provider = new SteamAchievementProvider();
@@ -658,7 +658,7 @@ Platform detection AchievementManager.Awake():
 
 ---
 
-# BÖLÜM 6 — MAÇ SONU XP SİSTEMİ
+# SECTION 6 — END-OF-MATCH XP SYSTEM
 
 ## 6.1 MatchRewardCalculator.cs
 `Scripts/Economy/Match/MatchRewardCalculator.cs`
@@ -667,8 +667,8 @@ Static utility
 ```csharp
 public static class MatchRewardCalculator
 {
-    // Galibiyet: 50 base + (süre/60)*10, max 150 XP
-    // Mağlubiyet: 20 base + (süre/60)*5, max 50 XP
+    // Win:  50 base + (duration/60)*10, max 150 XP
+    // Loss: 20 base + (duration/60)*5,  max 50 XP
     public static long CalculateMatchXP(bool isWinner, float matchDurationSeconds)
     {
         if (isWinner)
@@ -679,17 +679,17 @@ public static class MatchRewardCalculator
 }
 ```
 
-Mevcut TurnManager.cs içinde maç bitişine ekle:
+Add to the match-end path in the existing TurnManager.cs:
 ```csharp
 long xp = MatchRewardCalculator.CalculateMatchXP(isLocalPlayerWinner, matchDuration);
 CurrencyManager.Instance.Add(CurrencyType.XP, xp);
-AchievementEvents.FireMatchWon(); // veya FireMatchLost()
+AchievementEvents.FireMatchWon(); // or FireMatchLost()
 ChestManager.Instance.TryGrantChest(isLocalPlayerWinner);
 ```
 
 ---
 
-# BÖLÜM 7 — GÖREV SİSTEMİ
+# SECTION 7 — QUEST SYSTEM
 
 ## 7.1 QuestDefinition.cs
 `Scripts/Economy/Quests/QuestDefinition.cs`
@@ -703,7 +703,7 @@ public class QuestDefinition : ScriptableObject
     public string      displayName;
     public string      description;
     public QuestPeriod period;          // Daily, Weekly, Monthly
-    public string      trackedEventKey; // AchievementEvents metoduyla eşleşir
+    public string      trackedEventKey; // matches an AchievementEvents method
     public int         targetValue;
     public long        rewardXP;
     public long        rewardGold;
@@ -712,60 +712,60 @@ public class QuestDefinition : ScriptableObject
 public enum QuestPeriod { Daily, Weekly, Monthly }
 ```
 
-Görev havuzu ScriptableObject'leri `Resources/Economy/Quests/` altında oluştur:
+Create the quest pool ScriptableObjects under `Resources/Economy/Quests/`:
 
-**Günlük görevler (havuz — her gün 3 tanesi rastgele seçilir):**
+**Daily quests (pool — 3 are picked at random each day):**
 | questId | displayName | description | target | XP | Gold |
 |---|---|---|---|---|---|
-| daily_win_1 | Bugün Kazan | Bugün 1 maç kazan | 1 | 200 | 100 |
-| daily_shots_5 | Atış Antrenmanı | Bugün 5 atış yap | 5 | 150 | 75 |
-| daily_blackhole | Kara Güç | Bugün Black Hole kullan | 1 | 200 | 100 |
-| daily_damage_500 | Hasar Ver | Bugün 500 hasar ver | 500 | 200 | 100 |
-| daily_headshot | Nişancı | Bugün 1 headshot yap | 1 | 150 | 75 |
-| daily_play_2 | Oyun Zamanı | Bugün 2 maç oyna | 2 | 150 | 75 |
-| daily_ability | Yetenekli | Bugün herhangi bir ability kullan | 1 | 150 | 75 |
-| daily_planet | Gezegen Avcısı | Bugün 1 gezegen yok et | 1 | 200 | 100 |
+| daily_win_1 | Win Today | Win 1 match today | 1 | 200 | 100 |
+| daily_shots_5 | Shooting Practice | Fire 5 shots today | 5 | 150 | 75 |
+| daily_blackhole | Black Hole Power | Use Black Hole today | 1 | 200 | 100 |
+| daily_damage_500 | Deal Damage | Deal 500 damage today | 500 | 200 | 100 |
+| daily_headshot | Sharpshooter | Land 1 headshot today | 1 | 150 | 75 |
+| daily_play_2 | Playtime | Play 2 matches today | 2 | 150 | 75 |
+| daily_ability | Skilled | Use any ability today | 1 | 150 | 75 |
+| daily_planet | Planet Hunter | Destroy 1 planet today | 1 | 200 | 100 |
 
-**Haftalık görevler (havuz — haftada 2 tanesi seçilir):**
+**Weekly quests (pool — 2 are picked per week):**
 | questId | displayName | description | target | XP | Gold | Gem |
 |---|---|---|---|---|---|---|
-| weekly_win_10 | Haftalık Şampiyon | Bu hafta 10 maç kazan | 10 | 800 | 400 | 10 |
-| weekly_weapons | Silah Ustası | Bu hafta tüm silahları kullan | 5 | 600 | 300 | 5 |
-| weekly_damage_5k | Yıkıcı | Bu hafta 5.000 hasar ver | 5000 | 700 | 350 | 5 |
-| weekly_abilities | Ability Koleksiyonu | Bu hafta 3 farklı ability kullan | 3 | 600 | 300 | 5 |
+| weekly_win_10 | Weekly Champion | Win 10 matches this week | 10 | 800 | 400 | 10 |
+| weekly_weapons | Weapon Master | Use every weapon this week | 5 | 600 | 300 | 5 |
+| weekly_damage_5k | Destroyer | Deal 5,000 damage this week | 5000 | 700 | 350 | 5 |
+| weekly_abilities | Ability Collection | Use 3 different abilities this week | 3 | 600 | 300 | 5 |
 
-**Aylık görevler (havuz — ayda 1 tanesi seçilir):**
+**Monthly quests (pool — 1 is picked per month):**
 | questId | displayName | description | target | XP | Gold | Gem |
 |---|---|---|---|---|---|---|
-| monthly_play_50 | Aylık Savaşçı | Bu ay 50 maç oyna | 50 | 3000 | 1500 | 50 |
-| monthly_damage_50k | Yıkım Efendisi | Bu ay 50.000 hasar ver | 50000 | 2500 | 1200 | 30 |
+| monthly_play_50 | Monthly Warrior | Play 50 matches this month | 50 | 3000 | 1500 | 50 |
+| monthly_damage_50k | Lord of Destruction | Deal 50,000 damage this month | 50000 | 2500 | 1200 | 30 |
 
 ## 7.2 QuestManager.cs
 `Scripts/Economy/Quests/QuestManager.cs`
 Singleton, DontDestroyOnLoad
 
-- Period başında görev havuzundan rastgele seç (Daily:3, Weekly:2, Monthly:1)
-- AchievementEvents'i dinle → görev sayaçlarını artır
-- Tamamlanınca CurrencyManager'a ödül ver
-- Gece yarısı/Pazartesi/ay başı reset (DateTime ile)
+- At the start of each period, pick randomly from the quest pool (Daily:3, Weekly:2, Monthly:1)
+- Listen to AchievementEvents → increment the quest counters
+- Grant the reward via CurrencyManager on completion
+- Reset at midnight / Monday / start of month (using DateTime)
 - `GetActiveDailyQuests()`, `GetActiveWeeklyQuests()`, `GetActiveMonthlyQuest()`
 - Save: `Application.persistentDataPath/quests.json`
 
 ---
 
-# BÖLÜM 8 — LOGIN STREAK SİSTEMİ
+# SECTION 8 — LOGIN STREAK SYSTEM
 
 ## 8.1 LoginStreakManager.cs
 `Scripts/Economy/Streak/LoginStreakManager.cs`
 Singleton, DontDestroyOnLoad
 
-Oyun açılışında:
-- Son login tarihi == bugün → zaten sayıldı, çık
-- Son login tarihi == dün → streak++
-- 2+ gün önce → streak = 1 (sıfırla)
+On game launch:
+- Last login date == today → already counted, return
+- Last login date == yesterday → streak++
+- 2+ days ago → streak = 1 (reset)
 
-Streak ödül tablosu:
-| Streak Günü | XP | Gold | Gem |
+Streak reward table:
+| Streak Day | XP | Gold | Gem |
 |---|---|---|---|
 | 1 | 10 | 25 | 0 |
 | 3 | 50 | 75 | 0 |
@@ -774,7 +774,7 @@ Streak ödül tablosu:
 | 30 | 500 | 750 | 30 |
 | 100 | 1000 | 2000 | 100 |
 
-Ara günler: eşit veya küçük en yakın milestone ödülünü ver.
+Intermediate days: grant the reward of the nearest milestone that is equal or lower.
 
 Events:
 - `OnStreakUpdated`: `Action<int>` (currentStreak)
@@ -784,7 +784,7 @@ Save: `Application.persistentDataPath/streak.json`
 
 ---
 
-# BÖLÜM 9 — SANDIK SİSTEMİ
+# SECTION 9 — CHEST SYSTEM
 
 ## 9.1 ChestType.cs & ChestConfig.cs
 `Scripts/Economy/Chest/`
@@ -795,64 +795,64 @@ public enum ChestType { Common, Rare, Epic }
 
 ChestConfig ScriptableObject — `Resources/Economy/ChestConfig`:
 - dailyChestLimit = 3
-- Drop oranları: Common %65, Rare %25, Epic %10
-- Gold aralıkları: Common 50–150, Rare 200–400, Epic 500–800
+- Drop rates: Common 65%, Rare 25%, Epic 10%
+- Gold ranges: Common 50–150, Rare 200–400, Epic 500–800
 - Gem: Rare +5, Epic +15
-- Kostüm drop şansı: Common %0, Rare %5, Epic %15
-  (Sadece sahip olunmayan Common/Uncommon kostümler düşer)
+- Costume drop chance: Common 0%, Rare 5%, Epic 15%
+  (Only Common/Uncommon costumes that are not already owned can drop)
 
 ## 9.2 ChestManager.cs
 `Scripts/Economy/Chest/ChestManager.cs`
 Singleton, DontDestroyOnLoad
 
-- `TryGrantChest(bool isWinner)` — sadece galibiyet sayılır
-  - Gün içi limit kontrol (max 3)
-  - Ağırlıklı random ile ChestType seç
-  - Gold + Gem + opsiyonel kostüm ödülünü ver
+- `TryGrantChest(bool isWinner)` — only wins count
+  - Check the daily limit (max 3)
+  - Pick the ChestType via weighted random
+  - Grant the Gold + Gem + optional costume reward
   - `OnChestGranted` event: `Action<ChestType, long, long, string>` 
-    (type, gold, gem, costumeId — costume boşsa "")
+    (type, gold, gem, costumeId — "" if there is no costume)
 - `GetTodaysChestCount() → int`
 - `GetRemainingChests() → int`
-- Gece yarısı sayacı sıfırla
+- Reset the counter at midnight
 - Save: `Application.persistentDataPath/chests.json`
 
 ---
 
-# BÖLÜM 10 — MEVCUT SİSTEMLERE ENTEGRASYON
+# SECTION 10 — INTEGRATION WITH EXISTING SYSTEMS
 
-TurnManager.cs, ProjectileBase.cs, IAbility implementasyonları ve
-DestructiblePlanet.cs'e AchievementEvents çağrılarını ekle.
-Gerçek dosya yollarını CLAUDE.md'den al.
+Add the AchievementEvents calls to TurnManager.cs, ProjectileBase.cs, the IAbility
+implementations and DestructiblePlanet.cs.
+Take the real file paths from CLAUDE.md.
 
-**TurnManager.cs — maç/tur bitişi:**
+**TurnManager.cs — match/turn end:**
 ```csharp
-// Maç bitişinde:
-bool isWinner = /* local player kazandı mı */;
-float duration = /* maç süresi saniye */;
-int playerCount = /* lobbydeki oyuncu sayısı */;
-int totalShots = /* maç boyunca toplam atış */;
-int currentHP = /* local player'ın HP'si */;
+// At match end:
+bool isWinner = /* did the local player win */;
+float duration = /* match duration in seconds */;
+int playerCount = /* player count in the lobby */;
+int totalShots = /* total shots over the match */;
+int currentHP = /* the local player's HP */;
 
 AchievementEvents.FirePlayerCountInMatch(playerCount);
 if (isWinner) AchievementEvents.FireMatchWon();
 else          AchievementEvents.FireMatchLost();
 AchievementEvents.FireMatchCompleted(totalShots);
-if (isWinner && currentHP == 1) { /* SON_NEFES için AchievementTracker yakalar */ }
+if (isWinner && currentHP == 1) { /* AchievementTracker catches this for SON_NEFES */ }
 
 long xp = MatchRewardCalculator.CalculateMatchXP(isWinner, duration);
 CurrencyManager.Instance.Add(CurrencyType.XP, xp);
 ChestManager.Instance.TryGrantChest(isWinner);
 ```
 
-**ProjectileBase.cs — hasar uygulanınca:**
+**ProjectileBase.cs — when damage is applied:**
 ```csharp
 AchievementEvents.FireDamageDealt(damageAmount);
 AchievementEvents.FireShotFired(isHit: true);
-// headshot tespiti varsa:
+// if headshot detection exists:
 AchievementEvents.FireHeadshotLanded();
 ```
 
-**Her IAbility implementasyonu — ability kullanılınca:**
+**Every IAbility implementation — when the ability is used:**
 ```csharp
 // BlackHoleAbility.cs:
 AchievementEvents.FireAbilityUsed("skill_blackhole");
@@ -866,93 +866,93 @@ AchievementEvents.FireAbilityUsed("skill_bathammer");
 AchievementEvents.FireAbilityUsed("skill_superjump");
 ```
 
-**Her silah ateşlenince:**
+**When each weapon is fired:**
 ```csharp
-AchievementEvents.FireWeaponUsed("weapon_pistol"); // vb.
-AchievementEvents.FireShotFired(isHit: false); // atış anında
+AchievementEvents.FireWeaponUsed("weapon_pistol"); // etc.
+AchievementEvents.FireShotFired(isHit: false); // at the moment of firing
 ```
 
-**DestructiblePlanet.cs — gezegen tamamen yok olunca:**
+**DestructiblePlanet.cs — when the planet is fully destroyed:**
 ```csharp
 AchievementEvents.FirePlanetDestroyed();
 ```
 
 ---
 
-# BÖLÜM 11 — UI BİLEŞENLERİ
+# SECTION 11 — UI COMPONENTS
 
-## Prefabs/UI/Economy/ klasörüne oluştur:
+## Create under the Prefabs/UI/Economy/ folder:
 
 ### CurrencyHUD.prefab
-- DontDestroyOnLoad Canvas (Sort Order: 50) üzerinde yaşar
-- XP progress bar (mevcut level / sonraki level)
-- Level badge (sayı + Prestige ikonu varsa)
-- Gold sayacı
-- Gem sayacı
-- CurrencyManager.OnCurrencyChanged → animasyonlu counter
-- PlayerLevelManager.OnLevelUp → level-up efekti
+- Lives on a DontDestroyOnLoad Canvas (Sort Order: 50)
+- XP progress bar (current level / next level)
+- Level badge (number + Prestige icon if any)
+- Gold counter
+- Gem counter
+- CurrencyManager.OnCurrencyChanged → animated counter
+- PlayerLevelManager.OnLevelUp → level-up effect
 
 ### AchievementPopup.prefab
 - Canvas Sort Order: 100
-- Sağ alt köşeden slide-in
-- Queue sistemi: aynı anda birden fazla gelirse sırayla göster
-- 3 saniye görünür, slide-out
-- Rarity'e göre border rengi
-- Achievement icon (null ise placeholder)
-- "Achievement Kazanıldı!" başlığı + isim
-- Ödül özeti: "+300 XP · +150 Gold"
-- Kostüm ödülü varsa: "Yeni Kostüm: [isim]" satırı
+- Slides in from the bottom-right corner
+- Queue system: if several arrive at once, show them in sequence
+- Visible for 3 seconds, then slides out
+- Border color by rarity
+- Achievement icon (placeholder if null)
+- "Achievement Unlocked!" heading + name
+- Reward summary: "+300 XP · +150 Gold"
+- If there's a costume reward: a "New Costume: [name]" line
 
 ### LevelUpPopup.prefab
-- Ekran ortası, büyük format
-- "Level X!" animasyonlu
-- Bu levelde açılan item'lar listesi (silah, skill, kostüm)
-- "Devam" butonu
+- Center of the screen, large format
+- Animated "Level X!"
+- List of items unlocked at this level (weapon, skill, costume)
+- "Continue" button
 
 ### ChestPopup.prefab
-- Sandık tipi görseli (placeholder)
-- Açılış animasyonu
-- Gold + Gem + Kostüm ödülleri
-- "Bugün X/3 sandık" göstergesi
+- Chest type visual (placeholder)
+- Opening animation
+- Gold + Gem + Costume rewards
+- "X/3 chests today" indicator
 
 ### StreakPopup.prefab
-- Login streak bildirimi
-- Ateş ikonu + streak sayısı
-- Ödül detayı
+- Login streak notification
+- Fire icon + streak count
+- Reward details
 
 ### AchievementListPanel.prefab
 - Fullscreen overlay
-- Tab'lar: Savaş / İstatistik / Silah / Skill / Sosyal
-- Her satır: icon (placeholder) + isim + açıklama + ödül + tamamlanma tarihi
-- Secret olanlar unlock edilene kadar "???" 
-- Progress bar: Cumulative achievement'lar için
-- Üst özet: "X/50 tamamlandı"
+- Tabs: Combat / Statistics / Weapons / Skills / Social
+- Each row: icon (placeholder) + name + description + reward + completion date
+- Secret ones show "???" until unlocked
+- Progress bar: for Cumulative achievements
+- Summary at the top: "X/50 completed"
 
 ### QuestPanel.prefab
-- Günlük / Haftalık / Aylık sekmeleri
-- Her görev: isim + progress bar + ödül + kalan süre
-- Tamamlananlar yeşil, tamamlanmayanlar normal
+- Daily / Weekly / Monthly tabs
+- Each quest: name + progress bar + reward + time remaining
+- Completed ones green, incomplete ones normal
 
 ### CostumeShopPanel.prefab
-- Grid layout: 4 sütun
-- Her kart: placeholder görsel alanı (128x128 gri rect + "Görsel Yakında" metni)
-- Rarity border rengi
-- Kilit ikonu + koşul metni (kilitliyse)
-- Gold/Gem fiyatı (sahip olunmuyorsa)
-- "Giy" butonu (sahip olunuyorsa)
-- Filtre: Rarity / Tip / Tema / Açılış Yöntemi
+- Grid layout: 4 columns
+- Each card: placeholder art area (128x128 gray rect + "Art Coming Soon" text)
+- Rarity border color
+- Lock icon + condition text (if locked)
+- Gold/Gem price (if not owned)
+- "Equip" button (if owned)
+- Filters: Rarity / Type / Theme / Unlock Method
 
 ### MainMenuEconomyWidget.cs
-Ana menü Canvas'ına eklenecek persistent widget:
-- Üst bar: [Level Badge] [━━━━XP BAR━━━━] [Gold] [Gem]
-- Butonlar: "Sandık (X/3)" → ChestPanel | "Görevler" → QuestPanel |
-  "Kostümler" → CostumeShopPanel | "Başarımlar" → AchievementListPanel
+Persistent widget to add to the main menu Canvas:
+- Top bar: [Level Badge] [━━━━XP BAR━━━━] [Gold] [Gem]
+- Buttons: "Chests (X/3)" → ChestPanel | "Quests" → QuestPanel |
+  "Costumes" → CostumeShopPanel | "Achievements" → AchievementListPanel
 
 ---
 
-# BÖLÜM 12 — SAVE/LOAD MİMARİSİ
+# SECTION 12 — SAVE/LOAD ARCHITECTURE
 
-Her manager kendi JSON dosyasını yönetir:
+Each manager owns its own JSON file:
 ```
 Application.persistentDataPath/
   currency.json      ← CurrencyManager
@@ -965,7 +965,7 @@ Application.persistentDataPath/
   chests.json        ← ChestManager
 ```
 
-Ortak save pattern her manager için:
+Shared save pattern for every manager:
 ```csharp
 private void Save() =>
     File.WriteAllText(SavePath, JsonUtility.ToJson(_data, true));
@@ -981,7 +981,7 @@ private void Load()
 
 ---
 
-# BÖLÜM 13 — SCRIPT EXECUTION ORDER
+# SECTION 13 — SCRIPT EXECUTION ORDER
 
 Project Settings → Script Execution Order:
 ```
@@ -998,21 +998,21 @@ AchievementTracker   : -30
 
 ---
 
-# BÖLÜM 14 — SCENE SETUP
+# SECTION 14 — SCENE SETUP
 
 **MainMenu scene:**
 - EconomyCore GameObject: CurrencyManager + PlayerLevelManager +
-  UnlockManager + CostumeManager (hepsi DontDestroyOnLoad)
+  UnlockManager + CostumeManager (all DontDestroyOnLoad)
 - ProgressionServices GameObject: LoginStreakManager + ChestManager +
   QuestManager (DontDestroyOnLoad)
 - AchievementServices GameObject: AchievementManager + AchievementTracker
   (DontDestroyOnLoad)
 - PersistentCanvas (DontDestroyOnLoad, Sort Order 50): CurrencyHUD
 - PopupCanvas (DontDestroyOnLoad, Sort Order 100): AchievementPopup +
-  LevelUpPopup + ChestPopup + StreakPopup (başlangıçta inactive)
-- MainMenuCanvas: MainMenuEconomyWidget + tüm panel prefab'ları
+  LevelUpPopup + ChestPopup + StreakPopup (inactive at start)
+- MainMenuCanvas: MainMenuEconomyWidget + all panel prefabs
 
-**Resources/ klasör yapısı:**
+**Resources/ folder structure:**
 ```
 Resources/
   Economy/
@@ -1021,125 +1021,125 @@ Resources/
     CostumeDatabase.asset
     ChestConfig.asset
     Quests/
-      (tüm QuestDefinition asset'leri)
+      (all QuestDefinition assets)
     Unlocks/
-      (tüm UnlockableItem asset'leri)
+      (all UnlockableItem assets)
   Achievements/
     AchievementDatabase.asset
-    (tüm AchievementDefinition asset'leri)
+    (all AchievementDefinition assets)
   Costumes/
-    (tüm CostumeDefinition asset'leri)
+    (all CostumeDefinition assets)
 ```
 
 ---
 
-# BÖLÜM 15 — CLAUDE.md GÜNCELLEMESİ
+# SECTION 15 — CLAUDE.md UPDATE
 
-Implementasyon bittikten sonra CLAUDE.md'e ekle:
+Add to CLAUDE.md once the implementation is finished:
 
 ```markdown
 ## Economy & Progression System
 
-### Para Birimleri
-- XP: Level atlatır, satın alınamaz
-- Gold: Kozmetik alımı, oynanışla kazanılır
-- Gem: Premium kozmetik, IAP ile alınır
+### Currencies
+- XP: levels you up, cannot be purchased
+- Gold: cosmetic purchases, earned through gameplay
+- Gem: premium cosmetics, bought via IAP
 
-### Level Eşikleri
-- Lv  1-10  → 100 XP/level  (toplam 1.000)
-- Lv 11-50  → 500 XP/level  (toplam 21.000)
-- Lv 51-100 → 1.000 XP/level (toplam 71.000)
-- Lv 101+   → 2.000 XP/level (prestige, sonsuz)
+### Level Thresholds
+- Lv  1-10  → 100 XP/level  (total 1,000)
+- Lv 11-50  → 500 XP/level  (total 21,000)
+- Lv 51-100 → 1,000 XP/level (total 71,000)
+- Lv 101+   → 2,000 XP/level (prestige, unlimited)
 
-### Unlock Sırası (silah + skill)
-Default: Tabanca, Pompalı, RPG
-Lv 2: Bomba | Lv 4: Super Jump | Lv 6: El Bombası
+### Unlock Order (weapons + skills)
+Default: Pistol, Shotgun, RPG
+Lv 2: Bomb | Lv 4: Super Jump | Lv 6: Grenade
 Lv 8: Shield | Lv 10: Black Hole, Teleport, Bat Hammer
 
-### Kostüm Sistemi
-- 150 kostüm: 40 Common, 35 Uncommon, 35 Rare, 25 Epic, 15 Legendary
-- Tip: Character skin + Weapon skin (bağımsız)
-- previewSprite null olabilir — UI otomatik placeholder gösterir
-- Açılış: Level / Gold / Gem / Chest / Achievement
+### Costume System
+- 150 costumes: 40 Common, 35 Uncommon, 35 Rare, 25 Epic, 15 Legendary
+- Type: Character skin + Weapon skin (independent)
+- previewSprite may be null — the UI shows a placeholder automatically
+- Unlock: Level / Gold / Gem / Chest / Achievement
 
-### Gelir Kaynakları
-- Maç sonu: sadece XP (galibiyet 50-150, mağlubiyet 20-50)
-- Achievement: XP + Gold + Gem (rarity'e göre) + opsiyonel kostüm
-- Günlük görev (3): XP + Gold
-- Haftalık görev (2): XP + Gold + Gem
-- Aylık görev (1): XP + Gold + Gem
-- Login streak: gün sayısına göre kademeli (milestone'larda büyür)
-- Günlük sandık (max 3, sadece galibiyet): Gold + Gem + %5-15 kostüm
+### Income Sources
+- End of match: XP only (win 50-150, loss 20-50)
+- Achievement: XP + Gold + Gem (by rarity) + optional costume
+- Daily quests (3): XP + Gold
+- Weekly quests (2): XP + Gold + Gem
+- Monthly quest (1): XP + Gold + Gem
+- Login streak: tiered by day count (grows at milestones)
+- Daily chest (max 3, wins only): Gold + Gem + 5-15% costume
 
 ### Script Execution Order
 CurrencyManager(-100) → PlayerLevelManager(-90) → UnlockManager(-80)
 → CostumeManager(-75) → LoginStreakManager(-70) → ChestManager(-60)
 → QuestManager(-50) → AchievementManager(-40) → AchievementTracker(-30)
 
-### Save Dosyaları
+### Save Files
 persistentDataPath: currency, progress, unlocks, costumes,
 achievements, quests, streak, chests (.json)
 
-### Yeni Achievement Ekleme
-1. AchievementDefinition ScriptableObject oluştur
-2. AchievementDatabase'e ekle
-3. AchievementTracker'a trigger logic ekle
-4. Platform provider'larda ID mapping yap
+### Adding a New Achievement
+1. Create an AchievementDefinition ScriptableObject
+2. Add it to AchievementDatabase
+3. Add trigger logic to AchievementTracker
+4. Map the ID in the platform providers
 
-### Yeni Kostüm Ekleme
-1. CostumeDefinition ScriptableObject oluştur (previewSprite null ok)
-2. CostumeDatabase'e ekle
-3. Unlock koşulunu doldur
+### Adding a New Costume
+1. Create a CostumeDefinition ScriptableObject (previewSprite null is ok)
+2. Add it to CostumeDatabase
+3. Fill in the unlock condition
 ```
 
 ---
 
-# BÖLÜM 16 — KONTROL LİSTESİ
+# SECTION 16 — CHECKLIST
 
-Implementasyon bittikten sonra sırayla doğrula:
+Verify in order once the implementation is finished:
 
 **Economy Core:**
-- [ ] Script execution order ayarlandı
-- [ ] CurrencyManager Gem.Add çağrılarını Debug.Log ile kaydediyor
-- [ ] Level 100 sonrası prestige otomatik devreye giriyor
-- [ ] Prestige'de level sıfırlanmıyor (101, 102... devam ediyor)
+- [ ] Script execution order is configured
+- [ ] CurrencyManager records Gem.Add calls via Debug.Log
+- [ ] Prestige kicks in automatically after level 100
+- [ ] Level is not reset on prestige (continues 101, 102...)
 
 **Unlock:**
-- [ ] Default silahlar (Tabanca/Pompalı/RPG) ilk açılışta unlock ediliyor
-- [ ] Lv 10'da Black Hole, Teleport, Bat Hammer açılıyor
-- [ ] Kostüm alımında hem level hem currency şartı kontrol ediliyor
-- [ ] Prestige kostümleri (l005, l009, l015) doğru level'da açılıyor
+- [ ] Default weapons (Pistol/Shotgun/RPG) are unlocked on first launch
+- [ ] Black Hole, Teleport and Bat Hammer unlock at Lv 10
+- [ ] Costume purchases check both the level and the currency requirement
+- [ ] Prestige costumes (l005, l009, l015) unlock at the correct level
 
 **Achievement:**
-- [ ] Daha önce unlock edilmiş achievement tekrar ödül vermiyor
-- [ ] Secret achievement'lar listede "???" gösteriyor
-- [ ] Kostüm ödüllü achievement'lar (bkz. rewardCostumeId) CostumeManager'a bildiriyor
-- [ ] AchievementTracker OnDestroy'da tüm event'lerden ayrılıyor
+- [ ] An already-unlocked achievement does not grant rewards again
+- [ ] Secret achievements show "???" in the list
+- [ ] Achievements with costume rewards (see rewardCostumeId) notify CostumeManager
+- [ ] AchievementTracker unsubscribes from all events in OnDestroy
 
-**Sandık:**
-- [ ] Günlük 3 sandık limiti gece yarısı sıfırlanıyor
-- [ ] Sadece galibiyet sayılıyor (mağlubiyet sandık düşürmüyor)
-- [ ] Kostüm drop'u sadece sahip olunmayan kostümleri veriyor
+**Chest:**
+- [ ] The daily 3-chest limit resets at midnight
+- [ ] Only wins count (losses do not drop chests)
+- [ ] Costume drops only grant costumes that are not already owned
 
 **Login Streak:**
-- [ ] 2+ gün boşlukta streak sıfırlanıyor
-- [ ] Milestone ödülleri doğru hesaplanıyor (ara günler en yakın milestone)
-- [ ] Aynı gün tekrar açılışta ödül verilmiyor
+- [ ] The streak resets after a gap of 2+ days
+- [ ] Milestone rewards are calculated correctly (intermediate days use the nearest milestone)
+- [ ] No reward is granted when relaunching on the same day
 
-**Görev:**
-- [ ] Period bitiminde sayaçlar sıfırlanıyor
-- [ ] Günlük 3 / haftalık 2 / aylık 1 görev rastgele seçiliyor
-- [ ] Tamamlanan görev tekrar tetiklenmiyor
+**Quests:**
+- [ ] Counters reset at the end of the period
+- [ ] 3 daily / 2 weekly / 1 monthly quests are picked at random
+- [ ] A completed quest is not triggered again
 
 **UI:**
-- [ ] previewSprite null olan kostümler placeholder gösteriyor (hata vermiyor)
-- [ ] AchievementPopup queue birden fazla achievement'ı sırayla gösteriyor
-- [ ] CurrencyHUD tüm sahnelerde görünür (DontDestroyOnLoad)
-- [ ] LevelUpPopup açılan item'ların listesini doğru gösteriyor
-- [ ] CostumeShop filtreler çalışıyor (rarity, tip, tema, açılış yöntemi)
+- [ ] Costumes with a null previewSprite show a placeholder (no errors)
+- [ ] The AchievementPopup queue shows multiple achievements in sequence
+- [ ] CurrencyHUD is visible in all scenes (DontDestroyOnLoad)
+- [ ] LevelUpPopup correctly lists the items that were unlocked
+- [ ] CostumeShop filters work (rarity, type, theme, unlock method)
 
 **Save/Load:**
-- [ ] Tüm JSON dosyaları ilk çalıştırmada default değerlerle oluşuyor
-- [ ] Uygulama kapatılıp açıldığında tüm veriler korunuyor
-- [ ] Bozuk JSON dosyası default'a düşüyor (try-catch)
+- [ ] All JSON files are created with default values on first run
+- [ ] All data is preserved when the app is closed and reopened
+- [ ] A corrupt JSON file falls back to defaults (try-catch)
 ```
