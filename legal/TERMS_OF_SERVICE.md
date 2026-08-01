@@ -1,59 +1,8 @@
-> **TASLAK — yayınlanmadan önce bir hukukçuya gösterilmeli.** `{{...}}` alanları doldurulmadan
-> yayınlanmamalı. Yayınlandıktan sonra `Assets/Scripts/Utilities/LegalLinks.cs` içindeki
-> `TermsOfServiceUrl` sabitine gerçek URL yazılmalı.
+> **DRAFT — must be reviewed by a lawyer before publication.** It must not be published before
+> the `{{...}}` fields are filled in. Once published, the real URL must be written into the
+> `TermsOfServiceUrl` constant in `Assets/Scripts/Utilities/LegalLinks.cs`.
 
-# Kullanım Koşulları — CosmicRumble
-
-Son güncelleme: {{TARİH}}
-
-CosmicRumble'ı ("Oyun") indirerek veya oynayarak aşağıdaki koşulları kabul etmiş olursunuz.
-
-## 1. Lisans
-
-**{{ŞİRKET/GELİŞTİRİCİ ADI}}** size Oyun'u kişisel, ticari olmayan amaçlarla kullanmanız için
-münhasır olmayan, devredilemez bir lisans verir.
-
-## 2. Hesap
-
-- Misafir (anonim) veya kullanıcı adı/e-posta ile kayıtlı hesap oluşturabilirsiniz.
-- Hesap bilgilerinizin güvenliğinden siz sorumlusunuz.
-- Uygunsuz davranış (hile, taciz, hesap paylaşımı vb.) tespit edilirse hesabınız askıya
-  alınabilir/kapatılabilir.
-
-## 3. Sanal Para ve Satın Almalar
-
-- Oyun içi para birimleri (Altın, Gem) yalnızca Oyun içinde kullanılabilir, gerçek paraya
-  çevrilemez veya oyun dışında satılamaz/devredilemez.
-- Gem satın alımları mağaza (Google Play / App Store) üzerinden işlenir, iade politikaları ilgili
-  mağazanın kurallarına tabidir.
-- Fiyatlar bölgeye/mağazaya göre değişebilir.
-
-## 4. Davranış Kuralları
-
-Hile yazılımı kullanmak, diğer oyunculara taciz/hakaret, hesap satışı/paylaşımı ve Oyun'un normal
-işleyişini bozmaya yönelik eylemler yasaktır; ihlal halinde hesap kapatılabilir.
-
-## 5. Fikri Mülkiyet
-
-Oyun'daki tüm içerik (grafikler, sesler, kod, tasarım) **{{ŞİRKET/GELİŞTİRİCİ ADI}}**'a aittir.
-
-## 6. Garanti Reddi ve Sorumluluk Sınırlaması
-
-Oyun "olduğu gibi" sunulur. Kesintisiz veya hatasız çalışacağı garanti edilmez.
-{{GERÇEK HUKUKİ SORUMLULUK SINIRLAMASI METNİ BURAYA — hukukçu onayı gerekli.}}
-
-## 7. Koşullardaki Değişiklikler
-
-Bu koşullar zaman zaman güncellenebilir; önemli değişikliklerde Oyun içinde bilgilendirme
-yapılır.
-
-## 8. İletişim
-
-**{{İLETİŞİM E-POSTASI}}**
-
----
-
-# Terms of Service — CosmicRumble (English)
+# Terms of Service — CosmicRumble
 
 Last updated: {{DATE}}
 
