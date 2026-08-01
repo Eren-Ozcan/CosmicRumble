@@ -24,7 +24,20 @@ public class DestructiblePlanet : MonoBehaviour
              "çözünürlükte taraması yerine küçük texture üzerinde çalışır (bkz. RebuildColliderFromAlpha). " +
              "Karakter ölçeğinde collider hassasiyeti kaybı fark edilmez.")]
     [Range(1, 12)]
-    public int physicsDownsampleFactor = 8;
+    public int physicsDownsampleFactor = 1;
+
+    [Tooltip("Collider bir pikseli 'katı zemin' saymak için gereken minimum alfa (1-254). f16579c " +
+             "'never smaller than visual' garantisi için bunu en toleranslı haline (fiilen != 0) " +
+             "sabitlemişti — ama planet_with_hole_1280.png gibi bazı sprite'ların alfa kanalında " +
+             "görünmez (render'da hiç görünmeyen) ama sıfırdan farklı geniş bir 'çöp halka' var " +
+             "(ölçüldü: pikselin ~%6'sı alfa 1-63 arası, RGB'si renkli ama render'da görünmez). " +
+             "Bu texture'ın histogramı BİMODAL: alfa ya 0, ya 1-63 (çöp), ya da neredeyse dosdoğru " +
+             "255 — 64-254 arası pratikte boş (~%0.05). Yani 100-200 arası HERHANGİ bir eşik çöp " +
+             "halkayı temiz şekilde dışlar, gerçek/görünür içeriği kesmez. 128 bu aralıkta güvenli " +
+             "bir varsayılan. Yeni bir gezegen sprite'ı eklerken alfa histogramını kontrol etmeden " +
+             "bu değeri değiştirme.")]
+    [Range(1, 254)]
+    public int groundAlphaThreshold = 128;
 
     private SpriteRenderer sr;
     private Texture2D runtimeTex;
@@ -80,6 +93,16 @@ public class DestructiblePlanet : MonoBehaviour
             Vector4.zero,
             false
         );
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // 2026-08-01 vakası: bu değerler günlerce beklenenden farklıydı (Unity'nin prefab asset
+        // cache'i, dosya dışarıdan düzenlendiğinde bunu yansıtmıyordu) ve hiçbir yerde görünür
+        // olmadığı için fark edilemedi. Şimdi her Start()'ta konsola basılıyor — "değer ne
+        // olmalıydı, oyun ne kullanıyor" sorusu artık bir Inspector/prefab arkeolojisi değil,
+        // tek satırlık bir konsol kontrolü.
+        Debug.Log($"[DestructiblePlanet] {name} Start(): physicsDownsampleFactor={physicsDownsampleFactor}, " +
+                  $"groundAlphaThreshold={groundAlphaThreshold}, minDestructionRadius={minDestructionRadius}", this);
+#endif
 
         // 4) İlk sefer polygon collider oluştur
         poly = GetComponent<PolygonCollider2D>();
@@ -304,7 +327,7 @@ public class DestructiblePlanet : MonoBehaviour
                     int rowBase = yy * w;
                     for (int xx = srcXStart; xx < srcXEnd; xx++)
                     {
-                        if (pixels[rowBase + xx].a != 0)
+                        if (pixels[rowBase + xx].a >= groundAlphaThreshold)
                         {
                             maxAlpha = 255;
                             break;
@@ -355,7 +378,93 @@ public class DestructiblePlanet : MonoBehaviour
         // physTex artık _physTexCache üzerinden yeniden kullanılıyor — burada Destroy EDİLMEZ
         // (aksi halde bir sonraki patlamada boş bir texture referansı kalır).
         Destroy(physSprite);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        ValidateColliderAgainstAlpha();
+#endif
     }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    /// <summary>
+    /// 2026-08-01 vakası: collider görsel yüzeyden gözle görülür şekilde uzak duruyordu
+    /// ("yeşil çizgi gezegen yüzeyine uzak") — bir kere f16579c ile çözülmüş, sonra farkında
+    /// olmadan (groundAlphaThreshold yanlış kalibre edilerek + Unity'nin prefab asset cache'i
+    /// dıştan yapılan dosya düzenlemesini yansıtmayarak) geri gelmişti; günlerce fark edilmedi
+    /// çünkü hiçbir şey bunu bildirmiyordu. Bu kontrol, üretilen her collider köşesinin gerçekten
+    /// opak bir pikselin (>= groundAlphaThreshold) makul bir mesafesinde olduğunu doğrular ve
+    /// değilse konsola AÇIK bir uyarı basar — sorunun tekrar sessizce oturmasını engeller.
+    /// </summary>
+    private void ValidateColliderAgainstAlpha()
+    {
+        if (poly == null || runtimeTex == null || pixels == null) return;
+
+        int w = runtimeTex.width, h = runtimeTex.height;
+        Vector2 pivot = sr.sprite.pivot;
+        int factor = Mathf.Max(1, physicsDownsampleFactor);
+        // Beklenen en kötü sapma: bir downsample bloğu (factor px) + tracing/rounding payı.
+        // Taban değer (10px) sağlıklı bir collider'da bile oluşabilecek küçük yuvarlama
+        // sapmalarını (ölçüldü: factor=1'de ~4px) yanlış alarma çevirmemek için var — gerçek
+        // vakalarda sapma 15-40+ piksel mertebesindeydi, bu eşik onları hâlâ yakalar.
+        int allowedGapPx = Mathf.Max(factor * 4, 10);
+        int searchLimitPx = allowedGapPx * 2;
+
+        int worstGapPx = -1;
+        Vector2 worstLocal = default;
+
+        for (int p = 0; p < poly.pathCount; p++)
+        {
+            var path = poly.GetPath(p);
+            // Tüm noktaları taramak yerine örnekle — köşe sayısı yüzlerce olabilir, bu sadece
+            // hızlı bir "bir şeyler ters gitti mi" duman testi.
+            int step = Mathf.Max(1, path.Length / 12);
+            for (int i = 0; i < path.Length; i += step)
+            {
+                Vector2 local = path[i];
+                int px = Mathf.RoundToInt(local.x * ppu + pivot.x);
+                int py = Mathf.RoundToInt(local.y * ppu + pivot.y);
+
+                int gap = NearestOpaquePixelDistance(px, py, w, h, searchLimitPx);
+                if (gap > worstGapPx) { worstGapPx = gap; worstLocal = local; }
+            }
+        }
+
+        if (worstGapPx > allowedGapPx)
+        {
+            float worldGap = worstGapPx / ppu;
+            Debug.LogWarning(
+                $"[DestructiblePlanet] {name}: collider en yakın opak pikselden {worstGapPx}px " +
+                $"(~{worldGap:F2} birim, local={worstLocal}) uzakta — izin verilen ~{allowedGapPx}px. " +
+                $"Karakterler görsel yüzeyin üstünde/uzağında yürüyor olabilir. Muhtemel nedenler: " +
+                $"groundAlphaThreshold ({groundAlphaThreshold}) bu sprite için çok yüksek/düşük, VEYA " +
+                $"prefab/script değişikliği Unity'nin asset cache'ine yansımamış olabilir (bkz. " +
+                $"AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate) + sahneyi yeniden aç).",
+                this);
+        }
+    }
+
+    /// <summary>(px,py) merkezli genişleyen kare taramayla en yakın opak (alpha>=groundAlphaThreshold)
+    /// pikselin Chebyshev mesafesini döner; searchLimitPx içinde bulunamazsa searchLimitPx döner.</summary>
+    private int NearestOpaquePixelDistance(int px, int py, int w, int h, int searchLimitPx)
+    {
+        for (int radius = 0; radius <= searchLimitPx; radius++)
+        {
+            for (int dy = -radius; dy <= radius; dy++)
+            {
+                int yy = py + dy;
+                if (yy < 0 || yy >= h) continue;
+                int rowBase = yy * w;
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != radius) continue; // yalnız halka
+                    int xx = px + dx;
+                    if (xx < 0 || xx >= w) continue;
+                    if (pixels[rowBase + xx].a >= groundAlphaThreshold) return radius;
+                }
+            }
+        }
+        return searchLimitPx;
+    }
+#endif
 
     private void ApplyExplosionForce(Vector2 worldPos, float radiusWorld, float forceStrength)
     {

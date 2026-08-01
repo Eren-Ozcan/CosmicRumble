@@ -270,6 +270,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   minDestructionRadius: 0.3
+  physicsDownsampleFactor: 1
+  groundAlphaThreshold: 128
 --- !u!1 &6357765913294724625
 GameObject:
   m_ObjectHideFlags: 0
