@@ -2,356 +2,381 @@
 
 Deferred work identified during the economy/achievement audit and fix pass. Not started unless noted.
 
-## YAYIN YOL HARİTASI — proje sonuna kadar kalan her şey (genel kontrol, 2026-07-09)
+## RELEASE ROADMAP — everything remaining until the end of the project (general review, 2026-07-09)
 
-Kod tabanının tamamı + bu backlog + master spec taranarak çıkarıldı. Çekirdek oyun, online
-multiplayer, ekonomi, başarımlar, kupa/leaderboard, cloud save, ses, mobil girdi, Brawl Stars UI
-ve sosyal sistem + tam ekran giriş bitmiş durumda — proje "yayına hazırlama" aşamasında.
-**Kritik yol:** Play Console kapalı test zorunluluğu (madde 4) takvimin darboğazı — önce o
-başlatılmalı; beklerken 1-3 kapanmalı; kostümler (9) + avatar ikonları (13) sanat işi olarak
-paralel yürümeli (ikisi de veri/kod tarafı tamam, yalnız gerçek görsel bekliyor).
-Madde 5 (Gem fiyatlandırma) kod değil İŞ KARARI — kullanıcı verecek. Madde 21 (localization) artık
-tamamen bitti (2026-07-10) — CJK font dahil, kalan yalnız 150 kostüm isminin diğer 6 dile çevrilmesi.
+Derived by scanning the entire codebase + this backlog + the master spec. The core game, online
+multiplayer, economy, achievements, trophies/leaderboard, cloud save, audio, mobile input, Brawl Stars UI
+and the social system + fullscreen login are all finished — the project is in the "release preparation"
+phase.
+**Critical path:** the Play Console closed-testing requirement (item 4) is the schedule bottleneck — it
+must be started first; items 1-3 should be closed while waiting; costumes (9) + avatar icons (13) should
+run in parallel as art work (both are complete on the data/code side, only waiting on real art).
+Item 5 (Gem pricing) is not code but a BUSINESS DECISION — the user will make it. Item 21 (localization)
+is now fully done (2026-07-10) — including the CJK font; all that remains is translating the 150 costume
+names into the other 6 languages.
 
-### 1. Açık işin devamı (şimdi sırada)
-1. Google girişi Console/Dashboard kurulumu — aşağıdaki "Google Play Games GİRİŞİ" bölümündeki
-   7 adım. Kod hazır, bekliyor.
-2. Arkadaş/davet akışının iki cihazlı uçtan uca testi (istek gönder/kabul, presence, davet →
-   özel maç → maç sonu). Tek taraflı doğrulandı, iki taraflı hiç test edilmedi.
-3. İlk gerçek Android cihaz build testi — yeni giriş akışı, gerçek store IAP davranışı,
-   performans. Proje şu ana dek yalnız Editor + Device Simulator'da koştu.
+### 1. Continuation of open work (up next)
+1. Google sign-in Console/Dashboard setup — the 7 steps in the "Google Play Games SIGN-IN" section
+   below. The code is ready and waiting.
+2. Two-device end-to-end test of the friend/invite flow (send/accept request, presence, invite →
+   private match → match end). Verified one-sided; the two-sided flow has never been tested.
+3. First real Android device build test — the new sign-in flow, real store IAP behavior,
+   performance. So far the project has only run in the Editor + Device Simulator.
 
-### 2. Yayın öncesi zorunlu — mağaza/hesap işleri (kod değil, uzun teslim süreli, paralel başlat)
-4. Google Play Console: uygulama kaydı, **kapalı testte 12 test kullanıcısı × 14 gün zorunluluğu**
-   (yeni bireysel hesaplar — yayın takvimini bu belirler), Data Safety formu, içerik
-   derecelendirme, mağaza görselleri/açıklama, AAB imzalama.
-5. IAP gerçek SKU'ları: `gem_pack_100..6000` Console'da birebir aynı ID'lerle; fiyat/tier'lar
-   placeholder — fiyatlandırma iş kararı olarak verilmedi.
-6. Başarım ID eşlemesi: **kod tarafı tamam (2026-07-11)** — `AchievementDefinition` artık
-   `steamId`/`googlePlayId`/`gameCenterId` alanları taşıyor (boşsa `achievementId`'ye düşer),
-   `AchievementManager.ResolvePlatformId()` aktif sağlayıcıya göre doğru ID'yi seçip provider'a
-   onu gönderiyor. **Kalan: yalnız veri girişi** — 50 başarım ilgili Console'larda oluşturulup
-   ürettikleri opak ID'ler (`CgkI...` vb.) bu üç alana Inspector'dan tek tek yazılacak, kod
-   değişikliği gerekmeyecek.
-7. Yasal: **taslak metin + kod altyapısı tamam (2026-07-11)** — `legal/PRIVACY_POLICY.md` ve
-   `legal/TERMS_OF_SERVICE.md` (TR+EN, kodda gerçekten aktif olan UGS sistemleri baz alınarak
-   yazıldı) eklendi, **hukuki incelemeden geçmeden yayınlanmamalı** (KVKK/GDPR maddeleri ve
-   sorumluluk sınırlaması `{{...}}` placeholder'ları hukukçu onayı bekliyor). Ayarlar panelinde
-   (`MainMenuUI`) tüm sekmelerde görünen "Gizlilik Politikası"/"Kullanım Koşulları" linkleri
-   eklendi (`Assets/Scripts/Utilities/LegalLinks.cs` üzerinden `Application.OpenURL`). **Kalan**:
-   metinler hukukçu onayından geçip gerçek bir URL'de barındırılmalı, sonra `LegalLinks.cs`'teki
-   placeholder URL'ler gerçek adresle değiştirilmeli; yaş derecelendirmesi Console'da belirlenince
-   madde 5 (çocuk gizliliği) doldurulmalı.
-8. iOS hattı (Android'den sonra): Apple Developer hesabı, Mac/build pipeline,
-   `AppleGameCenterAuthProvider` stub'ının doldurulması (Apple.GameKit +
-   `SignInWithAppleGameCenterAsync`), App Privacy etiketi, TestFlight. Şu an iOS için hiçbir şey yok.
-   **Denendi ve sert bir platform engeli bulundu (2026-07-11)**: Apple.GameKit'i Package Manager'a
-   git URL'iyle (`https://github.com/apple/unityplugins.git?path=/plug-ins/Apple.GameKit`) eklemek
-   "package.json bulunamadı" hatasıyla temiz başarısız oldu (projede kalıntı yok, derleme temiz
-   kaldı) — resmi Apple deposu doğrudan UPM git-paketi değil. Apple'ın kendi Quickstart dokümanına
-   göre önce `python3 build.py` ile native (Xcode gerektiren) kütüphaneler derlenip bir `.tgz`
-   üretilmeli, paket Unity'ye "Add package from tarball" ile öyle eklenmeli — bu derleme adımı
-   **yalnızca macOS'ta çalışır**. Yani bu yalnızca Apple Developer hesabı meselesi değil: Windows'ta
-   hiçbir şekilde kurulamıyor, Mac/Xcode olmadan denenecek başka bir yol yok.
+### 2. Mandatory before release — store/account work (not code, long lead time, start in parallel)
+4. Google Play Console: app registration, the **12 test users × 14 days closed-testing requirement**
+   (for new individual accounts — this determines the release schedule), Data Safety form, content
+   rating, store artwork/description, AAB signing.
+5. Real IAP SKUs: `gem_pack_100..6000` in the Console with exactly the same IDs; prices/tiers are
+   placeholders — pricing has not been decided as a business decision.
+6. Achievement ID mapping: **code side done (2026-07-11)** — `AchievementDefinition` now carries
+   `steamId`/`googlePlayId`/`gameCenterId` fields (falls back to `achievementId` when empty), and
+   `AchievementManager.ResolvePlatformId()` picks the right ID for the active provider and sends that
+   to it. **Remaining: data entry only** — the 50 achievements must be created in the relevant
+   Consoles and the opaque IDs they generate (`CgkI...` etc.) typed one by one into those three fields
+   from the Inspector; no code change will be needed.
+7. Legal: **draft text + code infrastructure done (2026-07-11)** — `legal/PRIVACY_POLICY.md` and
+   `legal/TERMS_OF_SERVICE.md` (written based on the UGS systems actually active in the code) were
+   added, and **must not be published without passing legal review** (the KVKK/GDPR clauses and the
+   limitation-of-liability `{{...}}` placeholders are awaiting a lawyer's approval). "Privacy Policy"/
+   "Terms of Service" links visible on every tab of the settings panel (`MainMenuUI`) were added
+   (via `Application.OpenURL` through `Assets/Scripts/Utilities/LegalLinks.cs`). **Remaining**: the
+   texts must pass legal review and be hosted at a real URL, then the placeholder URLs in
+   `LegalLinks.cs` must be replaced with the real address; once the age rating is set in the Console,
+   clause 5 (children's privacy) must be filled in.
+8. iOS track (after Android): Apple Developer account, Mac/build pipeline, filling in the
+   `AppleGameCenterAuthProvider` stub (Apple.GameKit +
+   `SignInWithAppleGameCenterAsync`), App Privacy label, TestFlight. Right now there is nothing for iOS.
+   **Attempted, and a hard platform blocker was found (2026-07-11)**: adding Apple.GameKit to Package
+   Manager via its git URL (`https://github.com/apple/unityplugins.git?path=/plug-ins/Apple.GameKit`)
+   failed cleanly with a "package.json not found" error (no residue left in the project, the build
+   stayed clean) — the official Apple repository is not a direct UPM git package. Per Apple's own
+   Quickstart documentation, the native (Xcode-requiring) libraries must first be compiled with
+   `python3 build.py` to produce a `.tgz`, and the package added to Unity via "Add package from
+   tarball" — and that build step **only runs on macOS**. So this is not merely an Apple Developer
+   account issue: it cannot be installed on Windows at all, and there is no other route to try
+   without a Mac/Xcode.
 
-### 3. Oyun içeriği eksikleri (spec'te var, başlanmadı)
-9. 150 kostüm (master spec Bölüm 4): **veri tarafı tamam** (2026-07-09) — 150 `CostumeDefinition` +
-   `CostumeDatabase` üretildi, `CostumeManager` bootstrap edildi, GARDIROP paneli (yalnızca sahip
-   olunanlar) çalışıyor ve play-test edildi. **Kalan: gerçek sprite yok**, tüm kostümler UI'da rarity
-   renkli daire + baş harf placeholder ile gösteriliyor. En büyük kalan içerik kalemi — tier başına
-   şablon + renk varyasyonuyla küçültülebilir.
-10. Harita/gezegen çeşitliliği: tek oynanış sahnesi (SampleScene); `LobbyData.MapName` kullanılmıyor.
-    En az 2-3 farklı gezegen düzeni (çok gezegenli sahneler yerçekiminin vitrini).
-11. **Tamam (2026-07-10)** — Tutorial/onboarding: `Assets/Scripts/Tutorial/TutorialManager.cs`
-    (yeni). Bu cihazda oynanan ilk offline maçta (hotseat veya Antrenman — `GameInitializer`'ın
-    spawn ettiği yerel karakter) 3 ipucu kartını sırayla gösterir ("A/D ile hareket et", "SPACE ile
-    zıpla", "Bir silah seç, fareyle nişan al, ateş et"), her biri 4.5s, ✕ ile atlanabilir, son
-    karttan sonra otomatik kapanır. Tek seferlik: `PlayerPrefs["cr_tutorial_seen"]` kalıcı, bir daha
-    gösterilmez. Tam ekran blok değil — küçük üst-orta kart, hareket/ateş kontrollerini kaplamaz,
-    turn timer'ı etkilemez. Online (Quick Match/özel maç) akışına bilerek bağlanmadı — oraya
-    ulaşan oyuncu zaten en az bir offline maç oynamış olur. Play-tested: Editor'da `cr_tutorial_seen`
-    temizlenip misafir girişiyle ANTRENMAN'a girildi, 3 kart sırayla doğru dilde (o an ayarlı olan
-    İspanyolca) göründü, otomatik kapandı, `PlayerPrefs` değeri 1 olarak doğrulandı, konsolda hata
-    yok.
-12. Bot AI: **Antrenman modu tamam** (2026-07-10) — ana menü ☰ çekmecesinde gerçek oyunculara açık
-    "ANTRENMAN" butonu, doğrudan Game sahnesini 2 tamamen pasif botla açar (hiç hareket/ateş
-    etmezler — bkz. "Antrenman Modu" bölümü). Quick Match'te rakip yoksa bot doldurma hâlâ yapılmadı
-    (ayrı, opsiyonel iş).
-13. Profil ikonları/avatar: **tamam** (2026-07-10) — seçilebilir 16 avatarlık sistem çalışıyor,
-    üst bar canlı güncelleniyor. **Kalan: gerçek ikon görselleri yok** (bkz. "Profil Avatarları"
-    bölümü) — sonraki iş listesine eklendi, şimdilik renk+baş harf placeholder.
+### 3. Missing game content (in the spec, not started)
+9. 150 costumes (master spec Section 4): **data side done** (2026-07-09) — 150 `CostumeDefinition` +
+   `CostumeDatabase` were generated, `CostumeManager` was bootstrapped, and the WARDROBE panel (owned
+   items only) works and was play-tested. **Remaining: there is no real art**; all costumes are shown
+   in the UI with a rarity-colored circle + initial placeholder. The largest remaining content item —
+   can be shrunk with a per-tier template + color variations.
+10. Map/planet variety: a single gameplay scene (SampleScene); `LobbyData.MapName` is unused.
+    At least 2-3 different planet layouts (multi-planet scenes are the showcase for the gravity).
+11. **Done (2026-07-10)** — Tutorial/onboarding: `Assets/Scripts/Tutorial/TutorialManager.cs`
+    (new). During the first offline match played on this device (hotseat or Training — the local
+    character spawned by `GameInitializer`) it shows 3 tip cards in sequence ("Move with A/D", "Jump
+    with SPACE", "Pick a weapon, aim with the mouse, fire"), 4.5s each, skippable with ✕, and closes
+    automatically after the last card. One-time only: `PlayerPrefs["cr_tutorial_seen"]` is persistent,
+    so it is never shown again. Not a fullscreen block — a small top-center card that doesn't cover
+    the movement/fire controls and doesn't affect the turn timer. Deliberately not wired into the
+    online (Quick Match/private match) flow — a player who gets there has already played at least one
+    offline match. Play-tested: `cr_tutorial_seen` was cleared in the Editor and TRAINING was entered
+    with a guest login; the 3 cards appeared in sequence in the correct language (Spanish, which was
+    set at the time), closed automatically, the `PlayerPrefs` value was verified as 1, and there were
+    no console errors.
+12. Bot AI: **Training mode done** (2026-07-10) — a "TRAINING" button available to real players in
+    the main menu ☰ drawer opens the Game scene directly with 2 completely passive bots (they never
+    move or fire — see the "Training Mode" section). Bot-filling when Quick Match has no opponent has
+    still not been done (separate, optional work).
+13. Profile icons/avatars: **done** (2026-07-10) — the selectable 16-avatar system works and the top
+    bar updates live. **Remaining: there is no real icon art** (see the "Profile Avatars" section) —
+    added to the next work list; for now a color + initial placeholder.
 
-### 4. Bilinen pürüzler / teknik borç
-14. SOSYAL kategorisi başarımları: **8/10 çalışır durumda** (2026-07-10) — `SOSYAL_KELEBEK`,
-    `HERKESE_MEYDAN`, `DUELLO_SAMPIYONU` (önceki geçiş) + `INTIKAM`, `REKABETCI`, `KOZMIK_EKIP`,
-    `BIR_NUMARA`, `KOZMIK_AVCI` (bu geçiş) bağlandı, bkz. "Sosyal Başarımlar" bölümü. Yalnızca
-    `OGRETMEN` kapsam dışı kaldı — cross-client bildirim + ayrı bir gerçek iki-process test ortamı
-    gerektiriyor, gerekçesi aynı bölümde.
-15. `ui_button_hover` klibi: **tamam** (2026-07-10) — `UiKit.Hover()` eklendi, tüm programatik
-    butonlara (29/30, bilinçli 1 istisna) bağlandı, play-test edildi. Bkz. "ui_button_hover wiring".
-16. Ölü kod: **tamam** (2026-07-10) — `AbilityController.cs` ve `ObjectSpawnSkill.cs` silindi.
-    Her ikisi de kod tabanında (script referansları) ve tüm `.unity`/`.prefab`/`.asset` dosyalarında
-    (GUID bazlı Component referansları) tek eşleşme dahi bulunamadı — kendi dosyaları dışında hiçbir
-    yerden çağrılmıyor/kullanılmıyorlardı (eski, `IAbility`'yi merkezi bir `List<MonoBehaviour>` ile
-    yöneten mimarinin kalıntısı; güncel sistem her yeteneği kendi script'i üzerinden bağımsız çalıştırıyor).
-    Silindikten sonra Play Mode'da misafir girişi + ana menü akışı hatasız çalıştığı doğrulandı
-    (missing-script/missing-reference hatası yok).
-17. **Tamam (2026-07-10)** — UGS timeout mesajı: `CloudSaveManager.IsUnavailable` public'e açıldı,
-    `MainMenuUI.BootstrapSequence` init/pull zaman aşımına uğrarsa `LoadingScreenUI`'da kısa süreli
-    yerelleştirilmiş "Playing offline" mesajı gösteriyor (önceden sessizce sıradaki adıma atlıyordu).
-18. **Tamam (2026-07-10)** — Davet köşe durumları: `FriendLobbyPanelUI` ve `OnlineLobbyPanelUI`'a
-    `OnApplicationPause`/`OnApplicationQuit` eklendi — host/client hâlâ lobi bekleme aşamasındayken
-    (maç başlamadan) uygulama arka plana atılır/kapatılırsa `NetworkBootstrap.LeaveSessionAsync()`
-    otomatik çağrılıp UGS session'ı temizleniyor. Maç başladıktan sonra bu panelller zaten
-    yok/inaktif olduğu için mid-match'i etkilemiyor.
+### 4. Known rough edges / technical debt
+14. SOCIAL category achievements: **8/10 working** (2026-07-10) — `SOSYAL_KELEBEK`,
+    `HERKESE_MEYDAN`, `DUELLO_SAMPIYONU` (previous pass) + `INTIKAM`, `REKABETCI`, `KOZMIK_EKIP`,
+    `BIR_NUMARA`, `KOZMIK_AVCI` (this pass) are wired up; see the "Social Achievements" section. Only
+    `OGRETMEN` remains out of scope — it requires cross-client notification + a separate real
+    two-process test environment; the rationale is in that same section.
+15. The `ui_button_hover` clip: **done** (2026-07-10) — `UiKit.Hover()` was added, wired to all
+    programmatic buttons (29/30, with 1 deliberate exception), and play-tested. See "ui_button_hover
+    wiring".
+16. Dead code: **done** (2026-07-10) — `AbilityController.cs` and `ObjectSpawnSkill.cs` were deleted.
+    Neither had a single match anywhere in the codebase (script references) or in any
+    `.unity`/`.prefab`/`.asset` file (GUID-based Component references) — they were not called/used
+    from anywhere outside their own files (a leftover of the old architecture that managed `IAbility`
+    via a central `List<MonoBehaviour>`; the current system runs each ability independently through
+    its own script). After deletion, guest login + the main menu flow were verified to run without
+    errors in Play Mode (no missing-script/missing-reference errors).
+17. **Done (2026-07-10)** — UGS timeout message: `CloudSaveManager.IsUnavailable` was made public, and
+    if `MainMenuUI.BootstrapSequence`'s init/pull times out, `LoadingScreenUI` briefly shows a
+    localized "Playing offline" message (previously it silently skipped to the next step).
+18. **Done (2026-07-10)** — Invite corner cases: `OnApplicationPause`/`OnApplicationQuit` were added to
+    `FriendLobbyPanelUI` and `OnlineLobbyPanelUI` — if the app is backgrounded/closed while the
+    host/client is still in the lobby waiting stage (before the match starts),
+    `NetworkBootstrap.LeaveSessionAsync()` is called automatically and the UGS session is cleaned up.
+    It doesn't affect mid-match, because those panels are already gone/inactive once the match has
+    started.
 
-### 5. Yayın sonrası / opsiyonel
-19. **Tamam (2026-07-10)** — Crash raporlama + analitik. `com.unity.services.cloud-diagnostics`
-    1.0.12 ve `com.unity.services.analytics` 5.1.1 kuruldu (6.3.0 önce denendi, bu Unity sürümüyle
-    [6000.1.17f1] uyumsuz çıktı — `RuntimePlatform.Switch2` derleme hatası, Unity 6000.2+ gerektiriyor;
-    5.1.1'e düşürüldü). Crash raporlama tamamen kod gerektirmiyor — `ProjectSettings.asset`'te
-    `enableCrashReportAPI: 1` (Player Settings → Other Settings → Crash Report API) açıldı, native
-    `CrashReportHandler` + Cloud Diagnostics paketi geri kalanını otomatik hallediyor. Analitik için
-    yeni `Assets/Scripts/Analytics/AnalyticsManager.cs` — `MainMenuUI.BootstrapSequence`'ta UGS Core
-    hazır olduktan sonra `StartDataCollection()` çağırıyor (otomatik session/engagement event'leri
-    dashboard şeması gerektirmeden toplanır), `TurnManager.FinishMatchLocally`'den her maç sonunda
-    `match_completed` custom event'i (won/ranked) gönderiyor — **bu custom event'in gerçekten
-    kaydedilmesi için UGS Dashboard'da aynı isimle bir şema tanımlanmalı** (kod hazır, dashboard adımı
-    ayrı — Achievement/Leaderboard kurulumlarıyla aynı desen). SDK'nın kendi dokümantasyonu
-    `StartDataCollection()`'ı "kullanıcı onayının alındığını veya gerekmediğini teyit eder" olarak
-    tanımlıyor — gizlilik politikası (yol haritası madde 7, henüz YOK) canlıya alınmadan gerçek
-    kullanıcı build'lerine dağıtılmamalı; Editor/iç test için sorun değil. Play-tested: Editor'da
-    misafir girişiyle `AnalyticsManager` singleton'ının kurulduğu, `AnalyticsService.Instance`'ın
-    gerçek user/session ID döndürdüğü ve `RecordMatchCompleted` çağrısının hatasız çalıştığı
-    doğrulandı.
-20. **Tamam (2026-07-10), cihaz testi hariç** — Push notification. Gerçek sunucu-tetikli UGS Push
-    Notifications DEĞİL — bu oyunun ekonomisi client-authoritative ve hatırlatmaların ihtiyaç duyduğu
-    tek veri (login streak, günlük sandık hakkı) zaten cihazda, sunucu tetikleyicisi gerekmiyor;
-    standart mobil oyun deseni olan **local (cihazda zamanlanan) notification** ile yapıldı
-    (`com.unity.mobile.notifications` 2.4.3 kuruldu). Yeni
-    `Assets/Scripts/Notifications/LocalNotificationManager.cs`: `MainMenuUI.EnsureCoreSingletons`'ta
-    bootstrap edilip `NotificationCenter.Initialize` çağrılıyor; `OnApplicationPause(true)`'da (oyuncu
-    arka plana atınca) `LoginStreakManager.GetCurrentStreak() > 0` ise ~20 saat sonrasına "Serini
-    kaybetme!" bildirimi, `ChestManager.GetRemainingChests() > 0` ise ~4 saat sonrasına "Sandıklar
-    seni bekliyor!" bildirimi zamanlanıyor; `OnApplicationPause(false)`'da (geri dönünce) ikisi de
-    iptal ediliyor. Tüm SDK çağrıları `#if UNITY_ANDROID || UNITY_IOS` ile korunuyor — paketin birleşik
-    API assembly'si (`Unity.Notifications.Unified`) yalnızca Android/iOS/Editor için derleniyor, Windows
-    Standalone (online test için kullanılan DevClient build'i) dışarıda kalıyor, bu yüzden
-    `STEAMWORKS_INSTALLED`/`GPGS_INSTALLED` ile aynı korumalı-derleme deseni kullanıldı.
-    **Cihaz/platform testi yapılamadı**: Editor şu an StandaloneWindows64 build target'ında
-    (`UNITY_ANDROID` bu oturumda hiç tanımlı değildi), gerçek bildirim zamanlama/tetikleme davranışı
-    yalnızca build target Android'e çevrilip gerçek cihazda/emülatörde denenince doğrulanabilir — aynı
-    GPGS/Steamworks entegrasyonlarında olduğu gibi. Derleme (Editor, mevcut Standalone hedefinde) temiz.
-21. Localization: **tamamen bitti** (2026-07-10) — İngilizce varsayılan + TR/ZH/ES/JA/KO/DE 7 dil,
-    tüm UI paneller + achievement/quest verisi çevrildi, Ayarlar'da dil seçici var, CJK font (Noto
-    Sans SC/JP/KR) kuruldu ve play-test edildi. **Kalan: yalnız** 150 kostüm ismi henüz İngilizce
-    (diğer 6 dile çevrilmedi, düşük öncelik).
-22. Sunucu tarafı doğrulama: ekonomi/CloudSave client-authoritative (hile açığı); IAP makbuz
-    doğrulama + kritik işlemler için Cloud Code — gelir başlayınca öncelik.
-23. Steam: bilinçli dondurulmuş (`STEAMWORKS_INSTALLED` hazır) — greenlight olursa App ID +
-    Steamworks kurulumu.
-24. Büyüme fikirleri (spec dışı): 2v2/4 oyuncu, sezonluk lig sıfırlama, battle pass.
+### 5. Post-release / optional
+19. **Done (2026-07-10)** — Crash reporting + analytics. `com.unity.services.cloud-diagnostics`
+    1.0.12 and `com.unity.services.analytics` 5.1.1 were installed (6.3.0 was tried first and turned
+    out incompatible with this Unity version [6000.1.17f1] — a `RuntimePlatform.Switch2` compile
+    error, it requires Unity 6000.2+; downgraded to 5.1.1). Crash reporting requires no code at all —
+    `enableCrashReportAPI: 1` was enabled in `ProjectSettings.asset` (Player Settings → Other Settings
+    → Crash Report API), and the native `CrashReportHandler` + the Cloud Diagnostics package handle
+    the rest automatically. For analytics, the new `Assets/Scripts/Analytics/AnalyticsManager.cs`
+    calls `StartDataCollection()` once UGS Core is ready in `MainMenuUI.BootstrapSequence` (automatic
+    session/engagement events are collected without needing a dashboard schema), and sends a
+    `match_completed` custom event (won/ranked) at the end of every match from
+    `TurnManager.FinishMatchLocally` — **for that custom event to actually be recorded, a schema with
+    the same name must be defined in the UGS Dashboard** (the code is ready, the dashboard step is
+    separate — the same pattern as the Achievement/Leaderboard setups). The SDK's own documentation
+    describes `StartDataCollection()` as "confirming that user consent has been obtained or is not
+    required" — it must not be distributed in real user builds before the privacy policy (roadmap
+    item 7, which does NOT exist yet) goes live; it's fine for Editor/internal testing. Play-tested:
+    it was verified in the Editor with a guest login that the `AnalyticsManager` singleton is created,
+    that `AnalyticsService.Instance` returns a real user/session ID, and that the
+    `RecordMatchCompleted` call runs without errors.
+20. **Done (2026-07-10), except device testing** — Push notifications. NOT real server-triggered UGS
+    Push Notifications — this game's economy is client-authoritative and the only data the reminders
+    need (login streak, daily chest allowance) is already on the device, so a server trigger isn't
+    required; it was done with **local (device-scheduled) notifications**, the standard mobile game
+    pattern (`com.unity.mobile.notifications` 2.4.3 was installed). The new
+    `Assets/Scripts/Notifications/LocalNotificationManager.cs` is bootstrapped in
+    `MainMenuUI.EnsureCoreSingletons` and calls `NotificationCenter.Initialize`; on
+    `OnApplicationPause(true)` (when the player backgrounds the app) it schedules a "Don't lose your
+    streak!" notification ~20 hours out if `LoginStreakManager.GetCurrentStreak() > 0`, and a "Chests
+    are waiting for you!" notification ~4 hours out if `ChestManager.GetRemainingChests() > 0`; on
+    `OnApplicationPause(false)` (when they come back) both are cancelled. All SDK calls are guarded
+    with `#if UNITY_ANDROID || UNITY_IOS` — the package's unified API assembly
+    (`Unity.Notifications.Unified`) only compiles for Android/iOS/Editor and leaves out Windows
+    Standalone (the DevClient build used for online testing), so the same guarded-compilation pattern
+    as `STEAMWORKS_INSTALLED`/`GPGS_INSTALLED` was used.
+    **Device/platform testing could not be done**: the Editor is currently on the StandaloneWindows64
+    build target (`UNITY_ANDROID` was never defined in this session), so the real notification
+    scheduling/triggering behavior can only be verified once the build target is switched to Android
+    and tried on a real device/emulator — just like the GPGS/Steamworks integrations. The build
+    (Editor, on the current Standalone target) is clean.
+21. Localization: **fully done** (2026-07-10) — English default + TR/ZH/ES/JA/KO/DE for 7 languages,
+    all UI panels + achievement/quest data translated, a language picker in Settings, and the CJK font
+    (Noto Sans SC/JP/KR) installed and play-tested. **Remaining: only** the 150 costume names are
+    still English-only (not translated into the other 6 languages, low priority).
+22. Server-side validation: economy/CloudSave are client-authoritative (a cheating vector); IAP
+    receipt validation + Cloud Code for critical operations — a priority once revenue starts.
+23. Steam: deliberately frozen (`STEAMWORKS_INSTALLED` is ready) — App ID + Steamworks setup if it
+    gets greenlit.
+24. Growth ideas (outside the spec): 2v2/4 players, seasonal league resets, battle pass.
 
-## Kostüm Yeniden Tasarımı — 5 karakter × 3 kademe = 15 kostüm (2026-07-16, 2. tur)
-Kullanıcı kararı: 150 kostüm 15'e indirildi — 5 karakter, her birinde 3 kademe
-(Standard/Advanced/Elite). Silah kostümleri tamamen kalktı. Karakter isimleri ŞİMDİLİK JENERİK
-("Character 1..5") — gerçek isim/tema kostüm sanatı tasarlanırken verilecek (yalnız asset
-alanı, kod değişikliği gerekmez). 8 atomik commit, Editor'de canlı play-test edildi.
+## Costume Redesign — 5 characters × 3 tiers = 15 costumes (2026-07-16, 2nd pass)
+User decision: the 150 costumes were reduced to 15 — 5 characters, each with 3 tiers
+(Standard/Advanced/Elite). Weapon costumes were removed entirely. Character names are GENERIC FOR NOW
+("Character 1..5") — the real names/themes will be assigned while the costume art is designed (just an
+asset field, no code change needed). 8 atomic commits, play-tested live in the Editor.
 
-- **Veri**: `CostumeDefinition.characterId` (1-5) eklendi; `CostumeAssetGenerator` yeniden
-  yazıldı (15 üretir + eski seti kendisi siler), 150 eski asset silinip c1_1..c5_3 üretildi.
-- **Dağılım** (kullanıcı "Gold/Gem dahil + satın alma UI" seçti): 5× Default Standard;
-  Advanced'ler ByGold 800 (c1_2) / ByChest (c2_2, c5_2 — bilinçli Uncommon, sandık filtresi
-  yalnız Common/Uncommon seçebiliyor) / ByLevel 10 (c3_2) / ByGold 1200 (c4_2); Elite'ler
-  ByLevel 20 (c1_3) / ByGem 50 (c2_3) / ByAchievement EFSANE (c3_3, Legendary) /
-  ByGem 80 (c4_3) / ByLevel 35 (c5_3). Böylece 15 kostümün TAMAMI bugün fiilen kazanılabilir.
-- **Başarım temizliği**: 12 başarımın `rewardCostumeId`'si silinen id'lere işaret ediyordu
-  (sessiz no-op olurdu) — EFSANE → c3_3'e bağlandı, kalan 11 temizlendi.
-- **ByLevel kostüm auto-grant**: `CostumeManager` artık `OnLevelUp` + Start'ta catch-up
-  taraması yapıyor (UnlockManager deseni) — önceden ByLevel kostümler hiç verilemiyordu.
-- **Gardırop yeniden yazıldı**: KARAKTER/SİLAH sekmeleri yerine 5 karakter sütunu × 3 kademe;
-  kilitli kostümler artık GÖRÜNÜR — Gold/Gem olanlar fiyat pill'i + doğrudan satın alma
-  (`TryPurchase`, bakiye yetmezse pasif, `OnCurrencyChanged` ile tazelenir), Level/Sandık/
-  Başarım olanlar koşul etiketi. Bir layout bug'ı bulundu ve düzeltildi: `childControl=false`
-  layout grubu `LayoutElement`'ı yok sayıp RectTransform boyutunu okur — hücreler 100×100
-  varsayılanında kalmıştı, sizeDelta açıkça verildi.
-- **Loc**: 15 kostüm ismi + koşul etiketleri 7 dilde — "150 kostüm ismi çevrilmedi" backlog
-  kalemi geçersizleşti (yeni set tam çevirili çıkıyor).
-- **Play-test (Editor, misafir Lv22 profili)**: 15 kostüm doğru veriyle listelendi; defaults
-  (5) + ByLevel catch-up (c3_2, c1_3) = 7 sahipli açılış; c1_2 satın alma −800 Altın ve
-  kuşanma çalıştı; c2_3 (50 Gem, bakiye yetersiz) pasif; sayaç 8/15; konsolda yalnız bilinen
-  zararsız hatalar (NGO stop-play temizliği, Coplay screenshot artefaktı).
-- **Kalan**: kostüm sprite'ları hâlâ placeholder (renk+harf); kuşanılan kostümün oyun içi
-  karakter görünümüne yansıması hâlâ bağlı değil — ikisi tek iş olarak kostüm sanatıyla
-  birlikte yapılacak (artık 150 değil yalnız 15 görsel gerekiyor). Eski oyuncu save'lerindeki
-  c001/c002 id'leri zararsız (IsOwned listede kalır, db'de bulunamaz, hiçbir yol patlamaz).
+- **Data**: `CostumeDefinition.characterId` (1-5) was added; `CostumeAssetGenerator` was rewritten
+  (it generates 15 and deletes the old set itself); the 150 old assets were deleted and c1_1..c5_3
+  generated.
+- **Distribution** (the user chose "include Gold/Gem + a purchase UI"): 5× Default Standard;
+  the Advanced tier is ByGold 800 (c1_2) / ByChest (c2_2, c5_2 — deliberately Uncommon, since the
+  chest filter can only pick Common/Uncommon) / ByLevel 10 (c3_2) / ByGold 1200 (c4_2); the Elite tier
+  is ByLevel 20 (c1_3) / ByGem 50 (c2_3) / ByAchievement EFSANE (c3_3, Legendary) /
+  ByGem 80 (c4_3) / ByLevel 35 (c5_3). This makes ALL 15 costumes actually obtainable today.
+- **Achievement cleanup**: 12 achievements had a `rewardCostumeId` pointing at deleted ids
+  (they would have been a silent no-op) — EFSANE was rewired to c3_3 and the remaining 11 were cleared.
+- **ByLevel costume auto-grant**: `CostumeManager` now does a catch-up scan on `OnLevelUp` + in Start
+  (the UnlockManager pattern) — previously ByLevel costumes could never be granted at all.
+- **Wardrobe rewritten**: instead of CHARACTER/WEAPON tabs, 5 character columns × 3 tiers;
+  locked costumes are now VISIBLE — Gold/Gem ones get a price pill + direct purchase
+  (`TryPurchase`, disabled when the balance is insufficient, refreshed via `OnCurrencyChanged`), while
+  Level/Chest/Achievement ones get a condition label. A layout bug was found and fixed: a
+  `childControl=false` layout group ignores `LayoutElement` and reads the RectTransform size — the
+  cells had stayed at the 100×100 default, so sizeDelta was set explicitly.
+- **Loc**: the 15 costume names + condition labels in 7 languages — the "150 costume names not
+  translated" backlog item became moot (the new set ships fully translated).
+- **Play-test (Editor, guest Lv22 profile)**: the 15 costumes were listed with the correct data;
+  defaults (5) + ByLevel catch-up (c3_2, c1_3) = 7 owned at startup; the c1_2 purchase deducted −800
+  Gold and equipping worked; c2_3 (50 Gem, insufficient balance) was disabled; the counter read 8/15;
+  the console showed only the known harmless errors (NGO stop-play cleanup, Coplay screenshot artifact).
+- **Remaining**: the costume sprites are still placeholders (color+letter); the equipped costume is
+  still not reflected in the in-game character appearance — both will be done as a single piece of work
+  together with the costume art (only 15 images are needed now, not 150). The c001/c002 ids in old
+  player saves are harmless (IsOwned keeps them in the list, they aren't found in the db, and no code
+  path breaks).
 
-### Tema/Konsept Kararı — "Galaktik Şov Arenası" (2026-07-30)
-Kullanıcıyla tür pazar araştırması (Worms-tarzı artillery oyunları, Brawl Stars skin ekonomisi,
-2026 mobil oyun trendleri) yapılıp jenerik "Character 1..5" için tema seçildi. Kod tarafında
-DEĞİŞİKLİK YAPILMADI — bu yalnızca sanat/isimlendirme pası başladığında kullanılacak referans karar.
+### Theme/Concept Decision — "Galactic Show Arena" (2026-07-30)
+Genre market research was done with the user (Worms-style artillery games, the Brawl Stars skin
+economy, 2026 mobile game trends) and a theme was picked for the generic "Character 1..5". NO CODE
+CHANGES WERE MADE — this is purely a reference decision to be used once the art/naming pass begins.
 
-- **Konsept**: "Galactic Rumble Show" — gezegenler arası, televizyona/yayına açık bir arena şovu.
-  Karakterler bu şovun ünlü yarışmacıları/kontestanları, silahlar sahne gösterisinin parçası
-  (RPG=roket şov, BlackHole=finale efekti), yıkılan gezegenler = sahne dekoru. Ton: Brawl Stars'ın
-  renkli/eğlenceli/spektakl öncelikli havasıyla tutarlı (UI tasarım tercihiyle örtüşüyor,
-  bkz. memory `ui-design-preferences`).
-- **5 karakter kozmetik-only olduğu doğrulandı** (`CostumeDefinition.characterId` yalnızca görsel
-  skin hattı — silah/yetenek seçimiyle bağlı değil, her oyuncu 9 silahın hepsini level'a göre
-  açıyor). Bu yüzden karakter kimlikleri persona/görsel motif olarak tasarlandı, belirli bir
-  silaha kilitlenmedi. Mevcut 16 kozmik avatar ismiyle (Nova, Pulsar, Comet... — profil ikonu
-  sistemi, ayrı) çakışmasın diye karakterlere farklı isimler seçildi (Nova ismi kasıtlı olarak
-  her iki sistemde de var — ana maskot karakteri, marka tutarlılığı için):
-  1. **Nova** — karizmatik şov lideri/maskot (parlak, ateşli, altın/kırmızı)
-  2. **Blitz** — hızlı/enerjik akrobat (neon mavi, elektrik efektleri)
-  3. **Titan** — ağır/zırhlı güç gösterisi (metalik gri, kaba hatlar)
-  4. **Scope** — soğukkanlı keskin nişancı (minimal, teknik, koyu yeşil)
-  5. **Vex** — gizemli kontrol ustası (mor/siyah, kara delik motifleri)
-- **Kademe adları** (mevcut Standard/Advanced/Elite unlock mantığına birebir oturuyor, kod
-  değişikliği gerektirmez — yalnız `displayName`/loc string'leri): **Çaylak → Yıldız → Efsane**
-  (Rookie → Star → Legend).
-- **Ertelenen alternatifler** (kullanıcı reddetmedi, kayıt için): Uzay Kaçakları/Ödül Avcıları
-  (daha gritty/sinematik ton — mevcut renkli UI hedefiyle gerilir), Yıldız Türleri/alien
-  faction roster (lore-ağır, üretim maliyeti daha yüksek — 5 tamamen farklı tür sprite'ı),
-  Kozmik Spor Ligi (forma-tarzı kostüm üretimi ucuz ama daha jenerik/az özgün).
-- **Sıradaki adım**: bu isim/persona kararı `CostumeAssetGenerator`/`CostumeDatabase`'e
-  (madde 9) ve gerçek sprite üretimine (madde 9'daki askıya alınmış görsel üretim sorunu)
-  geçildiğinde temel referans olarak kullanılacak — henüz uygulanmadı.
+- **Concept**: "Galactic Rumble Show" — an interplanetary arena show broadcast on television. The
+  characters are the show's famous contestants, the weapons are part of the stage spectacle
+  (RPG=rocket show, BlackHole=finale effect), and the destroyed planets are the set decoration. Tone:
+  consistent with Brawl Stars' colorful/fun/spectacle-first feel (which matches the UI design
+  preference, see memory `ui-design-preferences`).
+- **Confirmed that the 5 characters are cosmetic-only** (`CostumeDefinition.characterId` is purely a
+  visual skin line — it is not tied to weapon/ability selection; every player unlocks all 9 weapons by
+  level). So the character identities were designed as personas/visual motifs and not locked to a
+  specific weapon. Different names were chosen for the characters so they don't clash with the existing
+  16 cosmic avatar names (Nova, Pulsar, Comet... — the profile icon system, which is separate); the
+  name Nova is deliberately present in both systems — it's the main mascot character, for brand
+  consistency:
+  1. **Nova** — charismatic show host/mascot (bright, fiery, gold/red)
+  2. **Blitz** — fast/energetic acrobat (neon blue, electric effects)
+  3. **Titan** — heavy/armored show of force (metallic gray, coarse lines)
+  4. **Scope** — cool-headed sharpshooter (minimal, technical, dark green)
+  5. **Vex** — mysterious master of control (purple/black, black hole motifs)
+- **Tier names** (they map exactly onto the existing Standard/Advanced/Elite unlock logic and require
+  no code change — just `displayName`/loc strings): **Rookie → Star → Legend**.
+- **Deferred alternatives** (the user did not reject them; recorded for the record): Space Outlaws/
+  Bounty Hunters (a grittier/more cinematic tone — in tension with the current colorful UI goal),
+  Star Species/alien faction roster (lore-heavy, higher production cost — 5 completely different
+  species sprites), Cosmic Sports League (jersey-style costume production is cheap but more
+  generic/less distinctive).
+- **Next step**: this name/persona decision will be used as the base reference once work moves to
+  `CostumeAssetGenerator`/`CostumeDatabase` (item 9) and to real sprite production (the suspended art
+  generation problem in item 9) — not implemented yet.
 
-## Sistem Bağlantı Geçişi — progression/ekonomi zinciri (2026-07-16)
-"Ana fikirden sapma / mantık hatası" kontrolünde bulunan kopukluklar: oyunun üç progression
-sistemi veri tarafında tamamdı ama oynanışa hiç bağlanmamıştı. Bu geçişte düzeltilenler
-(hepsi Editor'de canlı play-test edildi, ayrı atomik commit'ler):
+## System Wiring Pass — the progression/economy chain (2026-07-16)
+Disconnects found during a "deviation from the core idea / logic error" review: the game's three
+progression systems were complete on the data side but had never been wired into gameplay. Fixed in
+this pass (all play-tested live in the Editor, as separate atomic commits):
 
-1. **Level artık silah/skill açıyor** (önceden Lv1 oyuncu 10 silahın hepsini kullanabiliyordu —
-   `UnlockManager` unlock'ları işliyordu ama hiçbir yer okumuyordu): yeni
-   `AbilitySlotCatalog` (slot ↔ itemId eşlemesi, `UnlockManager` yoksa fail-open — Game
-   sahnesi Editor'de doğrudan açılırsa kapı devre dışı), kapı tek seçim boğazında
-   (`CharacterAbilities.SelectSkill/ConfirmSkill` — klavye + dokunmatik ikisini de kapsar),
-   kilitli slot UI'da koyu renk + cephane sayacı yerine "LvN" etiketi. Online'da yalnızca
-   yerel oyuncunun kendi inputunu kısıtlar (ekonomi zaten client-authoritative, madde 22).
-   Play-test: Lv22 profilde unlock listesi bellekte kırpılıp antrenman maçında kilitli
-   slotların Lv2/6/8/10 etiketiyle çizildiği ve `SelectSkill`'in reddettiği doğrulandı.
-2. **`UnlockManager` level catch-up taraması**: `OnLevelUp` yalnız canlı artışta çalışıyordu —
-   cloud-restore ile gelen seviye (veya UnlockManager yokken kazanılmış seviyeler) hiçbir
-   zaman unlock üretmiyordu. `Start()`'ta mevcut seviyeye kadar tüm ByLevel item'lar bir kez
-   taranıyor. (Bu tarama, testte bellekten sökülen unlock'ların da kendini onarmasını sağlar.)
-3. **Ekonomiye ilk harcama yolu** (önceden `CurrencyManager.Spend`'i çağıran hiçbir UI yoktu —
-   Gold sonsuz birikiyordu ve IAP ile satılan Gem'in harcanabileceği tek akış bile yoktu, store
-   review açısından da düpedüz tuzaktı): mağazaya SANDIKLAR şeridi — Rare sandık 800 Gold,
-   Epic sandık 25 Gem (`ChestManager.TryPurchaseChest`, fiyatlar `ChestConfig`'te; günlük
-   galibiyet-sandığı limitinden tamamen bağımsız). Bakiye yetmeyince buton pasif; ödül mevcut
-   `RewardPopupManager` toast'uyla düşüyor. Play-test: iki satın alma da gerçek bakiye
-   değişimiyle doğrulandı (Rare: −800 Altın; Epic: −25 Gem; günlük sayaç 0'da kaldı).
-4. Küçük pürüz: sınırsız cephane (Pistol, -1) tray'de artık "-1" değil "∞".
+1. **Level now unlocks weapons/skills** (previously a Lv1 player could use all 10 weapons —
+   `UnlockManager` was processing unlocks but nothing was reading them): the new
+   `AbilitySlotCatalog` (slot ↔ itemId mapping, fail-open if `UnlockManager` is absent — the gate is
+   disabled if the Game scene is opened directly in the Editor), the gate sits at the single
+   selection chokepoint (`CharacterAbilities.SelectSkill/ConfirmSkill` — covering both keyboard and
+   touch), and a locked slot is drawn dark in the UI with a "LvN" label instead of the ammo counter.
+   Online it only restricts the local player's own input (the economy is already client-authoritative,
+   item 22).
+   Play-test: on a Lv22 profile the unlock list was trimmed in memory and it was verified that in a
+   training match the locked slots were drawn with Lv2/6/8/10 labels and that `SelectSkill` rejected
+   them.
+2. **`UnlockManager` level catch-up scan**: `OnLevelUp` only ran on a live increase — a level arriving
+   via cloud restore (or levels earned while UnlockManager didn't exist) never produced any unlocks.
+   In `Start()` all ByLevel items up to the current level are now scanned once. (This scan also lets
+   unlocks that were stripped from memory during testing repair themselves.)
+3. **The first spending path in the economy** (previously no UI called `CurrencyManager.Spend` at all —
+   Gold accumulated forever and there wasn't even a single flow where IAP-purchased Gem could be
+   spent, which was also an outright trap from a store-review perspective): a CHESTS strip in the shop —
+   Rare chest 800 Gold, Epic chest 25 Gem (`ChestManager.TryPurchaseChest`, prices in `ChestConfig`;
+   completely independent of the daily win-chest limit). The button is disabled when the balance is
+   insufficient; the reward drops via the existing `RewardPopupManager` toast. Play-test: both
+   purchases were verified with real balance changes (Rare: −800 Gold; Epic: −25 Gem; the daily counter
+   stayed at 0).
+4. Minor rough edge: unlimited ammo (Pistol, -1) now shows "∞" in the tray instead of "-1".
 
-**Bilinçli ertelendi (kostüm tasarımıyla birlikte, kullanıcı kararı)**: ByLevel/ByGold/ByGem
-kostümlerin edinme akışı (`CostumeManager.TryPurchase`'ı çağıran UI yok, ByLevel kostüm grant
-edilmiyor) ve kuşanılan kostümün karakter/silah görünümüne yansıması (`GetEquipped`'i oyun içi
-okuyan kod yok) — kostüm sprite'ları üretilirken tek iş olarak ele alınacak. Çoklu gezegen
-sahneleri de (madde 10 — SampleScene'de 1 gezegen var, `YÖRÜNGE` başarımı mevcut haritada
-imkânsız) ayrı iş olarak duruyor.
+**Deliberately deferred (together with the costume design, user decision)**: the acquisition flow for
+ByLevel/ByGold/ByGem costumes (no UI calls `CostumeManager.TryPurchase`, ByLevel costumes aren't
+granted) and reflecting the equipped costume in the character/weapon appearance (no in-game code reads
+`GetEquipped`) — these will be handled as a single piece of work while the costume sprites are being
+produced. Multi-planet scenes also remain separate work (item 10 — SampleScene has 1 planet, so the
+`YÖRÜNGE` achievement is impossible on the current map).
 
-## Güvenlik/Bug Denetimi — Tam Geçiş (2026-07-15)
-Tüm kod tabanı (136 script) güvenlik açığı/bug/eksik davranış için tarandı; bulunan HER şey
-düzeltildi ve 15 atomik commit olarak işlendi. **Derleme/play-test borcu kapandı (2026-07-16)**:
-derleme temiz, misafir girişi + ana menü + antrenman maçı + mağaza Editor'de hatasız koştu.
-Bomb.prefab'ın `GlobalObjectIdHash`'i dosyada hâlâ 0 ama bu diğer çalışan mermi prefab'larıyla
-aynı desen (NGO runtime'da üretiyor); Bomb'un gerçek iki-client online ateşleme testi hâlâ
-yapılmadı (iki-cihazlı test kalemiyle birlikte, yol haritası madde 2).
+## Security/Bug Audit — Full Pass (2026-07-15)
+The entire codebase (136 scripts) was scanned for security holes/bugs/missing behavior; EVERYTHING
+found was fixed and committed as 15 atomic commits. **The build/play-test debt was closed (2026-07-16)**:
+the build is clean, and guest login + main menu + a training match + the shop all ran without errors in
+the Editor.
+Bomb.prefab's `GlobalObjectIdHash` is still 0 in the file, but that's the same pattern as the other
+working projectile prefabs (NGO generates it at runtime); a real two-client online firing test of Bomb
+still hasn't been done (together with the two-device test item, roadmap item 2).
 
-Düzeltilenler (commit sırasıyla):
-1. `movementLocked` kalıcı kilit: mermi havadayken Tab veya onaylı-ateşlenmemiş silahla süre
-   dolması karakteri maç sonuna dek felç ediyordu — tur geçişinde koşulsuz açılıyor.
-2. Cloud Save ↔ cihaz-bağlı HMAC çelişkisi: yeni cihaza inen currency.json "kurcalama" sanılıp
-   sıfırlanıyor ve sıfır buluta geri yazılıyordu — imza cihazdan bağımsız yapıldı (`SaveIntegrity`),
-   eski imzalar bir kez kabul edilip yeniden imzalanıyor.
-3. Kupa önbelleği imzalandı (cihaz-bağlı HMAC) — regedit ile kupa şişirip leaderboard'a gönderme
-   kapatıldı (asıl otorite hâlâ Cloud Code işi, madde 22).
-4. 6 silahın Fire RPC'sine server-side hız clamp'i (`ClampFireVelocity`) — modifiye client
-   sınırsız güçte ateş edemez.
-5. **Bomb** güvenlik geçişindeki eksik 10. silahtı: ServerRpc/ServerTryConsume(slot 9)/
-   NetworkObject.Spawn eklendi, prefab network bileşenleri + DefaultNetworkPrefabs kaydı yapıldı.
-6. Client'ta spawned NetworkObject'lere yerel `Destroy` (NGO hatası + desync) —
-   `NetworkPhysicsGuard.DespawnOrDestroy` (client'ta görsel kapat, server despawn'ını bekle);
-   `ProjectileBase.OnDestroy→SettleOnce` eklendi (DeathBoundary imhası turn sayacını sızdırıyordu).
-7. Gezegen tahribatı server-authoritative + senkron: delikler artık her makinede aynı
-   pos/yarıçapla `TurnManager.PlanetExplosionClientRpc` üzerinden açılıyor (ayrışma bitti).
-8. Ateş sesi her makinede + silah-kullanım başarım kredisi atıcının makinesinde
-   (`AbilityBase.AnnounceFire`); roket/el bombası uçuş loop'u client kopyalarında da çalıyor.
-9. Ölüm efekti ClientRpc ile her makinede; `Die()` artık NGO senkron bileşenlerini kapatmıyor.
-10. Online oyuncu adları/etiketleri: `GravityBody.playerName` (owner-write NetworkVariable) —
-    "Player_1 Wins!" yerine gerçek ad, isim etiketi + takım rengi online'da da kuruluyor.
-11. Reconnect kimlik doğrulaması: sahipsiz karakter yalnızca aynı UGS PlayerId ile dönene
-    devrediliyor (`NetworkIdentityRegistry` + `TurnManager.SubmitIdentityServerRpc`).
-12. Online client HUD'ı canlandı: tur sayacı NetworkVariable ile replike; skill paneli her
-    makinede KENDİ karakterine bağlanıyor (mobil client silah seçemiyordu); tur pas geçme
-    RequestEndTurn RPC'si + TurnTimerUI'da programatik SKIP butonu (host artık rakibin turunu
-    Tab ile atlayamıyor).
-13. `PlanetClickExploder` (guard'sız debug hile aracı, hiçbir yerde takılı değildi) silindi.
-14. IAP: validator kurulamayınca doğrulamanın sessizce kapalı kalması artık release'te de
-    hata loguyla görünür.
-15. Maç sonu "{0} Wins!"/"Draw!"/"+{0} Gold" metinleri Loc.T'ye bağlandı (6 dil).
+Fixed (in commit order):
+1. `movementLocked` permanent lock: the timer expiring while a projectile was airborne, via Tab, or
+   with a confirmed-but-unfired weapon paralyzed the character until the end of the match — it is now
+   released unconditionally on turn transition.
+2. Cloud Save ↔ device-bound HMAC conflict: a currency.json arriving on a new device was mistaken for
+   "tampering", reset, and the zero written back to the cloud — the signature was made device-independent
+   (`SaveIntegrity`), and old signatures are accepted once and re-signed.
+3. The trophy cache is now signed (device-bound HMAC) — inflating trophies via regedit and submitting
+   them to the leaderboard was closed off (real authority is still a Cloud Code job, item 22).
+4. A server-side speed clamp (`ClampFireVelocity`) on 6 weapons' Fire RPCs — a modified client cannot
+   fire with unlimited power.
+5. **Bomb** was the missing 10th weapon in the security pass: ServerRpc/ServerTryConsume(slot 9)/
+   NetworkObject.Spawn were added, along with the prefab network components + DefaultNetworkPrefabs
+   registration.
+6. Local `Destroy` on spawned NetworkObjects on the client (an NGO error + desync) —
+   `NetworkPhysicsGuard.DespawnOrDestroy` (hide the visual on the client, wait for the server's
+   despawn); `ProjectileBase.OnDestroy→SettleOnce` was added (DeathBoundary destruction was leaking the
+   turn counter).
+7. Planet destruction is server-authoritative + synchronized: holes are now opened with the same
+   pos/radius on every machine via `TurnManager.PlanetExplosionClientRpc` (the divergence is gone).
+8. Fire sound on every machine + weapon-usage achievement credit on the shooter's machine
+   (`AbilityBase.AnnounceFire`); the rocket/grenade flight loop now plays on client copies too.
+9. The death effect plays on every machine via ClientRpc; `Die()` no longer disables NGO sync
+   components.
+10. Online player names/tags: `GravityBody.playerName` (owner-write NetworkVariable) — the real name
+    instead of "Player_1 Wins!", and the name tag + team color are now set up online as well.
+11. Reconnect identity verification: an orphaned character is only handed over to someone returning
+    with the same UGS PlayerId (`NetworkIdentityRegistry` + `TurnManager.SubmitIdentityServerRpc`).
+12. The online client HUD came alive: the turn counter is replicated via NetworkVariable; the skill
+    panel binds to ITS OWN character on each machine (the mobile client couldn't select weapons); a
+    RequestEndTurn RPC for passing the turn + a programmatic SKIP button in TurnTimerUI (the host can no
+    longer skip the opponent's turn with Tab).
+13. `PlanetClickExploder` (an unguarded debug cheat tool that wasn't attached anywhere) was deleted.
+14. IAP: validation silently staying disabled when the validator can't be constructed is now visible
+    via an error log in release builds too.
+15. The match-end "{0} Wins!"/"Draw!"/"+{0} Gold" strings were wired to Loc.T (6 languages).
 
-Bilinen kalan boşluklar (bu geçişte bilinçli kapsam dışı):
-- Kara delik ZONE görselleri/GIF client'ta yok (zone server'da runtime kuruluyor; çekim kuvveti
-  `GravityBody.ApplyForce` yönlendirmesiyle zaten doğru çalışıyor — saf görsel eksik).
-- İsabet/ıskalama (accuracy) istatistiği online'da hâlâ makine-yerel: `FireShotFired` her
-  makinede kendi yerel simülasyonundan ateşleniyor; atıcı kimliğini projectile'a replike etmek
-  gerekir (ayrı iş).
-- Ekonomi/CloudSave hâlâ client-authoritative (madde 22, Cloud Code planı değişmedi).
+Known remaining gaps (deliberately out of scope for this pass):
+- The black hole ZONE visuals/GIF are missing on the client (the zone is built at runtime on the
+  server; the pull force already works correctly via the `GravityBody.ApplyForce` routing — only the
+  visual is missing).
+- The hit/miss (accuracy) statistic is still machine-local online: `FireShotFired` is fired from each
+  machine's own local simulation; replicating the shooter's identity to the projectile is required
+  (separate work).
+- Economy/CloudSave are still client-authoritative (item 22, the Cloud Code plan is unchanged).
 
 ## Costumes
 Done (2026-07-09) — GARDIROP (Wardrobe) panel added, `CostumeManager` bootstrapped, 150-costume data
 generated. Data-complete; still needs real art (see below).
 
-- **`Assets/Scripts/UI/WardrobePanelUI.cs` (new)**: ana menüdeki yeni GARDIROP butonu (sol rayda, MARKET'in
-  üstünde) → sahip olunan kostümlerin paneli. KARAKTER/SİLAH sekmeleri, rarity renkli çerçeveli grid kartları
-  (sprite yoksa baş harfli rozet fallback — `previewSprite` null-safe), karta dokunmak `CostumeManager.Equip()`
-  çağırıp KUŞANILDI etiketini günceller. **Yalnızca sahip olunan kostümler listelenir** — kilitli/satın
-  alınmamış hiçbiri hiç görünmez (mağaza/kilit açma akışı kapsam dışı, ayrı bir iş). `QuestsPanelUI` ile aynı
-  UiKit programatik Canvas kalıbını izler.
-- **`CostumeManager` artık bootstrap ediliyor** (`MainMenuUI.EnsureProgressSingletons()`) — daha önce
-  kasıtlı olarak dahil edilmemişti (bkz. eski not), TODO.md yol haritasının 1. maddesiyle birlikte etkinleştirildi.
-  `Awake()`'e `GrantDefaultCostumes()` eklendi: `CostumeUnlock.Default` olan kostümler (ör. Gray Soldier,
-  Standard Blue) oyuncuya sessizce (ödül popup'ı tetiklemeden) baştan verilir — aksi halde gardırop hep boş
-  görünürdü, çünkü hiçbir yer "varsayılan" kostümleri otomatik sahiplendirmiyordu.
-- **150 kostüm verisi üretildi**: `CostumeAssetGenerator.cs` (`CosmicRumble/Economy/Generate Costume Assets`)
-  Editor menü komutu çalıştırıldı — `Assets/Resources/Costumes/*.asset` (150 `CostumeDefinition`) ve
-  `Assets/Resources/Economy/CostumeDatabase.asset` artık projede kalıcı. Rarity dağılımı master spec'e uygun
-  (Common/Uncommon/Rare/Epic/Legendary), unlock yöntemleri karışık (Default/ByLevel/ByGold/ByGem/ByChest/
-  ByAchievement). **Hâlâ eksik: hiçbir kostümün gerçek sprite'ı yok** (`previewSprite` hepsinde null) — UI
-  bunu rarity renkli daire + baş harf ile telafi ediyor, ama gerçek karakter/silah görselleri ayrı, büyük bir
-  sanat işi olarak duruyor (bkz. yol haritası madde 9).
-- **Play-tested end-to-end in the Unity Editor via Coplay MCP**: misafir girişiyle boot, GARDIROP panelini
-  açma, KARAKTER sekmesinde yalnızca 2 sahip olunan kostümün ("Gray Soldier", "Standard Blue", ikisi de
-  SIRADAN/Common) göründüğü ve "Sahip olunan: 2 / 86" sayacının doğru olduğu doğrulandı — kilitli 84 kostümün
-  hiçbiri listede görünmedi.
-- **Bir gerçek bug bulundu ve düzeltildi bu geçişte**: `WardrobePanelUI.Show()` ilk yazımda `Populate()`'ı
-  `_panelRoot.SetActive(true)`'dan ÖNCE çağırıyordu. Panel hâlâ inaktifken oluşturulan `TextMeshProUGUI`
-  objelerinde `UiKit.BrawlText()`'in `outlineWidth` setter'ı font materyali instance'ı oluşturmaya çalışıyor,
-  bu da TMP'nin `OnEnable()`'ının çalışmış olmasını gerektiriyor — inaktif hiyerarşide `OnEnable` ertelendiği
-  için `NullReferenceException` (Material.CreateWithMaterial, source null) fırlatıyordu, panel ilk açılışta
-  patlıyordu. Sıra değiştirildi (`SetActive(true)` önce, `Populate()` sonra) — düzeltmeden sonra hatasız
-  çalıştığı doğrulandı.
-- **Kostüm görseli üretimi denendi, askıya alındı (2026-07-11).** Sırayla denenen yollar:
-  1. Coplay MCP `generate_or_edit_images` → **401 Unauthorized**. Coplay panelinde (Coplay menüsü →
-     Toggle Window → Model Selection) kontrol edildi: hesaba giriş yapılı ama bakiye **$0,0000** —
-     Coplay'in AI üretim özellikleri (görsel/ses/3D, hepsi) kullanım başına ücretli ve kredi yok. Görsel
-     üretim modeli olarak "Nano Banana Pro" (Google Gemini'nin görsel modeli) seçili duruyor — yani
-     Coplay'in arkasında zaten Gemini çalışıyor, sadece Coplay'in kendi faturalandırması üzerinden.
-  2. Ücretsiz üçüncü parti hazır asset (Kenney.nl, CC0 — projenin ses/font'ta zaten kullandığı kaynak)
-     araştırıldı: silahlar için "Game Icons" paketi uygun görünüyordu, karakterler için "Toon Characters"
-     paketi indirilip incelendi (6 arketip: Female/Male adventurer, Female/Male person, Robot, Zombie —
-     stil oyunun `player_15.png`'sine yakın ama tam eşleşmiyor, sadece 6 arketip var 10 tema için).
-     Kullanıcı kararıyla bu yoldan **vazgeçildi**.
-  3. Kullanıcının kendi Gemini erişimiyle (Coplay dışında, doğrudan) görselleri üretip projeye asset
-     olarak aktarma teklif edildi — kullanıcı **işi şimdilik askıya aldı**, ilerlemedi.
-  **Sonraki oturum için**: kostüm/avatar görselleri hâlâ tamamen eksik (`previewSprite` null). Eğer
-  kullanıcı Coplay'e kredi yüklerse madde 1 doğrudan denenebilir; yüklemezse madde 3 (kullanıcının kendi
-  Gemini'siyle üretip PNG teslim etmesi) en hızlı yol — bu durumda 10 karakter + 10 silah teması şablonu
-  yeterli (isimden renk çıkarıp tonlama otomasyonu ile 150 kostüme dağıtılabilir, plan hazır ama
-  uygulanmadı).
+- **`Assets/Scripts/UI/WardrobePanelUI.cs` (new)**: the new WARDROBE button in the main menu (on the left
+  rail, above SHOP) → a panel of owned costumes. CHARACTER/WEAPON tabs, grid cards with rarity-colored
+  frames (an initial-letter badge fallback when there is no sprite — `previewSprite` is null-safe), and
+  tapping a card calls `CostumeManager.Equip()` and updates the EQUIPPED label. **Only owned costumes are
+  listed** — nothing locked/unpurchased ever appears (the shop/unlock flow is out of scope, separate work).
+  It follows the same programmatic UiKit Canvas pattern as `QuestsPanelUI`.
+- **`CostumeManager` is now bootstrapped** (`MainMenuUI.EnsureProgressSingletons()`) — it had previously
+  been deliberately excluded (see the old note), and was enabled together with item 1 of the TODO.md
+  roadmap. `GrantDefaultCostumes()` was added to `Awake()`: costumes with `CostumeUnlock.Default` (e.g.
+  Gray Soldier, Standard Blue) are granted to the player silently (without triggering the reward popup)
+  from the start — otherwise the wardrobe would always look empty, because nothing was automatically
+  granting the "default" costumes.
+- **The 150-costume data was generated**: the `CostumeAssetGenerator.cs`
+  (`CosmicRumble/Economy/Generate Costume Assets`) Editor menu command was run —
+  `Assets/Resources/Costumes/*.asset` (150 `CostumeDefinition`) and
+  `Assets/Resources/Economy/CostumeDatabase.asset` are now permanent in the project. The rarity
+  distribution matches the master spec (Common/Uncommon/Rare/Epic/Legendary) and the unlock methods are
+  mixed (Default/ByLevel/ByGold/ByGem/ByChest/ByAchievement). **Still missing: no costume has real art**
+  (`previewSprite` is null on all of them) — the UI compensates with a rarity-colored circle + initial,
+  but the real character/weapon art remains a separate, large art job (see roadmap item 9).
+- **Play-tested end-to-end in the Unity Editor via Coplay MCP**: booted with a guest login, opened the
+  WARDROBE panel, and verified that the CHARACTER tab showed only the 2 owned costumes ("Gray Soldier",
+  "Standard Blue", both Common) and that the "Owned: 2 / 86" counter was correct — none of the 84 locked
+  costumes appeared in the list.
+- **One real bug was found and fixed in this pass**: `WardrobePanelUI.Show()` initially called
+  `Populate()` BEFORE `_panelRoot.SetActive(true)`. On `TextMeshProUGUI` objects created while the panel
+  was still inactive, `UiKit.BrawlText()`'s `outlineWidth` setter tries to create a font material
+  instance, which requires TMP's `OnEnable()` to have run — and since `OnEnable` is deferred in an
+  inactive hierarchy it threw a `NullReferenceException` (Material.CreateWithMaterial, source null), so
+  the panel blew up the first time it was opened. The order was changed (`SetActive(true)` first,
+  `Populate()` second) — verified to run without errors after the fix.
+- **Costume art generation was attempted and suspended (2026-07-11).** The routes tried, in order:
+  1. Coplay MCP `generate_or_edit_images` → **401 Unauthorized**. Checked in the Coplay panel (Coplay
+     menu → Toggle Window → Model Selection): the account is signed in but the balance is **$0.0000** —
+     Coplay's AI generation features (image/audio/3D, all of them) are pay-per-use and there are no
+     credits. "Nano Banana Pro" (Google Gemini's image model) is selected as the image generation model —
+     i.e. Gemini is already what runs behind Coplay, just through Coplay's own billing.
+  2. Free third-party ready-made assets (Kenney.nl, CC0 — the source the project already uses for
+     audio/fonts) were investigated: the "Game Icons" pack looked suitable for weapons, and the "Toon
+     Characters" pack was downloaded and reviewed for characters (6 archetypes: Female/Male adventurer,
+     Female/Male person, Robot, Zombie — the style is close to the game's `player_15.png` but not an
+     exact match, and there are only 6 archetypes for 10 themes). By the user's decision this route was
+     **abandoned**.
+  3. It was proposed that the user generate the art with their own Gemini access (directly, outside
+     Coplay) and import it into the project as assets — the user **suspended the work for now** and it
+     did not proceed.
+  **For the next session**: the costume/avatar art is still entirely missing (`previewSprite` is null). If
+  the user loads credits into Coplay, route 1 can be tried directly; if not, route 3 (the user generating
+  with their own Gemini and delivering PNGs) is the fastest path — in that case a 10-character + 10-weapon
+  theme template is enough (it can be distributed across the 150 costumes by deriving colors from the
+  names and automating the tinting; the plan is ready but not implemented).
 
 ## Quests
 Done — full quest pool (14 assets: 8 daily / 4 weekly / 2 monthly), `QuestsPanelUI.cs` (Daily/Weekly/Monthly
@@ -451,154 +476,155 @@ after weighing population-based vs. mobile-game-industry-standard language sets;
   entries, not missing code — falls back to English cleanly in the meantime). Deprioritized behind
   core UI/achievement/quest text since costume names are decorative flavor text, not functional UI.
 
-## Antrenman Modu
-Done (2026-07-10) — gerçek oyunculara açık, doğrudan erişilebilir pratik modu. Eski "BOT MAÇI (DEV)"
-girişi Editor'a kilitli kaldı (bot sayısı seçilebilen, geliştirici test aracı); bu YENİ giriş ayrı ve
-her build'de çalışır.
+## Training Mode
+Done (2026-07-10) — a practice mode available to real players and directly accessible. The old "BOT
+MATCH (DEV)" entry stays locked to the Editor (a developer test tool with a selectable bot count); this
+NEW entry is separate and works in every build.
 
-- **`LobbyData.IsTraining`** (yeni flag) + **`TurnManager.isTrainingMode`**: antrenmanda botlar
-  `TurnManager.characters` rotasyonuna HİÇ eklenmiyor. `GravityBody.isActive` varsayılan olarak
-  `false` (`NetworkVariable<bool>(false, ...)`) ve yalnız `TurnManager.ActivateCharacter()` onu
-  `true` yapıyor — rotasyona hiç girmeyen bir karakterde bu asla olmadığı için botlar tasarım
-  gereği kalıcı olarak pasif kalıyor (ayrıca "ateş etmeyi engelle" kodu YAZILMADI, zaten var olan
-  input-gate deseni yeterli). `TurnManager.CheckGameOver()` normalde `characters.Count <= 1`
-  olduğunda maçı bitirir (kazanan ilan eder) — antrenmanda insan tek başına kayıtlı olduğu için bu
-  bypass edilmezse maç ilk frame'de biterdi; `isTrainingMode` bayrağı bu kontrolü atlıyor.
-- **`MainMenuUI`**: ☰ çekmecesine yeni "ANTRENMAN"/"TRAINING" girişi (`dw_training`,
-  `StartTrainingMatch()`) — `LobbyData.IsTraining=true`, `BotCount=2` set edip lobi ekranı
-  olmadan doğrudan Game sahnesine geçiyor (tek tıkla pratik, `LobbyPanelUI`'ın aksine).
-- **Play-tested end-to-end in the Unity Editor**: misafir girişiyle ana menüye ulaşıp ANTRENMAN'a
-  tıklandı, Game sahnesi insan (`Pulsar630`) + `Bot_1` + `Bot_2` ile açıldı, `GameOverPanel`
-  inaktif kaldı (maç bitmedi — `isTrainingMode` bypass'ı doğrulandı), ~15 saniye sonra `Bot_1`'in
-  pozisyonu birebir aynı ölçüldü (x=18.2469711, y=-10.5347147 → değişmedi, bot hiç hareket etmedi).
-  Hata/uyarı yok.
-- Antrenmandan çıkış mevcut `InGameMenu` ESC menüsündeki "Ana Menüye Dön" ile — ayrı bir çıkış
-  mantığı yazılmadı, zaten var olan yol kullanılıyor.
-- Ödül/XP/Gold/başarım verilmiyor (bilinçli): `TriggerGameOver` hiç çağrılmadığı için maç
-  tamamlama event'leri ateşlenmiyor — bu, diğer mobil oyunlardaki "antrenman modu ilerleme
-  vermez" kuralıyla tutarlı, ayrıca özel bir kısıtlama kodu gerektirmedi (yan etki olarak geldi).
+- **`LobbyData.IsTraining`** (new flag) + **`TurnManager.isTrainingMode`**: in training the bots are
+  NEVER added to the `TurnManager.characters` rotation. `GravityBody.isActive` defaults to
+  `false` (`NetworkVariable<bool>(false, ...)`) and only `TurnManager.ActivateCharacter()` sets it to
+  `true` — since that never happens for a character that never enters the rotation, the bots stay
+  permanently passive by design (and no "prevent firing" code was WRITTEN; the existing input-gate
+  pattern is sufficient). `TurnManager.CheckGameOver()` normally ends the match (declaring a winner)
+  when `characters.Count <= 1` — since in training the human is the only one registered, the match would
+  end on the first frame if this weren't bypassed; the `isTrainingMode` flag skips that check.
+- **`MainMenuUI`**: a new "TRAINING" entry in the ☰ drawer (`dw_training`,
+  `StartTrainingMatch()`) — it sets `LobbyData.IsTraining=true`, `BotCount=2` and goes straight to the
+  Game scene without a lobby screen (one-click practice, unlike `LobbyPanelUI`).
+- **Play-tested end-to-end in the Unity Editor**: reached the main menu with a guest login and clicked
+  TRAINING; the Game scene opened with the human (`Pulsar630`) + `Bot_1` + `Bot_2`, `GameOverPanel`
+  stayed inactive (the match didn't end — the `isTrainingMode` bypass was verified), and after ~15
+  seconds `Bot_1`'s position measured exactly the same (x=18.2469711, y=-10.5347147 → unchanged, the bot
+  never moved). No errors/warnings.
+- Exiting training uses the existing "Return to Main Menu" in the `InGameMenu` ESC menu — no separate
+  exit logic was written, the existing path is reused.
+- No rewards/XP/Gold/achievements are granted (deliberate): since `TriggerGameOver` is never called, the
+  match-completion events don't fire — this is consistent with the "training mode grants no progression"
+  rule in other mobile games, and it also required no special restriction code (it came for free as a
+  side effect).
 
-## Profil Avatarları
-Done (2026-07-10) — kostüm sistemiyle aynı desende (`Assets/Scripts/Economy/Avatars/`), ama daha
-basit: kostümlerin aksine tüm avatarlar baştan açık (unlock/rarity yok), yalnızca "hangisi seçili"
-kalıcı. **Gerçek ikon görseli yok** — 150 kostüm/avatar sprite'ı ile birlikte SONRA YAPILACAK
-listesine eklendi (aşağıda), şimdilik renk + baş harf placeholder (`AvatarDefinition.icon` null-safe,
-UI önceliği zaten ikona veriyor — sprite eklenince otomatik geçiş, kod değişikliği gerekmez).
+## Profile Avatars
+Done (2026-07-10) — the same pattern as the costume system (`Assets/Scripts/Economy/Avatars/`), but
+simpler: unlike costumes, all avatars are unlocked from the start (no unlock/rarity), and only "which one
+is selected" persists. **There is no real icon art** — it was added to the DO LATER list together with
+the 150 costume/avatar sprites (below); for now a color + initial placeholder (`AvatarDefinition.icon` is
+null-safe and the UI already prioritizes the icon — it switches over automatically once a sprite is
+added, no code change needed).
 
-- **`AvatarDefinition`/`AvatarDatabase`/`AvatarManager`** (kostüm üçlüsüyle birebir aynı kalıp):
-  `AvatarManager.Select(id)` seçimi `avatar.json`'a kaydeder (CostumeManager'ın `costumes.json`'ı
-  gibi), `OnAvatarChanged` event'i yayınlar.
-- **`Assets/Editor/AvatarAssetGenerator.cs`**: uzay temalı 16 avatar (Nova, Comet, Blaze, Nebula,
+- **`AvatarDefinition`/`AvatarDatabase`/`AvatarManager`** (exactly the same pattern as the costume
+  trio): `AvatarManager.Select(id)` saves the selection to `avatar.json` (like CostumeManager's
+  `costumes.json`) and raises an `OnAvatarChanged` event.
+- **`Assets/Editor/AvatarAssetGenerator.cs`**: 16 space-themed avatars (Nova, Comet, Blaze, Nebula,
   Pulsar, Quasar, Meteor, Orbit, Solstice, Eclipse, Vortex, Cosmos, Photon, Asteroid, Aurora,
-  Zenith), her biri ayrı placeholder renkte — `CostumeAssetGenerator.cs`'in küçük ölçekli eşdeğeri.
-- **`AvatarPickerUI.cs`**: `WardrobePanelUI`/`QuestsPanelUI` ile aynı grid kalıbı, 4 sütunlu ızgara,
-  seçili avatar yeşil kontur + "SEÇİLİ" etiketiyle işaretli.
-- **Üst bar entegrasyonu**: `MainMenuUI`'daki profil plakasının avatar dairesi artık oyuncu adının
-  ilk harfi yerine seçili avatarın rengini/harfini gösteriyor; dairenin köşesine kendi
-  Button/raycast hedefi olan küçük bir "+" rozeti eklendi (plakanın geri kalanı hâlâ Sıralama'yı
-  açıyor, yalnızca bu küçük alan `AvatarPickerUI.Show()` çağırıyor) — çakışan tıklama bölgesi riski
-  olmadan iki farklı eylem aynı plakada bir arada.
-- **Canlı güncelleme düzgün bağlandı**: ilk yazımda üst bar yalnızca `BuildUI()` sırasında bir kez
-  kuruluyordu, seçim değiştiğinde menü yeniden açılana kadar güncellenmiyordu — fark edilip
-  `MainMenuUI.OnAvatarChangedForTopBar` + `ApplyAvatarVisuals()` eklendi (`AvatarManager.OnAvatarChanged`'a
-  abone), artık seçim anında (sahne reload'u olmadan) yansıyor.
-- **Play-tested end-to-end in the Unity Editor**: misafir girişiyle menüye ulaşıldı, varsayılan
-  avatar (Nova, kırmızı/pembe "N") üst barda doğrulandı, avatar seçici açılıp "Meteor" seçildi,
-  seçicideki SEÇİLİ rozeti Nova'dan Meteor'a taşındığı doğrulandı, üst bardaki `Initial.text`
-  ve `Avatar.Image.color`'ın `get_game_object_info` ile Meteor'un tanımlı değerleriyle
-  (`"M"`, `RGB(0.85, 0.25, 0.55)`) birebir eşleştiği doğrulandı — canlı güncelleme çalışıyor.
-  Hata/uyarı yok (yalnızca bilinen zararsız Coplay/NetworkManager artifact'leri).
+  Zenith), each in its own placeholder color — the small-scale equivalent of `CostumeAssetGenerator.cs`.
+- **`AvatarPickerUI.cs`**: the same grid pattern as `WardrobePanelUI`/`QuestsPanelUI`, a 4-column grid,
+  with the selected avatar marked by a green outline + a "SELECTED" label.
+- **Top bar integration**: the avatar circle on the profile plate in `MainMenuUI` now shows the selected
+  avatar's color/letter instead of the first letter of the player's name; a small "+" badge with its own
+  Button/raycast target was added to the corner of the circle (the rest of the plate still opens the
+  Leaderboard, and only that small area calls `AvatarPickerUI.Show()`) — two different actions coexist on
+  the same plate without any risk of overlapping click regions.
+- **Live updating wired up properly**: initially the top bar was only built once during `BuildUI()` and
+  didn't update when the selection changed until the menu was reopened — this was noticed and
+  `MainMenuUI.OnAvatarChangedForTopBar` + `ApplyAvatarVisuals()` were added (subscribed to
+  `AvatarManager.OnAvatarChanged`), so it now reflects the moment a selection is made (without a scene
+  reload).
+- **Play-tested end-to-end in the Unity Editor**: reached the menu with a guest login, verified the
+  default avatar (Nova, red/pink "N") in the top bar, opened the avatar picker and selected "Meteor",
+  verified the SELECTED badge moved from Nova to Meteor in the picker, and verified via
+  `get_game_object_info` that the top bar's `Initial.text` and `Avatar.Image.color` matched Meteor's
+  defined values exactly (`"M"`, `RGB(0.85, 0.25, 0.55)`) — live updating works.
+  No errors/warnings (only the known harmless Coplay/NetworkManager artifacts).
 
 ## ui_button_hover wiring
-Done (2026-07-10) — `UiKit.Hover(GameObject)` + `UiHoverSound` (yeni, `IPointerEnterHandler`, `Assets/Scripts/UI/UiKit.cs`)
-eklendi ve `UiKit.Press()`in yanına, mevcut tüm buton oluşturma yerlerine (29 GameObject, 14 dosya)
-tek tek eklendi. Devre dışı (`Selectable.IsInteractable() == false`) butonlarda sessiz kalır.
+Done (2026-07-10) — `UiKit.Hover(GameObject)` + `UiHoverSound` (new, `IPointerEnterHandler`, `Assets/Scripts/UI/UiKit.cs`)
+were added and wired, next to `UiKit.Press()`, into every existing button creation site one by one
+(29 GameObjects, 14 files). It stays silent on disabled (`Selectable.IsInteractable() == false`) buttons.
 
-- Programatik buton oluşturan tüm dosyalar (`MainMenuUI`, `InGameMenu`, `WardrobePanelUI`,
+- Every file that creates buttons programmatically (`MainMenuUI`, `InGameMenu`, `WardrobePanelUI`,
   `SocialPanelUI`, `ShopPanelUI`, `QuestsPanelUI`, `OnlineLobbyPanelUI`, `LoginScreenUI`,
   `LoginPanelUI`, `LobbyPanelUI`, `LeaderboardPanelUI`, `InvitePopupUI`, `FriendLobbyPanelUI`,
-  `AvatarPickerUI`) gözden geçirildi — `AddComponent<Button>()` çağrılan 30 yerin 29'una
-  `UiKit.Hover(go)` eklendi. **Bilinçli olarak atlanan tek yer**: `MainMenuUI`'daki çekmece
-  arka planı kapatma butonu (`dimGO`) — görünmez tam ekran tıklama yakalayıcısı, hover'ı
-  anlamlı bir buton değil.
-- **Test**: Play Mode'da misafir girişiyle ana menüye ulaşıldı, `btn_wardrobe` üzerinde
-  `ExecuteEvents.Execute(..., pointerEnterHandler)` ile pointer-enter simüle edildi,
-  `AudioManager`'ın loop olmayan (SFX) `AudioSource`'unun `isPlaying` durumu hover öncesi
-  `False`, hover sonrası `True` olarak doğrulandı — klip gerçekten çalıyor. Konsolda hata yok.
+  `AvatarPickerUI`) was reviewed — `UiKit.Hover(go)` was added to 29 of the 30 places that call
+  `AddComponent<Button>()`. **The one deliberately skipped place**: the drawer background dismiss button
+  (`dimGO`) in `MainMenuUI` — it's an invisible fullscreen click catcher, not a button where hover would
+  be meaningful.
+- **Test**: reached the main menu with a guest login in Play Mode, simulated pointer-enter on
+  `btn_wardrobe` via `ExecuteEvents.Execute(..., pointerEnterHandler)`, and verified that the `isPlaying`
+  state of `AudioManager`'s non-looping (SFX) `AudioSource` was `False` before the hover and `True`
+  after — the clip really plays. No console errors.
 
-## Sosyal Başarımlar (kontrol + eksik event wiring)
-Done (2026-07-10) — SOSYAL kategorisindeki 10 başarımdan 3'ü (`SOSYAL_KELEBEK`, `HERKESE_MEYDAN`,
-`DUELLO_SAMPIYONU`) çalışır hale getirildi; kalan 6'sı ayrı, daha büyük iş olarak bilinçli kapsam
-dışı bırakıldı (aşağıda tek tek gerekçelendirildi).
+## Social Achievements (review + missing event wiring)
+Done (2026-07-10) — 3 of the 10 achievements in the SOCIAL category (`SOSYAL_KELEBEK`, `HERKESE_MEYDAN`,
+`DUELLO_SAMPIYONU`) were made functional; the remaining 6 were deliberately left out of scope as separate,
+larger work (each justified individually below).
 
-- **Gerçek bug bulundu ve düzeltildi**: `AchievementEvents.FirePlayerDefeated(string id)` tüm
-  kod tabanında hiçbir yerden çağrılmıyordu — event ve `AchievementTracker.HandlePlayerDefeated`
-  aboneliği "bağlı" görünüyordu ama tetikleyen hiçbir kod yoktu, yani `SOSYAL_KELEBEK` sessizce
-  ölüydü. `CombatEventReporter.ReportHit()` her çağrıldığında hedefin `TakeDamage()`'ı zaten önceden
-  çalışmış oluyor (bkz. metod içi yorum) — bu sıralamadan yararlanılarak isabet sonrası
-  `ch.GetCurrentHealth() <= 0f` kontrolüyle öldürücü darbe tespit edildi ve `FirePlayerDefeated`
-  oradan tetiklendi. Saldırgan kimliğini tüm projectile boru hattına taşımak gibi çok daha büyük bir
-  refactor'a girmeden çözüldü.
-- **Yeni event: `AchievementEvents.OnDamagedTarget`/`FireDamagedTarget(string id)`** — her isabette
-  (öldürücü olsun olmasın) hedef kimliğini yayınlıyor. `HERKESE_MEYDAN` ("aynı maçta 7 farklı
-  oyuncuya hasar ver") artık `AchievementTracker._matchDamagedTargets` (maç başına sıfırlanan
-  `HashSet<string>`) ile takip ediliyor, 7'ye ulaşınca `UnlockAchievement` çağrılıyor.
-  `ResetMatchState()`'e temizleme eklendi.
-  Davetli özel maç da Quick Match ile birebir aynı `CombatEventReporter`/`TurnManager` boru hattını
-  kullandığından ayrı bir kod yolu yok — event kaynağı maç tipinden bağımsız.
-- **`DUELLO_SAMPIYONU` ("1v1 modda 10 galibiyet") bağlandı**: `AchievementTracker.HandleMatchWon()`
-  içinde `_matchPlayerCount == 2` kontrolü ile kümülatif `_totalDuelWins` sayacı artırılıp
-  `UpdateProgress` çağrılıyor — ayrı bir "duel modu" event'i gerekmedi, mevcut
-  `OnPlayerCountInMatch` verisi yeterliydi.
-- **Test**: Play Mode'da geçici bir script (`Temp_TestSocialAchievements.cs`, sonradan silindi)
-  ile üç senaryo da doğrudan event ateşleyerek doğrulandı — 7 farklı `FireDamagedTarget` çağrısı
-  sonrası `HERKESE_MEYDAN` unlock oldu, bir `FirePlayerDefeated` sonrası `SOSYAL_KELEBEK` ilerlemesi
-  0'dan 1'e çıktı, 2 oyunculu `FireMatchWon` sonrası `DUELLO_SAMPIYONU` ilerlemesi 0'dan 1'e çıktı.
-  Konsolda hata/uyarı yok.
-- **Kalan 6 SOSYAL başarımın 5'i bağlandı (2026-07-10)** — yalnızca `OGRETMEN` gerekçeli kapsam
-  dışı kaldı (aşağıda). Önceki not (bu satırın eski hali) `REKABETCI`/`OGRETMEN` gerekçelerini
-  birbirine karıştırmıştı — gerçek `.asset` açıklamaları kontrol edilerek düzeltildi.
-  - **`INTIKAM`** ("Defeat whoever killed you in the next match"): saldırgan kimliğini projectile
-    boru hattına taşımaya gerek kalmadı — proje her zaman 1v1 olduğu için "bizi kim yendi" sorusunun
-    cevabı zaten maçın tek rakibi. `AchievementEvents.FireMatchLost(string winnerName)` (önceden
-    parametresizdi) kaybedilen maçın kazananının adını `AchievementTracker`'a taşıyor,
-    `PlayerPrefs["cr_intikam_target"]`'e yazılıyor; bir sonraki maçta `HandlePlayerDefeated` aynı
-    isimle eşleşirse `INTIKAM` unlock olup hedef temizleniyor.
-  - **`REKABETCI`** (gerçek açıklaması "Finish top 3 in a ranked match" — tutorial ile ilgisi yok):
-    proje kesinlikle 1v1 olduğu için (`MaxPlayers=2` her SessionOptions'ta) 2 oyuncudan biri olmak
-    zaten her zaman "top 3" içinde — sahte bir 3+ kişilik sıralama sistemi uydurmak yerine dereceli
-    (Quick Match) bir maç kazan/kaybet fark etmeden tamamlandığında doğrudan unlock ediliyor
-    (`AchievementEvents.OnRankedMatchCompleted`, `TurnManager.FinishMatchLocally`'ye eklenen
-    `ranked` parametresinden tetikleniyor).
-  - **`KOZMIK_EKIP`** ("Play 5 matches with the same 3 people" — 1v1'de "aynı 3 kişi" anlamsız,
-    "aynı arkadaşla 5 maç" olarak ölçeklendirildi): `FriendLobbyPanelUI.ShowAsHost/ShowAsClient`
-    artık arkadaşın `PlayerId`'sini `LobbyData.FriendOpponentId`'e yazıyor (client tarafı için
-    `InvitePopupUI.HandleInvite`'ın zaten aldığı `senderId` `ShowAsClient`'a yeni bir parametre
-    olarak eklendi); maç bitince `TurnManager.FinishMatchLocally` bunu okuyup
-    `AchievementEvents.FireFriendMatchCompleted(friendId)` ateşliyor ve alanı temizliyor (iptal/
-    arka plana atma durumlarında da `OnCancelClicked`/`CleanupOnBackground`'da temizleniyor —
-    aksi halde bir sonraki alakasız maça sızardı). `AchievementTracker` her arkadaş için ayrı
-    `PlayerPrefs` sayacı tutuyor, ilerleme o arkadaşın sayacının en yükseği (başka bir arkadaşla
-    oynamak ilerlemeyi düşürmüyor).
-  - **`BIR_NUMARA`/`KOZMIK_AVCI`** (leaderboard sıralaması): eski not "senkron erişim yok"
-    diyordu ama achievement kontrolünün senkron olmasına hiç gerek yoktu — `LeaderboardManager.
-    SubmitScoreAsync` skor gönderildikten sonra `FetchOwnEntryAsync()` ile (zaten var olan metod)
-    async sıralamayı öğrenip `AchievementEvents.FireLeaderboardRankKnown(rank)` ateşliyor;
-    `AchievementTracker` rank==0'da `BIR_NUMARA`, rank<10'da `KOZMIK_AVCI` unlock ediyor.
-  - **Test**: Play Mode'da (`TestSocialAchievements.cs`, geçici, sonradan silindi) her 5 event
-    doğrudan ateşlenerek doğrulandı — `INTIKAM`/`REKABETCI`/`BIR_NUMARA`/`KOZMIK_AVCI` unlock,
-    `KOZMIK_EKIP` ilerlemesi 5/5 ve unlock. Konsolda yeni hata yok (yalnızca bilinen zararsız NGO
-    stop-play temizlik hataları).
-  - **`OGRETMEN` kapsam dışı (gerekçeli)**: gerçek açıklaması "Guide a new player through the
-    tutorial" — mentor'un kendi cihazında, davet ettiği arkadaşın TutorialManager'ını tamamladığını
-    öğrenmesi gerekiyor. Bu, mentee'nin cihazındaki yerel `PlayerPrefs` durumunu mentor'un cihazına
-    taşıyacak bir cross-client bildirim ister (FriendsService.MessageAsync ile teknik olarak
-    mümkün görünüyor ama gerçek iki-taraflı akış, orijinal multiplayer milestone'da olduğu gibi
-    ayrı bir gerçek ikinci OS process'i gerektirir — bu geçişte test edilemedi). Ayrıca
-    `TutorialManager` bilinçli olarak yalnızca offline (hotseat/Antrenman) akışında tetikleniyor
-    (bkz. "Antrenman Modu" bölümü üstündeki tutorial notu), online arkadaş daveti akışına henüz
-    bağlanmadı — o da ayrı bir iş. Kendi başına ayrı bir alt sistem (cross-client bildirim) ve ayrı
-    bir test ortamı (iki gerçek process) gerektirdiğinden bu geçişte yapılmadı.
+- **A real bug was found and fixed**: `AchievementEvents.FirePlayerDefeated(string id)` was never called
+  from anywhere in the entire codebase — the event and the `AchievementTracker.HandlePlayerDefeated`
+  subscription looked "wired", but no code triggered it, so `SOSYAL_KELEBEK` was silently dead. Every time
+  `CombatEventReporter.ReportHit()` is called, the target's `TakeDamage()` has already run beforehand (see
+  the in-method comment) — exploiting that ordering, the killing blow is detected after the hit via a
+  `ch.GetCurrentHealth() <= 0f` check and `FirePlayerDefeated` is triggered from there. Solved without
+  going into a far larger refactor like carrying the attacker's identity through the whole projectile
+  pipeline.
+- **New event: `AchievementEvents.OnDamagedTarget`/`FireDamagedTarget(string id)`** — it publishes the
+  target's identity on every hit (lethal or not). `HERKESE_MEYDAN` ("damage 7 different players in the
+  same match") is now tracked via `AchievementTracker._matchDamagedTargets` (a `HashSet<string>` reset per
+  match), and `UnlockAchievement` is called once it reaches 7. Clearing was added to `ResetMatchState()`.
+  Since an invited private match uses exactly the same `CombatEventReporter`/`TurnManager` pipeline as
+  Quick Match, there is no separate code path — the event source is independent of the match type.
+- **`DUELLO_SAMPIYONU` ("10 wins in 1v1 mode") was wired**: inside
+  `AchievementTracker.HandleMatchWon()` a `_matchPlayerCount == 2` check increments the cumulative
+  `_totalDuelWins` counter and calls `UpdateProgress` — no separate "duel mode" event was needed, the
+  existing `OnPlayerCountInMatch` data was sufficient.
+- **Test**: all three scenarios were verified in Play Mode by firing the events directly from a temporary
+  script (`Temp_TestSocialAchievements.cs`, deleted afterwards) — after 7 different `FireDamagedTarget`
+  calls `HERKESE_MEYDAN` unlocked, after one `FirePlayerDefeated` the `SOSYAL_KELEBEK` progress went from
+  0 to 1, and after a 2-player `FireMatchWon` the `DUELLO_SAMPIYONU` progress went from 0 to 1.
+  No console errors/warnings.
+- **5 of the remaining 6 SOCIAL achievements were wired (2026-07-10)** — only `OGRETMEN` stayed out of
+  scope with a justification (below). The previous note (the old version of this line) had mixed up the
+  `REKABETCI`/`OGRETMEN` rationales — corrected by checking the real `.asset` descriptions.
+  - **`INTIKAM`** ("Defeat whoever killed you in the next match"): there was no need to carry the
+    attacker's identity through the projectile pipeline — since the project is always 1v1, the answer to
+    "who beat us" is already the match's only opponent. `AchievementEvents.FireMatchLost(string
+    winnerName)` (previously parameterless) carries the winner's name from the lost match to
+    `AchievementTracker`, where it's written to `PlayerPrefs["cr_intikam_target"]`; in the next match, if
+    `HandlePlayerDefeated` matches the same name, `INTIKAM` unlocks and the target is cleared.
+  - **`REKABETCI`** (its real description is "Finish top 3 in a ranked match" — nothing to do with the
+    tutorial): since the project is strictly 1v1 (`MaxPlayers=2` in every SessionOptions), being one of 2
+    players is always within "top 3" — rather than inventing a fake 3+-player ranking system, it unlocks
+    directly whenever a ranked (Quick Match) match is completed, win or lose
+    (`AchievementEvents.OnRankedMatchCompleted`, triggered from the `ranked` parameter added to
+    `TurnManager.FinishMatchLocally`).
+  - **`KOZMIK_EKIP`** ("Play 5 matches with the same 3 people" — "the same 3 people" is meaningless in
+    1v1, so it was rescaled to "5 matches with the same friend"): `FriendLobbyPanelUI.ShowAsHost/ShowAsClient`
+    now writes the friend's `PlayerId` into `LobbyData.FriendOpponentId` (for the client side, the
+    `senderId` that `InvitePopupUI.HandleInvite` already receives was added to `ShowAsClient` as a new
+    parameter); when the match ends, `TurnManager.FinishMatchLocally` reads it, fires
+    `AchievementEvents.FireFriendMatchCompleted(friendId)` and clears the field (it's also cleared in
+    `OnCancelClicked`/`CleanupOnBackground` on cancel/backgrounding — otherwise it would leak into the
+    next, unrelated match). `AchievementTracker` keeps a separate `PlayerPrefs` counter per friend, and
+    the progress is the highest of those counters (playing with a different friend doesn't lower it).
+  - **`BIR_NUMARA`/`KOZMIK_AVCI`** (leaderboard rank): the old note said "no synchronous access", but
+    the achievement check never needed to be synchronous — after the score is submitted,
+    `LeaderboardManager.SubmitScoreAsync` learns the rank asynchronously via `FetchOwnEntryAsync()` (an
+    already-existing method) and fires `AchievementEvents.FireLeaderboardRankKnown(rank)`;
+    `AchievementTracker` unlocks `BIR_NUMARA` at rank==0 and `KOZMIK_AVCI` at rank<10.
+  - **Test**: all 5 events were verified in Play Mode by firing them directly
+    (`TestSocialAchievements.cs`, temporary, deleted afterwards) — `INTIKAM`/`REKABETCI`/`BIR_NUMARA`/
+    `KOZMIK_AVCI` unlocked, and `KOZMIK_EKIP` progressed to 5/5 and unlocked. No new console errors (only
+    the known harmless NGO stop-play cleanup errors).
+  - **`OGRETMEN` out of scope (justified)**: its real description is "Guide a new player through the
+    tutorial" — the mentor's own device needs to learn that the friend they invited completed their
+    TutorialManager. That requires a cross-client notification carrying the local `PlayerPrefs` state from
+    the mentee's device to the mentor's (it looks technically possible via FriendsService.MessageAsync,
+    but a real two-sided flow requires a separate, genuine second OS process, as in the original
+    multiplayer milestone — which couldn't be tested in this pass). Also, `TutorialManager` is
+    deliberately only triggered in the offline (hotseat/Training) flow (see the tutorial note above the
+    "Training Mode" section) and hasn't been wired into the online friend-invite flow yet — which is also
+    separate work. Since it requires a whole subsystem of its own (cross-client notification) and a
+    separate test environment (two real processes), it wasn't done in this pass.
 
 ## Audio
 Done — all 21 SFX + `menu_music` generated (ElevenLabs SFX for SFX, a separate AI music tool for the loop
@@ -711,44 +737,46 @@ no console errors).
          downloaded from Play Console → Play Games Services → Configuration, once step 1/2 exist.
       Everything else (the plugin, the define, the API calls) is ready and waiting on those three steps.
 
-## Google Play Games GİRİŞİ — Console/Dashboard kurulumu (yapılmadı, kod hazır)
+## Google Play Games SIGN-IN — Console/Dashboard setup (not done, code is ready)
 
-2026-07-08/09'daki sosyal+auth yenilemesinin (tam ekran login, Platform + Cosmic ID modeli,
-UGS Friends, davet lobisi) kod tarafı tamamen bitti ve Editor'da doğrulandı. Android'de Google
-girişinin fiilen çalışması için kalan adımların HEPSİ kullanıcının kendi Google hesaplarını
-gerektiriyor — kod değişikliği gerekmiyor:
+The code side of the 2026-07-08/09 social+auth overhaul (fullscreen login, the Platform + Cosmic ID
+model, UGS Friends, the invite lobby) is completely finished and verified in the Editor. ALL of the
+remaining steps for Google sign-in to actually work on Android require the user's own Google accounts —
+no code changes are needed:
 
-1. **Play Console'da uygulama kaydı** (taslak yeterli) + **Play Games Hizmetleri kurulumu**
-   (Büyüme → Play Games Hizmetleri → Yapılandırma → "Hayır, yeni oyun kur"; verilen 12 haneli
-   oyun kimliğini not et). Yukarıdaki "Achievement platform providers" bölümünün 1. adımıyla
-   aynı kayıt — bir kere yapılır, ikisine de yarar.
-2. **Android kimliği** (Credentials → Android): paket adı + APK'yı imzalayan keystore'un SHA-1'i.
-   Play App Signing anahtarı ile lokal test keystore'unun SHA-1'leri farklıysa İKİ ayrı Android
-   kimliği eklenmeli (en sık takılınan nokta: SHA-1 uyuşmazlığında giriş sessizce başarısız olur).
-3. **Oyun sunucusu kimliği** (Credentials → Game server): Google Cloud Console'da **Web
-   uygulaması** tipi OAuth istemcisi oluştur (Android tipi DEĞİL; ilk seferde OAuth izin ekranı
-   da doldurulur — Test modundaysa kendi Gmail'i test kullanıcılarına eklenmeli). Çıkan
-   **Client ID + Client Secret** kopyalanır.
+1. **Register the app in Play Console** (a draft is enough) + **set up Play Games Services**
+   (Grow → Play Games Services → Configuration → "No, create a new game"; note the 12-digit
+   game ID it gives you). This is the same registration as step 1 of the "Achievement platform
+   providers" section above — do it once, it serves both.
+2. **Android credential** (Credentials → Android): the package name + the SHA-1 of the keystore that
+   signs the APK. If the SHA-1s of the Play App Signing key and the local test keystore differ, TWO
+   separate Android credentials must be added (the most common stumbling block: on a SHA-1 mismatch,
+   sign-in fails silently).
+3. **Game server credential** (Credentials → Game server): create a **Web application** type OAuth
+   client in the Google Cloud Console (NOT the Android type; the first time you'll also fill in the
+   OAuth consent screen — if it's in Test mode, your own Gmail must be added to the test users). Copy
+   the resulting **Client ID + Client Secret**.
 4. **Unity Dashboard** → Player Authentication → Identity Providers → **Google Play Games** →
-   3. adımdaki Web Client ID + Secret girilir → Enable. (Unity tarafındaki tek adım; Unity
-   hiçbir kimlik üretmez, sadece Google'ın verdiğini bildirirsin.)
-5. **Play Games Hizmetleri → Test kullanıcıları**: PGS yayınlanana kadar sadece bu listedekiler
-   giriş yapabilir — kendi hesabını ekle.
-6. **Unity Editor'da bir kere**: Window → Google Play Games → Setup → Android Setup — Play
-   Console "Kaynakları al" XML'i + 3. adımdaki WEB Client ID (yukarıdaki achievements bölümünün
-   3. adımıyla aynı sihirbaz, tek seferde ikisi de biter).
-7. **Cihaz testi**: 2. adımdaki keystore ile imzalı build → beklenen akış: açılışta sessiz
-   Google girişi → yükleme → menü; Ayarlar → Hesap'ta "GOOGLE — Bağlı (ad)".
+   enter the Web Client ID + Secret from step 3 → Enable. (The only step on the Unity side; Unity
+   generates no credentials, you just tell it what Google gave you.)
+5. **Play Games Services → Testers**: until PGS is published, only people on that list can sign in —
+   add your own account.
+6. **Once in the Unity Editor**: Window → Google Play Games → Setup → Android Setup — the Play
+   Console "Get resources" XML + the WEB Client ID from step 3 (the same wizard as step 3 of the
+   achievements section above; both are done in one go).
+7. **Device test**: a build signed with the keystore from step 2 → expected flow: silent Google
+   sign-in at launch → loading → menu; "GOOGLE — Connected (name)" under Settings → Account.
 
-Kod tarafında hazır bekleyenler: `GooglePlayAuthProvider` (sessiz/etkileşimli auth code),
-`AuthManager.SignInWithPlatformAsync` (Link/SignIn + AccountAlreadyLinked hesap değişimi),
-LoginScreenUI'daki "GOOGLE İLE DEVAM ET" butonu (`UNITY_ANDROID && GPGS_INSTALLED`).
+Ready and waiting on the code side: `GooglePlayAuthProvider` (silent/interactive auth code),
+`AuthManager.SignInWithPlatformAsync` (Link/SignIn + AccountAlreadyLinked account switching), and the
+"CONTINUE WITH GOOGLE" button in LoginScreenUI (`UNITY_ANDROID && GPGS_INSTALLED`).
 
-Ayrıca ertelenen: **iOS Game Center girişi** — `AppleGameCenterAuthProvider` stub olarak duruyor
-(IsAvailable=false); iOS hattı kurulunca Apple.GameKit plugin'i + `SignInWithAppleGameCenterAsync`
-ile doldurulacak. **Arkadaş/davet uçtan uca testi** de iki gerçek kimlik gerektirir (Editor'daki
-testuser1 + ikinci cihaz/build'de ikinci Cosmic ID) — Editor'da tek taraflı doğrulandı
-(Friends init + kendi kodu "Pulsar630#51647" UGS'den geldi), iki taraflı akış cihaz testinde.
+Also deferred: **iOS Game Center sign-in** — `AppleGameCenterAuthProvider` remains a stub
+(IsAvailable=false); it will be filled in with the Apple.GameKit plugin + `SignInWithAppleGameCenterAsync`
+once the iOS track is set up. The **friend/invite end-to-end test** also requires two real identities
+(testuser1 in the Editor + a second Cosmic ID on a second device/build) — it was verified one-sided in
+the Editor (Friends init + its own code "Pulsar630#51647" came back from UGS); the two-sided flow awaits
+device testing.
 
 ## Multiplayer
 
@@ -801,7 +829,7 @@ waits, Join takes a code, both wait for the host to trigger the Game scene load 
 **Verified — genuinely two separate OS processes, not two script calls in one Editor:** Unity Editor (driven
 via Coplay MCP) as host, a real standalone Windows dev build (`Builds/DevClient/CosmicRumble.exe`, gitignored)
 launched as a second process for the client, connecting through the *actual* Host/Join UI flow (a join code
-generated by clicking "HOST OLUŞTUR" in the Editor, fed to the standalone build, which called the real
+generated by clicking "CREATE HOST" in the Editor, fed to the standalone build, which called the real
 `JoinSessionAsync` path — not a raw-loopback shortcut). Confirmed via logs on **both sides independently**:
 ```
 Host:   [TURN] Player_0 isActive False->True IsOwner=True  frame=1201   (host's own turn starts)
@@ -875,7 +903,7 @@ working in isolation, offline and/or via a partial live 2-process test):**
   which would otherwise still fight the replicated position). Verified offline only (screenshot, character
   renders/stands normally) — **cross-machine jitter/position-sync has not been visually confirmed yet**.
 - Host/Join UI polish: `NetworkBootstrap` now retains the `ISession` and exposes `LeaveSessionAsync()`.
-  `OnlineLobbyPanelUI` gained a working "İPTAL ET" (Cancel) button on the Host card (visible while waiting for
+  `OnlineLobbyPanelUI` gained a working "CANCEL" button on the Host card (visible while waiting for
   an opponent) and a disconnect-message overlay. **Verified live, fully working**: clicked Cancel while hosting
   → `NetworkManager.IsListening` confirmed `False` → hosted again immediately after → succeeded cleanly with a
   fresh join code. This piece is done, not just implemented.
@@ -1205,8 +1233,7 @@ exists for that case, the whole session ends.
   `Temp_BuildClient.cs`, `Temp_SaveScene.cs` deleted; `MenuScene.unity` re-saved in place.
 
 ### Done (2026-07-06) — Milestone 5: Quick Match (automatic matchmaking, no code needed)
-Requested explicitly ("quick match zaten kesinlikle olmalı oyunun ana olayı zaten bu" — quick match is the
-core of the game and had to exist). Superseded the originally-planned "matchmaking pools (Steam/mobile split)"
+Requested explicitly (quick match is the core of the game and absolutely had to exist). Superseded the originally-planned "matchmaking pools (Steam/mobile split)"
 backlog item — investigating it surfaced that the game had **no matchmaking at all** yet (only manual
 host/join-by-code), so "split into pools" wasn't actually buildable before the pool-less version existed.
 **Also, the user explicitly reversed the earlier stated pool-separation policy**: Steam and mobile players are
@@ -1551,462 +1578,504 @@ providers already cover mobile — everything below is mobile-only work not yet 
   Games Services resource XML), App Store Connect (App Privacy nutrition label, ATT prompt if ads/analytics are
   added, TestFlight), age rating, privacy policy URL.
 
-## Yerçekimi düzeltmeleri + Online Leaderboard (kupa sistemi) — Done (2026-07-06)
+## Gravity fixes + Online Leaderboard (trophy system) — Done (2026-07-06)
 
-### Yerçekimi — mermilerin gezegene çekilmeme bug'ı (kök neden + fix, canlı doğrulandı)
-- **Kök neden:** `Projectile.prefab` (Pistol/RPG/Grenade mermilerinin base'i), `PF_BlackHoleProjectile.prefab`
-  ve `TeleportOrbProjectile.prefab` üzerindeki `NetworkRigidbody2D.Awake()` body'yi koşulsuz Kinematic'e
-  zorluyor ve bunu yalnızca `OnNetworkSpawn()` geri alıyor — offline'da spawn hiç olmadığı için mermiler
-  kalıcı Kinematic kalıyor, `GravitySource`'un `AddForce` çekimi sessizce no-op oluyor ve mermiler dümdüz
-  gidiyordu. Milestone 3'te karakterler için bulunan regresyonun (bkz. `GravityBody.Start()`) birebir aynısı,
-  mermi tarafı o zaman gözden kaçmış. **Fix:** `Assets/Scripts/Utilities/NetworkPhysicsGuard.cs`
-  (`EnsureDynamicWhenNotSpawned`) + tüm mermi scriptlerinin `Init()`/`Start()` yollarına çağrı
-  (KineticProjectile, Projectile, HandGrenadeProjectile, BlackHoleProjectile, TeleportOrbProjectile,
-  ProjectileBase). Silahların SpawnAndInit sırası her yerde Spawn()→Init() olduğu için online'da guard
-  kendiliğinden devre dışı (IsSpawned=true → NGO otoriteyi yönetir).
-- **İkinci yapısal sorun:** `GravitySource` script'i Planet_Interior'da, geniş çekim trigger'ı ise child
-  `GravityTrigger`'da ve hiyerarşide Rigidbody2D yok — Unity trigger callback'lerini parent'a İLETMEZ, yani
-  o child'ın `OnTriggerStay2D`'si GravitySource'a hiç ulaşmıyordu. Çekim bugüne kadar yalnızca sahnede
-  Planet_Interior'ın kendi collider'ının elle trigger yapılmış olması sayesinde (ve gravityRadius'tan farklı
-  bir yarıçapta) çalışıyordu. **Fix:** kuvvet uygulaması `GravitySource.FixedUpdate()`'e taşındı —
-  gravityRadius içindeki tüm dinamik Rigidbody2D'lere `OverlapCircle` ile (body başına tek kez, uyuyanlara
-  dokunmadan, `rb.mass` ile ölçekleyerek) uygulanıyor. Böylece etki alanı tam olarak gravityRadius, ivme
-  kütleden bağımsız `gravityForce` ve `TrajectoryDots`/`IGravityStrategy` tahminiyle birebir aynı.
-- `SinglePlanetGravity`/`MultiPlanetGravity` artık `gravityRadius`'a saygı duyuyor (tahmin ile gerçek fizik
-  sınırı aynı).
-- **Canlı doğrulama (Editor Play Mode, SampleScene):** spawn edilen pistol mermisi bodyType=Dynamic, gezegene
-  doğru ölçülen ivme |a|=19.84 ≈ gravityForce(20), 0.84 sn'de yüzeye çarpıp doğru şekilde yok oldu. (İlk
-  ölçümdeki ~34 değeri duvar-saati/fizik catch-up artefaktıydı; Time.time bazlı ikinci ölçüm doğru çıktı.)
+### Gravity — the bug where projectiles weren't pulled toward the planet (root cause + fix, verified live)
+- **Root cause:** `NetworkRigidbody2D.Awake()` on `Projectile.prefab` (the base for the Pistol/RPG/Grenade
+  projectiles), `PF_BlackHoleProjectile.prefab` and `TeleportOrbProjectile.prefab` unconditionally forces
+  the body to Kinematic, and only `OnNetworkSpawn()` undoes it — since spawning never happens offline, the
+  projectiles stayed permanently Kinematic, `GravitySource`'s `AddForce` pull became a silent no-op, and
+  the projectiles flew perfectly straight. This is exactly the same regression found for characters in
+  Milestone 3 (see `GravityBody.Start()`); the projectile side had been missed at the time. **Fix:**
+  `Assets/Scripts/Utilities/NetworkPhysicsGuard.cs` (`EnsureDynamicWhenNotSpawned`) + calls in the
+  `Init()`/`Start()` paths of every projectile script (KineticProjectile, Projectile,
+  HandGrenadeProjectile, BlackHoleProjectile, TeleportOrbProjectile, ProjectileBase). Since the weapons'
+  SpawnAndInit order is Spawn()→Init() everywhere, the guard disables itself online (IsSpawned=true → NGO
+  manages authority).
+- **A second structural problem:** the `GravitySource` script is on Planet_Interior while the wide gravity
+  trigger is on the child `GravityTrigger`, and there is no Rigidbody2D in the hierarchy — Unity does NOT
+  forward trigger callbacks to the parent, so that child's `OnTriggerStay2D` never reached GravitySource.
+  Until now the pull only worked because Planet_Interior's own collider had been manually made a trigger in
+  the scene (and at a radius different from gravityRadius). **Fix:** the force application was moved into
+  `GravitySource.FixedUpdate()` — it's applied via `OverlapCircle` to every dynamic Rigidbody2D within
+  gravityRadius (once per body, without touching sleeping ones, scaled by `rb.mass`). So the area of effect
+  is exactly gravityRadius, the acceleration is a mass-independent `gravityForce`, and it matches the
+  `TrajectoryDots`/`IGravityStrategy` prediction exactly.
+- `SinglePlanetGravity`/`MultiPlanetGravity` now respect `gravityRadius` (the prediction and the real
+  physics boundary are the same).
+- **Live verification (Editor Play Mode, SampleScene):** a spawned pistol projectile had bodyType=Dynamic,
+  the measured acceleration toward the planet was |a|=19.84 ≈ gravityForce(20), and it hit the surface in
+  0.84s and was destroyed correctly. (The ~34 value in the first measurement was a wall-clock/physics
+  catch-up artifact; the second, Time.time-based measurement came out correct.)
 
-### Online Leaderboard — Clash Royale tarzı kupa sistemi (kullanıcı isteğiyle galibiyet sayacından çevrildi)
-- Paket: `com.unity.services.leaderboards` 2.3.4 (Coplay MCP ile kuruldu; araç derleme hatası varken
-  çalışmadığı için önce leaderboard referansları geçici yorumlanıp kurulum sonrası geri açıldı).
-- `Assets/Scripts/Cloud/LeaderboardManager.cs`: kupa mantığı — online maç galibiyeti **+30**, mağlubiyet
-  **−20** (0'ın altına inmez), beraberlikte değişim yok; güncel toplam UGS Leaderboards'a gönderilir.
-  Kupa aralığına göre lig adları (`GetLeagueName`: Asteroid/Moon/Planet/Star/Nebula/Galaxy League).
-  Kayıtlı kullanıcı adı `UpdatePlayerNameAsync` ile leaderboard'a yansıtılır (misafirde no-op).
-- **Önemli bulgu (canlı teşhisle bulundu):** statik `LeaderboardsService.Instance` bu projede HİÇ set
-  edilmiyor — core, paketleri instance-tabanlı yolla (`IInitializablePackageV2.InitializeInstanceAsync`)
-  başlatıyor ve o yol statici atlamıyor... atlıyor (paket kaynağında görülüyor: `Initialize()` statici set
-  eder, `InitializeInstanceAsync()` etmez). Servis CoreRegistry'de kayıtlı ve sağlıklıyken statik erişim
-  `ServicesInitializationException` atıyordu. **Doğru erişim:** `UnityServices.Instance.GetLeaderboardsService()`
-  (LeaderboardManager.Service property'si; statik yalnızca yedek). Bu gotcha diğer UGS paketleri için de
-  geçerli olabilir.
-- `TurnManager.TriggerGameOver` → yeni `AnnounceMatchResultClientRpc(winnerClientId)`: online maç sonucunu
-  TÜM client'lara duyurur (TriggerGameOver yalnızca server'da çalıştığı için client'lar kazanıp
-  kaybettiklerini ancak böyle öğrenebilir; beraberlik = ulong.MaxValue → kupa değişimi yok). Offline maçlar
-  kupa vermez (leaderboard yalnızca online).
-- `Assets/Scripts/UI/LeaderboardPanelUI.cs`: ana menüde yeni "LEADERBOARD" butonu (buton kartı 8 butona göre
-  büyütüldü) → sıra/isim/lig/kupa sütunlu, kendi satırı vurgulu, REFRESH'li panel (AchievementsPanelUI
-  kalıbı). `MainMenuUI.EnsureProgressSingletons` bootstrap'ine LeaderboardManager + panel eklendi.
-- **Doğrulama:** Editor Play Mode'da panel açılıyor, servis çağrısı UGS'ye ulaşıyor; beklenen tek uyarı
-  `Leaderboard config could not be found` — çünkü **dashboard'da leaderboard henüz oluşturulmadı**.
-- **KALAN MANUEL ADIM (kod yok):** cloud.unity.com → proje → Leaderboards → Add leaderboard:
-  ID **`cosmic_trophies`**, Sort order **High to low**, Update type **Latest submission** (kupa
-  düşebildiği için "Keep best" DEĞİL). Oluşturulana kadar panel boş liste + editor'da uyarı gösterir,
-  oyun kırılmaz.
+### Online Leaderboard — a Clash Royale style trophy system (converted from a win counter at the user's request)
+- Package: `com.unity.services.leaderboards` 2.3.4 (installed via Coplay MCP; since the tool doesn't work
+  while there are compile errors, the leaderboard references were temporarily commented out first and
+  restored after installation).
+- `Assets/Scripts/Cloud/LeaderboardManager.cs`: the trophy logic — an online match win is **+30**, a loss
+  is **−20** (never below 0), and a draw is no change; the current total is submitted to UGS Leaderboards.
+  League names by trophy range (`GetLeagueName`: Asteroid/Moon/Planet/Star/Nebula/Galaxy League).
+  A registered username is reflected to the leaderboard via `UpdatePlayerNameAsync` (a no-op for guests).
+- **Important finding (found via live diagnosis):** the static `LeaderboardsService.Instance` is NEVER set
+  in this project — core initializes packages through the instance-based path
+  (`IInitializablePackageV2.InitializeInstanceAsync`), and that path skips the static one (visible in the
+  package source: `Initialize()` sets the static, `InitializeInstanceAsync()` does not). While the service
+  was registered and healthy in the CoreRegistry, static access threw a
+  `ServicesInitializationException`. **The correct access:** `UnityServices.Instance.GetLeaderboardsService()`
+  (the `LeaderboardManager.Service` property; the static is only a fallback). This gotcha may apply to other
+  UGS packages too.
+- `TurnManager.TriggerGameOver` → the new `AnnounceMatchResultClientRpc(winnerClientId)`: it announces the
+  online match result to ALL clients (since TriggerGameOver only runs on the server, this is the only way
+  clients can learn whether they won or lost; a draw = ulong.MaxValue → no trophy change). Offline matches
+  award no trophies (the leaderboard is online-only).
+- `Assets/Scripts/UI/LeaderboardPanelUI.cs`: a new "LEADERBOARD" button in the main menu (the button card
+  was enlarged for 8 buttons) → a panel with rank/name/league/trophy columns, the player's own row
+  highlighted, and a REFRESH button (the AchievementsPanelUI pattern). LeaderboardManager + the panel were
+  added to the `MainMenuUI.EnsureProgressSingletons` bootstrap.
+- **Verification:** the panel opens in Editor Play Mode and the service call reaches UGS; the only expected
+  warning is `Leaderboard config could not be found` — because **the leaderboard hasn't been created in the
+  dashboard yet**.
+- **REMAINING MANUAL STEP (no code):** cloud.unity.com → project → Leaderboards → Add leaderboard:
+  ID **`cosmic_trophies`**, Sort order **High to low**, Update type **Latest submission** (NOT "Keep best",
+  because trophies can go down). Until it's created the panel shows an empty list + a warning in the editor;
+  the game doesn't break.
 
-### Genel kontrol — bilinen kalan pürüzler (bu oturumda düzeltilmedi)
-- `GravityBody.DominantSource = AllSources[0]` — çok gezegenli sahnede zıplama yönü "ilk" gezegene göre,
-  en yakın/baskın gezegene göre değil; ikinci gezegen üzerindeyken yanlış yöne zıplama riski.
-- `ProjectileBase.OnBecameInvisible` / `Projectile.destroyOnInvisible` ekran dışına çıkan mermiyi anında
-  yok ediyor — uzun yörüngeli atışları erken öldürebilir (kamera mermiyi takip ettiği için pratikte nadir).
-- Ana menü buton ikonları (▶ ⇄ ★ ◆ ♛ ⚙ ✕) LiberationSans SDF'te yok, hepsi □ görünüyor (önceden beri var;
-  fallback font eklenmeli).
-- Online maç sonunda game-over UI yalnızca host'ta görünüyor (TriggerGameOver server-only; kupa RPC'si sonucu
-  client'lara iletiyor ama UI gösterimi ayrı, kapsam dışı bırakıldı).
+### General review — known remaining rough edges (not fixed in this session)
+- `GravityBody.DominantSource = AllSources[0]` — in a multi-planet scene the jump direction is relative to
+  the "first" planet, not the nearest/dominant one; risk of jumping in the wrong direction while on the
+  second planet.
+- `ProjectileBase.OnBecameInvisible` / `Projectile.destroyOnInvisible` destroys a projectile the instant it
+  goes off screen — this can kill long-trajectory shots early (rare in practice, since the camera follows
+  the projectile).
+- The main menu button icons (▶ ⇄ ★ ◆ ♛ ⚙ ✕) don't exist in LiberationSans SDF and all render as □
+  (pre-existing; a fallback font needs to be added).
+- At the end of an online match the game-over UI only appears on the host (TriggerGameOver is server-only;
+  the trophy RPC relays the result to clients but the UI display is separate and was left out of scope).
 
-## Kalan pürüzler çözüldü + Dereceli/Dostluk maç ayrımı — Done (2026-07-06, 2. tur)
+## Remaining rough edges resolved + Ranked/Friendly match distinction — Done (2026-07-06, 2nd pass)
 
-- **Leaderboard dashboard DOĞRULANDI (uçtan uca):** `cosmic_trophies` kullanıcı tarafından oluşturuldu
-  (High to low / Latest). Canlı test: fetch uyarısız boş liste ✓; `ReportOnlineMatchResult(true)` → +30
-  kupa gönderildi → tabloda rank #1, score=30 göründü ✓; test verisi 0'a sıfırlanıp geri gönderildi
-  (tablo temiz bırakıldı). Not: editor oturumu misafir olduğu için isim anonim UGS adı
-  ("EasyAstonishedOstrich#26782") göründü — kayıtlı kullanıcıda `SyncPlayerNameAsync` gerçek adı yazar.
-- **DominantSource düzeltildi** (`GravityBody.FixedUpdate`): körlemesine `AllSources[0]` yerine en yakın
-  gezegen (gravityRadius içindekiler öncelikli). Zıplama yönü ve `CameraController` rotasyonu artık çok
-  gezegenli sahnede doğru gezegene göre.
-- **Ekran dışı mermi ölümü yumuşatıldı:** `ProjectileBase`/`Projectile.OnBecameInvisible` artık anında yok
-  etmiyor — `offscreenGraceTime` (3 sn) içinde `OnBecameVisible` gelirse iptal; gezegen arkasından dolanan
-  yörünge atışları yaşıyor, dönmeyenler yine temizleniyor (TTL de ayrıca duruyor).
-- **Ana menü ikon glyph'leri kaldırıldı** (▶ ⇄ ★ ◆ ♛ ⚙ ✕ → yalnız metin): LiberationSans SDF'te olmayan
-  karakterler □ görünüyordu; mobil için temiz metin-only butonlar. Ekran görüntüsüyle doğrulandı.
-  (Kalıcı ikon istenirse ileride fallback font asset'i eklenebilir.)
-- **Online maç sonu artık HER İKİ makinede işleniyor:** `TurnManager.TriggerGameOver` yeniden yapılandırıldı —
-  online'da tüm maç-sonu yerel işleri (game-over UI, XP/Gold/sandık, başarım event'leri, ses, kupa) yeni
-  `AnnounceMatchResultClientRpc(winnerClientId, winnerName, matchDuration, totalShots)` içinden
-  `FinishMatchLocally()` ile her makinede kendi yerel sonucuna göre çalışıyor (host çift ödül almaz, client
-  artık game-over ekranını ve ödüllerini görür). Offline hotseat eski davranışıyla `FinishMatchLocally`'yi
-  doğrudan çağırıyor. Beraberlik = winnerClientId=ulong.MaxValue → kupa değişimi yok, iki taraf da "kaybetti"
-  akışını görür (eski host davranışıyla tutarlı).
-- **Dereceli/Dostluk ayrımı (Clash Royale kuralı):** `NetworkBootstrap.IsRankedMatch` — `QuickMatchAsync`
-  true, `HostSessionAsync`/`JoinSessionAsync` false, `LeaveSessionAsync` sıfırlar; client reconnect'i maçın
-  dereceli durumunu korur. Kupa yalnızca dereceli maçlarda değişir. Quick Match beklerken katılım kodu artık
-  GÖSTERİLMİYOR (koda katılan arkadaş taraflar arasında dereceli/dostluk uyuşmazlığı yaratırdı).
-- **Online lobi yeniden çerçevelendi (mobil ana akış = Quick Match):** üstte büyük "HIZLI EŞLEŞME — DERECELİ"
-  kartı (+30/−20 kupa ipucu), altta "ARKADAŞINLA OYNA — dostluk maçı, kupa değişmez" başlığı ile
-  "KOD OLUŞTUR" (kodu arkadaşına gönder) ve "KODA KATIL" kartları; "← BACK" → "GERİ". Ekran görüntüsüyle
-  doğrulandı.
+- **Leaderboard dashboard VERIFIED (end-to-end):** `cosmic_trophies` was created by the user
+  (High to low / Latest). Live test: fetch returned an empty list with no warnings ✓;
+  `ReportOnlineMatchResult(true)` → +30 trophies submitted → it appeared in the table at rank #1, score=30
+  ✓; the test data was reset to 0 and resubmitted (the table was left clean). Note: since the editor
+  session was a guest, the name showed as the anonymous UGS name ("EasyAstonishedOstrich#26782") — for a
+  registered user, `SyncPlayerNameAsync` writes the real name.
+- **DominantSource fixed** (`GravityBody.FixedUpdate`): the nearest planet (prioritizing those within
+  gravityRadius) instead of blindly `AllSources[0]`. The jump direction and `CameraController` rotation are
+  now relative to the correct planet in a multi-planet scene.
+- **Off-screen projectile death softened:** `ProjectileBase`/`Projectile.OnBecameInvisible` no longer
+  destroys instantly — it's cancelled if `OnBecameVisible` arrives within `offscreenGraceTime` (3s); orbital
+  shots that wrap behind the planet survive, while ones that don't come back are still cleaned up (the TTL
+  is also still in place).
+- **Main menu icon glyphs removed** (▶ ⇄ ★ ◆ ♛ ⚙ ✕ → text only): characters missing from LiberationSans SDF
+  were rendering as □; clean text-only buttons for mobile. Verified via screenshot.
+  (If permanent icons are wanted, a fallback font asset can be added later.)
+- **Online match end is now handled on BOTH machines:** `TurnManager.TriggerGameOver` was restructured —
+  online, all local match-end work (game-over UI, XP/Gold/chest, achievement events, audio, trophies) runs
+  on each machine according to its own local result via `FinishMatchLocally()`, called from the new
+  `AnnounceMatchResultClientRpc(winnerClientId, winnerName, matchDuration, totalShots)` (the host doesn't
+  get double rewards, and the client now sees the game-over screen and its rewards). Offline hotseat calls
+  `FinishMatchLocally` directly, with its old behavior. A draw = winnerClientId=ulong.MaxValue → no trophy
+  change, and both sides see the "lost" flow (consistent with the old host behavior).
+- **Ranked/Friendly distinction (the Clash Royale rule):** `NetworkBootstrap.IsRankedMatch` — true for
+  `QuickMatchAsync`, false for `HostSessionAsync`/`JoinSessionAsync`, and reset by `LeaveSessionAsync`; a
+  client reconnect preserves the match's ranked status. Trophies only change in ranked matches. The join
+  code is NO LONGER SHOWN while waiting in Quick Match (a friend joining by code would have created a
+  ranked/friendly mismatch between the two sides).
+- **The online lobby was reframed (the main mobile flow = Quick Match):** a large "QUICK MATCH — RANKED"
+  card at the top (with a +30/−20 trophy hint), and below it a "PLAY WITH A FRIEND — friendly match,
+  trophies don't change" heading with "CREATE CODE" (send the code to your friend) and "JOIN BY CODE"
+  cards; "← BACK". Verified via screenshot.
 
-## Mobil görsel yenileme (menü + online lobi + leaderboard) — Done (2026-07-06, 3. tur)
+## Mobile visual refresh (menu + online lobby + leaderboard) — Done (2026-07-06, 3rd pass)
 
-- **`Assets/Scripts/UI/UiKit.cs` (yeni):** projede hiç UI sprite asset'i olmadığı için yuvarlatılmış köşe
-  sprite'ı runtime'da SDF ile üretilir (antialias'lı, 9-slice, cache'li). `UiKit.Round(img, cornerScale)`,
-  `UiKit.Shadow(go)` (yumuşak alt gölge) ve `UiKit.ButtonColors(normal)` (hover/press renklerini normal
-  renkten türetir) tüm yeni stil yüzeylerinde kullanılıyor.
-- **Ana menü mobil yatay düzene geçti:** 8 butonluk dar dikey liste yerine geniş yuvarlatılmış kart içinde
-  2 büyük birincil buton (PLAY / ONLINE, 388×92) + 2 sütun × 3 satır ikincil grid (376×72) — dokunma
-  hedefleri büyüdü, yatay ekran alanı kullanılıyor. Başlık arka planı ve settings kartı/sekmeleri/back
-  butonu da yuvarlatıldı; settings başlığındaki □ (⚙) kaldırıldı; eski butonlardaki sol şerit (yuvarlatmayla
-  çakışıyordu) kaldırıldı.
-- **Online lobi:** kartlar yuvarlatık+gölgeli; OYNA birincil eylem olarak büyük ve YEŞİL (320×68); KOD
-  OLUŞTUR/KATIL 290×62'ye büyütüldü; İPTAL/GERİ nötr koyu renge alınıp büyütüldü; kod input'u yuvarlatıldı.
-- **Leaderboard:** kart 760 genişliğe çıkıp yuvarlatıldı+gölgelendi, satırlar yuvarlatık (52 yükseklik,
-  6 aralık), CLOSE/REFRESH büyütüldü.
-- Hepsi Editor Play Mode ekran görüntüleriyle doğrulandı (menü, lobi, leaderboard). Achievements/Quests/Shop
-  panelleri ESKİ düz stilde kaldı — aynı UiKit çağrılarıyla geçirilebilir, ayrı iş.
+- **`Assets/Scripts/UI/UiKit.cs` (new):** since the project has no UI sprite assets at all, the rounded
+  corner sprite is generated at runtime via SDF (antialiased, 9-sliced, cached). `UiKit.Round(img,
+  cornerScale)`, `UiKit.Shadow(go)` (a soft bottom shadow) and `UiKit.ButtonColors(normal)` (derives the
+  hover/press colors from the normal color) are used on every newly styled surface.
+- **The main menu moved to a mobile landscape layout:** instead of a narrow vertical list of 8 buttons,
+  2 large primary buttons (PLAY / ONLINE, 388×92) + a 2-column × 3-row secondary grid (376×72) inside a
+  wide rounded card — the touch targets got bigger and the horizontal screen space is used. The title
+  background and the settings card/tabs/back button were rounded too; the □ (⚙) in the settings header was
+  removed; and the left stripe on the old buttons (which clashed with the rounding) was removed.
+- **Online lobby:** the cards are rounded+shadowed; PLAY is large and GREEN as the primary action (320×68);
+  CREATE CODE/JOIN were enlarged to 290×62; CANCEL/BACK were given a neutral dark color and enlarged; the
+  code input was rounded.
+- **Leaderboard:** the card was widened to 760 and rounded+shadowed, the rows are rounded (52 height,
+  6 spacing), and CLOSE/REFRESH were enlarged.
+- All of it was verified with Editor Play Mode screenshots (menu, lobby, leaderboard). The
+  Achievements/Quests/Shop panels stayed in the OLD flat style — they can be migrated with the same UiKit
+  calls, separate work.
 
-## Brawl Stars tarzı lobi ana ekranı — Done (2026-07-06, 4. tur)
+## Brawl Stars style lobby main screen — Done (2026-07-06, 4th pass)
 
-Araştırma (Brawl Stars UI analizleri + mobil lobi kalıpları) sonrası ana menü "buton listesi"nden
-"lobi/hub" düzenine geçirildi:
-- **Sağ-alt: BÜYÜK SARI OYNA** (420×124, koyu yazı) → OnlineLobbyPanelUI; üstünde "DERECELİ • HIZLI
-  EŞLEŞME" bilgi çipi; solunda ikincil "YEREL MAÇ" (hotseat). Yatay tutuşta sağ başparmak bölgesi.
-- **Üst bar:** solda profil çipi (kullanıcı adı/Misafir + canlı kupa sayısı + lig adı; tıklayınca
-  Sıralama açılır), sağda Gem + Gold çipleri (CurrencyManager'a canlı abone, tıklayınca Market;
-  MainMenuAuthButton'ın sağ-üst kartıyla çakışmayacak şekilde konumlandı).
-- **Sol ray:** MARKET / GÖREVLER / BAŞARIMLAR / SIRALAMA "chunky" butonlar; alt-sol: AYARLAR + ÇIKIŞ (nötr).
-- **MakeChunkyBtn:** Brawl Stars görünümü için 3B kenarlı buton (koyu alt kenar 6px + yüz plakası).
-- **Dekor:** UiKit.CircleSprite (yeni, AA daire) ile alt ufukta gezegen + mavi atmosfer halesi + küçük ay.
-  Başlık bloğu küçültüldü (52pt) — merkez artık ferah.
-- AchievementsPanelUI'nin sol-üstteki eski kısayol butonu kaldırıldı (sol rayla çakışıyor + mükerrerdi).
-- Etiketler Türkçe'ye çevrildi (lobi paneliyle tutarlı). Ekran görüntüleriyle doğrulandı; derleme temiz.
+After research (Brawl Stars UI analyses + mobile lobby patterns), the main menu was moved from a "button
+list" to a "lobby/hub" layout:
+- **Bottom-right: a BIG YELLOW PLAY** (420×124, dark text) → OnlineLobbyPanelUI; a "RANKED • QUICK MATCH"
+  info chip above it; a secondary "LOCAL MATCH" (hotseat) to its left. In the right-thumb zone in
+  landscape grip.
+- **Top bar:** on the left a profile chip (username/Guest + live trophy count + league name; tapping it
+  opens the Leaderboard), on the right the Gem + Gold chips (subscribed live to CurrencyManager, tapping
+  them opens the Shop; positioned so they don't clash with MainMenuAuthButton's top-right card).
+- **Left rail:** SHOP / QUESTS / ACHIEVEMENTS / LEADERBOARD "chunky" buttons; bottom-left: SETTINGS +
+  QUIT (neutral).
+- **MakeChunkyBtn:** a button with a 3D edge for the Brawl Stars look (a 6px dark bottom edge + a face
+  plate).
+- **Decor:** a planet on the bottom horizon + a blue atmosphere halo + a small moon, via UiKit.CircleSprite
+  (new, an AA circle). The title block was shrunk (52pt) — the center is now airy.
+- The old shortcut button in the top-left of AchievementsPanelUI was removed (it clashed with the left rail
+  and was redundant).
+- Verified via screenshots; the build is clean.
 
-## Yeni nesil UI turu: panel restyle + sessiz giriş + OYNA v2 — Done (2026-07-08)
+## Next-gen UI pass: panel restyle + silent sign-in + PLAY v2 — Done (2026-07-08)
 
-Kapsam (kullanıcı isteği): (1) Achievements/Quests/Shop panellerini UiKit stiline geçir, (2) Brawl Stars /
-modern mobil UI kalıplarını araştır, (3) OYNA butonunu farklılaştır, giriş/kayıt akışını mobil kalıba çevir
-(görünür login yok — bir kere sessiz giriş), UI'ı "yeni nesil" yap. Oyun artık **mobil-only** kabul ediliyor
-(Steam yok gibi davranılıyor — kullanıcı açıkça söyledi; TODO'daki Steam bölümleri tarihçe olarak duruyor).
+Scope (user request): (1) migrate the Achievements/Quests/Shop panels to the UiKit style, (2) research
+Brawl Stars / modern mobile UI patterns, (3) differentiate the PLAY button, convert the sign-in/register
+flow to the mobile pattern (no visible login — one silent sign-in), and make the UI "next-gen". The game is
+now treated as **mobile-only** (acting as if Steam doesn't exist — the user said so explicitly; the Steam
+sections in the TODO remain as history).
 
-- **UiKit büyüdü (yeni araçlar, hepsi runtime-üretimli sprite/bileşen):** `Stroke` (ince açık kontur — cam
-  kenar hissi, `RoundedOutlineSprite`), `Gradient` (dikey vertex gradyanı, `UiVerticalGradient:BaseMeshEffect`),
-  `Press` (`UiPressScale` — dokununca %94'e küçülme), `Pop` (`UiPopIn` — panel açılışında ölçek+alfa,
-  ease-out-back), `Pulse` (`UiPulse` — birincil buton nefes animasyonu), `CloseButton` (mobil standart:
-  kartın sağ-üst köşesinden taşan kırmızı X), `GlowSprite` (radyal solan leke — MainMenuUI'ın nebula
-  "Glow"ları düz Image'dı ve dikdörtgen görünüyordu, artık yumuşak).
-  - Gotcha: `UiPulse`/`UiPressScale` ikisi de localScale yazar — aynı objeye ikisini birden ekleme (OYNA'da
-    yalnız Pulse var).
-- **Achievements/Quests/Shop panelleri yeniden stillendi** (820×600 yuvarlatık+konturlu+pop kart, köşe X,
-  yuvarlatık satırlar/ilerleme çubukları, Türkçe metinler): Başarımlar'da nadirlik renkli ikon dairesi
-  (eski kare şerit yerine) ve Sıradan/Nadir/Epik/Efsanevi etiketleri; Görevler'de pill sekmeler
-  (GÜNLÜK/HAFTALIK/AYLIK); **Market tamamen yeni düzen** — satır listesi yerine 5 yan yana gradyanlı paket
-  kartı (gem dairesi + miktar + fiyatlı yeşil SATIN AL), 1200'de "POPÜLER", 6000'de "EN İYİ DEĞER" rozeti.
-  LeaderboardPanelUI de aynı dile getirildi (SIRALAMA başlık, YENİLE, köşe X, Türkçe durum metinleri).
-- **Sessiz tek seferlik giriş (Supercell kalıbı):** `MainMenuUI.BootstrapSequence` artık cloud init'ten sonra
-  oturum yoksa `LoginAsGuest()`'i sessizce bekliyor → `IsLoggedIn=True IsGuest=True` hiçbir UI göstermeden
-  (canlı doğrulandı). Sağ-üstteki kalıcı LOG IN kartı (`MainMenuAuthButton.cs`) **silindi** (+ MenuScene'deki
-  GO'su MCP ile kaldırıldı); para çipleri gerçek sağ-üst köşeye taşındı. `LobbyPanelUI`'daki "LOG IN AND
-  START" kapısı kaldırıldı. Hesap bağlama tek yerde: Ayarlar → HESAP sekmesi ("Misafir olarak oynuyorsun...
-  hesabını bağla" + HESAP BAĞLA/ÇIKIŞ YAP) → `LoginPanelUI` yeniden çerçevelendi: "HESABINI BAĞLA" başlığı,
-  ilerleme-taşıma değer önerisi metni, GİRİŞ YAP / YENİ HESAP OLUŞTUR (misafir ilerlemesini devralır
-  ipucuyla), PLAY AS GUEST butonu kalktı (misafir zaten varsayılan), UiKit stiline geçti.
-- **OYNA v2:** açık→koyu altın dikey gradyanlı yüz + beyaz cam kontur + koyu altın 3B kenar + sürekli hafif
-  nefes (Pulse) + butona gömülü "HIZLI EŞLEŞME • DERECELİ" alt satırı (ayrı mod çipi kaldırıldı). Profil
-  çipine baş harfli avatar dairesi eklendi. Tüm chunky buton/çiplere Press mikro-etkileşimi, panellere Pop.
-- Ayarlar Türkçeleşti (AYARLAR, SES/GRAFİK/KONTROLLER/HESAP, GERİ/UYGULA...); slider etiketlerinin slider
-  altında ezilmesi düzeltildi (öncesinde de vardı: "Master Volume" → "Ana Se" gibi kesiliyordu).
-- **Doğrulama:** Editor Play Mode ekran görüntüleriyle: hub (yumuşak nebula + yeni OYNA + avatar çipi),
-  GÖREVLER, BAŞARIMLAR, MARKET, SIRALAMA (canlı UGS verisiyle), HESABINI BAĞLA diyaloğu, AYARLAR/HESAP
-  sekmesi. Derleme temiz. `AuthState` script'iyle sessiz misafir girişi doğrulandı.
-- **Tooling gotcha (yeni):** Coplay `save_scene(scene_name)` aktif sahneyi `Assets/<ad>.unity`'ye **save-as**
-  yapıyor (`Assets/Scenes/...` yolunu korumuyor) — MenuScene yanlışlıkla köke kopyalandı; `execute_script`
-  ile `EditorSceneManager.SaveScene(scene, "Assets/Scenes/MenuScene.unity")` + stray asset silme ile
-  düzeltildi. Bundan sonra sahne kaydetmek için save_scene yerine execute_script kullan.
+- **UiKit grew (new tools, all runtime-generated sprites/components):** `Stroke` (a thin light outline —
+  a glass-edge feel, `RoundedOutlineSprite`), `Gradient` (a vertical vertex gradient,
+  `UiVerticalGradient:BaseMeshEffect`), `Press` (`UiPressScale` — shrinks to 94% on touch), `Pop`
+  (`UiPopIn` — scale+alpha on panel open, ease-out-back), `Pulse` (`UiPulse` — a breathing animation for
+  the primary button), `CloseButton` (the mobile standard: a red X overflowing the card's top-right
+  corner), `GlowSprite` (a radially fading blob — MainMenuUI's nebula "Glow"s were plain Images and looked
+  rectangular; they're soft now).
+  - Gotcha: `UiPulse`/`UiPressScale` both write localScale — don't add both to the same object (PLAY only
+    has Pulse).
+- **The Achievements/Quests/Shop panels were restyled** (an 820×600 rounded+outlined+pop card, a corner X,
+  rounded rows/progress bars): in Achievements a rarity-colored icon circle (instead of the old square
+  stripe) and Common/Rare/Epic/Legendary labels; in Quests pill tabs (DAILY/WEEKLY/MONTHLY); **the Shop got
+  a completely new layout** — instead of a row list, 5 side-by-side gradient pack cards (a gem circle +
+  amount + a green BUY with the price), with a "POPULAR" badge on 1200 and a "BEST VALUE" badge on 6000.
+  LeaderboardPanelUI was brought into the same language too (a LEADERBOARD heading, REFRESH, a corner X).
+- **Silent one-time sign-in (the Supercell pattern):** after cloud init, `MainMenuUI.BootstrapSequence` now
+  silently awaits `LoginAsGuest()` if there is no session → `IsLoggedIn=True IsGuest=True` without showing
+  any UI (verified live). The persistent LOG IN card in the top-right (`MainMenuAuthButton.cs`) was
+  **deleted** (+ its GameObject in MenuScene was removed via MCP); the currency chips moved to the real
+  top-right corner. The "LOG IN AND START" gate in `LobbyPanelUI` was removed. Account linking lives in one
+  place: Settings → ACCOUNT tab ("You're playing as a guest... link your account" + LINK ACCOUNT/LOG OUT) →
+  `LoginPanelUI` was reframed: a "LINK YOUR ACCOUNT" heading, value-proposition text about carrying
+  progress over, LOG IN / CREATE NEW ACCOUNT (with a hint that it inherits guest progress), the PLAY AS
+  GUEST button was dropped (guest is already the default), and it moved to the UiKit style.
+- **PLAY v2:** a light→dark gold vertical gradient face + a white glass outline + a dark gold 3D edge + a
+  continuous gentle breathing (Pulse) + a "QUICK MATCH • RANKED" subline embedded in the button (the
+  separate mode chip was removed). An initial-letter avatar circle was added to the profile chip. The Press
+  micro-interaction was added to all chunky buttons/chips, and Pop to the panels.
+- Slider labels being squashed under the slider was fixed (a pre-existing issue: "Master Volume" was being
+  cut off to something like "Master Vo").
+- **Verification:** via Editor Play Mode screenshots: the hub (soft nebula + the new PLAY + the avatar
+  chip), QUESTS, ACHIEVEMENTS, SHOP, LEADERBOARD (with live UGS data), the LINK YOUR ACCOUNT dialog, and
+  the SETTINGS/ACCOUNT tab. The build is clean. Silent guest sign-in was verified with the `AuthState`
+  script.
+- **Tooling gotcha (new):** Coplay `save_scene(scene_name)` does a **save-as** of the active scene to
+  `Assets/<name>.unity` (it doesn't preserve the `Assets/Scenes/...` path) — MenuScene was accidentally
+  copied to the root; fixed via `execute_script` with
+  `EditorSceneManager.SaveScene(scene, "Assets/Scenes/MenuScene.unity")` + deleting the stray asset. From
+  now on, use execute_script instead of save_scene to save scenes.
 
-## Brawl Stars menü revizyonu: Misafir kalktı, giriş kapısı, eğik butonlar — Done (2026-07-08, 2. tur)
+## Brawl Stars menu revision: Guest removed, sign-in gate, skewed buttons — Done (2026-07-08, 2nd pass)
 
-Kullanıcı geri bildirimi üzerine ("beğenmedim; misafir olmayacak — sadece test için; çıkış butonu ana menüde
-olmayacak; Brawl Stars menüsünü iyi incele; giriş ekranı yalnızca hesabı bağlı olmayana, girince ana menüye"):
+Following user feedback ("I don't like it; there will be no guest — only for testing; there will be no quit
+button in the main menu; study the Brawl Stars menu properly; the sign-in screen only for those without a
+linked account, and straight to the main menu once signed in"):
 
-- **"Misafir/Guest" UI'dan tamamen kalktı.** Yeni `Assets/Scripts/Utilities/PlayerIdentity.cs`: görünen ad
-  tek kaynaktan — bağlı hesapta kullanıcı adı, değilse cihazda bir kez üretilip PlayerPrefs'e yazılan kozmik
-  takma ad (ör. "Pulsar630"; ASCII prefix listesi — UGS UpdatePlayerNameAsync özel karakter reddediyor).
-  Kullanan yerler: ana menü profil çipi, `GameInitializer` (hotseat karakter adı — eskiden misafirde "Guest"
-  görünüyordu), `LobbyPanelUI`, `LeaderboardManager.SyncPlayerNameAsync` (artık misafir no-op DEĞİL — anonim
-  oturumda da takma adı UGS'ye yazar, leaderboard'da "EasyAstonishedOstrich" tarzı ad kalmaz).
-- **Giriş kapısı (tek giriş ekranı):** `MainMenuUI.BootstrapSequence` sonunda hesap bağlı değilse
-  `LoginPanelUI.Show(dismissable:false)` — cihazda kapatılamaz (X/ESC yok, başlık "GİRİŞ"); giriş/kayıt
-  sonrası panel kapanır, oyuncu ana menüde. Editor'da `dismissable:true` (bağlantısız oturum yalnızca test
-  için — hotseat testleri girişe takılmasın). Ayarlar → HESAP BAĞLA aynı paneli kapatılabilir halde açar
-  (başlık "HESABINI BAĞLA"). Arka plandaki sessiz anonim UGS oturumu duruyor (Register'ın ilerlemeyi
-  devralması için şart) ama bir UI durumu değil.
-- **ÇIKIŞ butonu ana menüden kaldırıldı** (`OnQuit` ile birlikte — mobil oyunda çıkış butonu olmaz).
-- **Brawl Stars menü imzaları:** `UiKit.Skew` (`UiSkew:BaseMeshEffect`, yatay shear 0.10 — tüm chunky
-  butonlar + OYNA paralelkenar) ve `UiKit.BrawlText` (kalın italik + koyu SDF kontur — tüm buton yazıları,
-  OYNA yazısı beyaz-konturlu). Düzen Brawl Stars'a hizalandı: sol ray 3 buton (MARKET/BAŞARIMLAR/SIRALAMA),
-  **GÖREVLER alt-sol** (BS'nin quest slotu), **AYARLAR üst-sağda küçük nötr çip** (para çiplerinin altında),
-  alt-sağ OYNA + solunda YEREL MAÇ. OYNA yüzündeki Stroke kaldırıldı (child stroke skew'lenmiyordu,
-  uyumsuz görünürdü).
-- **Bug fix (loglardan yakalandı):** `UiPopIn.OnEnable`'daki `GetComponent<CanvasGroup>() ?? AddComponent`
-  Unity fake-null yüzünden `MissingComponentException` fırlatıyordu — açık `== null` kontrolüne çevrildi.
-  (Play Mode çıkışındaki `NetworkManager.OnDestroy` NullRef'leri NGO paketinin kendi bilinen kapanış
-  gürültüsü, bizim kod değil.)
-- **Doğrulama:** Editor Play Mode — açılışta GİRİŞ ekranı (X'siz) otomatik geldi; arkada ana menü yeni
-  düzende ("Pulsar630" profil, eğik butonlar, ÇIKIŞ yok); OYNA'nın sağ marjı `GetWorldCorners` ile ölçüldü
-  (1884/1920 — capture aracının kırpması taşma gibi göstermişti, gerçek taşma yok); görev paneli pop
-  animasyonuyla hatasız açıldı. Derleme temiz.
+- **"Guest" was removed from the UI entirely.** The new `Assets/Scripts/Utilities/PlayerIdentity.cs`: the
+  display name comes from a single source — the username on a linked account, otherwise a cosmic nickname
+  generated once on the device and written to PlayerPrefs (e.g. "Pulsar630"; an ASCII prefix list — UGS
+  UpdatePlayerNameAsync rejects special characters). Used by: the main menu profile chip, `GameInitializer`
+  (the hotseat character name — it used to show "Guest" for guests), `LobbyPanelUI`, and
+  `LeaderboardManager.SyncPlayerNameAsync` (which is no longer a no-op for guests — it writes the nickname
+  to UGS in an anonymous session too, so names like "EasyAstonishedOstrich" no longer appear on the
+  leaderboard).
+- **The sign-in gate (a single login screen):** at the end of `MainMenuUI.BootstrapSequence`, if no account
+  is linked, `LoginPanelUI.Show(dismissable:false)` — it cannot be dismissed on device (no X/ESC, heading
+  "SIGN IN"); after sign-in/registration the panel closes and the player is in the main menu. In the Editor
+  it's `dismissable:true` (an unlinked session is for testing only — so hotseat tests don't get stuck at
+  sign-in). Settings → LINK ACCOUNT opens the same panel in a dismissable state (heading "LINK YOUR
+  ACCOUNT"). The silent anonymous UGS session in the background remains (it's required for Register to
+  inherit progress) but it isn't a UI state.
+- **The QUIT button was removed from the main menu** (along with `OnQuit` — mobile games don't have a quit
+  button).
+- **Brawl Stars menu signatures:** `UiKit.Skew` (`UiSkew:BaseMeshEffect`, horizontal shear 0.10 — all
+  chunky buttons + a PLAY parallelogram) and `UiKit.BrawlText` (bold italic + a dark SDF outline — all
+  button text, with PLAY's text white-outlined). The layout was aligned with Brawl Stars: 3 buttons on the
+  left rail (SHOP/ACHIEVEMENTS/LEADERBOARD), **QUESTS bottom-left** (BS's quest slot), **SETTINGS as a
+  small neutral chip top-right** (below the currency chips), PLAY bottom-right with LOCAL MATCH to its
+  left. The Stroke on PLAY's face was removed (a child stroke wasn't being skewed and looked inconsistent).
+- **Bug fix (caught from the logs):** `GetComponent<CanvasGroup>() ?? AddComponent` in `UiPopIn.OnEnable`
+  was throwing a `MissingComponentException` because of Unity's fake-null — converted to an explicit
+  `== null` check. (The `NetworkManager.OnDestroy` NullRefs when exiting Play Mode are the NGO package's own
+  known shutdown noise, not our code.)
+- **Verification:** Editor Play Mode — the SIGN IN screen (with no X) appeared automatically at launch;
+  behind it the main menu in the new layout ("Pulsar630" profile, skewed buttons, no QUIT); PLAY's right
+  margin was measured with `GetWorldCorners` (1884/1920 — the capture tool's cropping had made it look like
+  overflow; there is no real overflow); the quest panel opened with the pop animation without errors. The
+  build is clean.
 
-## Brawl Stars görsel dili — gerçek referansla tam revizyon — Done (2026-07-08, 3. tur)
+## Brawl Stars visual language — full revision against a real reference — Done (2026-07-08, 3rd pass)
 
-Kullanıcı gerçek Brawl Stars ekran görüntüleri paylaştı ("tasarım hala kötü", "önemli olan yerleşim",
-"3. resimdeki sağdan açılır pencere çok mantıklı") — tasarım artık tahmin değil, birebir referansla yapıldı:
+The user shared real Brawl Stars screenshots ("the design is still bad", "what matters is the layout", "the
+panel that slides in from the right in the 3rd image makes a lot of sense") — the design is no longer
+guesswork, it was done against a direct reference:
 
-- **Font (en büyük fark buydu):** `Assets/Fonts/TitanOne-Regular.ttf` (Google Fonts, OFL) indirildi;
-  editor script ile dinamik TMP font asset'i üretilip (`Assets/Fonts/TitanOne SDF.asset`) **TMP Settings
-  varsayılan fontu yapıldı** — tüm programatik UI otomatik geçti. `UiKit.BrawlText` artık: beyaz dolgu +
-  kalın koyu SDF kontur, DÜZ (italik/fake-bold kapatıldı — Titan One zaten kalın display font).
-  - **Glif gotcha:** Titan One'da büyük **'İ' yok** (U+0130) — LiberationSans fallback'e düşer, ince
-    sırıtır. Lilita One denendi: daha kötü (ğşĞŞİ yok), silindi. Çare: alt etiketlerde küçük harf kullan
-    ("Hızlı Eşleşme • Dereceli"); başlıklardaki GERİ/GRAFİK gibi İ'ler fallback ile kalıyor (kabul edildi).
-  - MakeCycler'ın ◀▶ okları "<" ">" yapıldı (iki fontta da glif yok, □ görünüyordu).
-- **Buton dili düzeltildi:** renkli yüzlü butonlar yerine BS'deki gibi **koyu füme plakalar**
-  (`MakePlate`/`MakeBrawlBtn`: PlateDark + koyu alt kenar + hafif skew + solda renkli daire-harf ikon
-  rozeti + beyaz konturlu yazı). Renk yalnız vurguda: MARKET ve OYNA sarı (BS DÜKKAN/OYNA), fiyatlar yeşil.
-- **Yerleşim (BS ana ekranından birebir):** üst-sol: [avatar+ad plakası][kupa kutusu: K rozeti + sayı +
-  lig] iki ayrı plaka (ikisi de Sıralama açar); üst-sağ: [gold][gem] plakaları + **☰ menü butonu**
-  (3 beyaz çubuk, Image ile çizili); sol kolon: MARKET (sarı) + BAŞARIMLAR; alt-sol: GÖREVLER; alt-orta:
-  **mod plakası** ("HIZLI EŞLEŞME / Dereceli • Galibiyet +30 kupa" — BS'nin harita kutusu konumu, tıklayınca
-  online lobi); alt-sağ: büyük sarı OYNA. Footer tamamen kaldırıldı (sürüm Ayarlar'ın altına taşındı).
-- **☰ Çekmece (kullanıcının özellikle istediği):** sağdan 0.14s ease-out ile kayan koyu plaka listesi —
-  AYARLAR / SIRALAMA / YEREL MAÇ / HESAP (HESAP → Ayarlar'ın Hesap sekmesi); dışına tıklayınca kapanır
-  (şeffaf karartma butonu). `SetDrawer(bool)` + `SlideDrawer` coroutine, MainMenuUI içinde.
-- **Arka plan:** simsiyah uzay yerine canlı BS lobisi: mor dikey gradyan + solda mavi/sağda pembe dev
-  radyal glow + **soluk desen dokusu** (`BuildPattern`: alfa 0.022, döndürülmüş yuvarlatık karolar —
-  BS kurukafa deseninin karşılığı) + mevcut yıldız alanı/gezegen ufku.
-- **Ayarlar ekranı BS mavisine geçti** (2. referans görüntü): tam ekran mavi gradyan + desen, beyaz
-  konturlu AYARLAR başlığı, mavi sekme plakaları, koyu GERİ.
-- **Doğrulama:** Play Mode ekran görüntüleri — hub (yeni yerleşim, yumuşak desen, OYNA alt yazısı düzgün),
-  çekmece açık hali (BS 3. görüntüdeki dizilişle aynı), mavi AYARLAR, MARKET paneli yeni fontla. Derleme
-  temiz, konsolda yeni hata yok.
+- **The font (this was the biggest difference):** `Assets/Fonts/TitanOne-Regular.ttf` (Google Fonts, OFL)
+  was downloaded; an editor script generated a dynamic TMP font asset (`Assets/Fonts/TitanOne SDF.asset`)
+  and **made it the TMP Settings default font** — all programmatic UI switched over automatically.
+  `UiKit.BrawlText` is now: a white fill + a thick dark SDF outline, UPRIGHT (italic/fake-bold were turned
+  off — Titan One is already a heavy display font).
+  - **Glyph gotcha:** Titan One has no capital **'İ'** (U+0130) — it falls back to LiberationSans and looks
+    conspicuously thin. Lilita One was tried: worse (no ğşĞŞİ), deleted. Workaround: use lowercase in
+    sublabels; the İ characters in headings remain on the fallback (accepted).
+  - MakeCycler's ◀▶ arrows were changed to "<" ">" (neither font has those glyphs, they rendered as □).
+- **The button language was fixed:** instead of colored-face buttons, **dark charcoal plates** like in BS
+  (`MakePlate`/`MakeBrawlBtn`: PlateDark + a dark bottom edge + a slight skew + a colored circle-letter
+  icon badge on the left + white-outlined text). Color only for emphasis: SHOP and PLAY are yellow (BS's
+  SHOP/PLAY), prices are green.
+- **Layout (directly from the BS main screen):** top-left: [avatar+name plate][trophy box: a trophy badge +
+  count + league] as two separate plates (both open the Leaderboard); top-right: [gold][gem] plates + a
+  **☰ menu button** (3 white bars, drawn with an Image); left column: SHOP (yellow) + ACHIEVEMENTS;
+  bottom-left: QUESTS; bottom-center: a **mode plate** ("QUICK MATCH / Ranked • Win +30 trophies" — the
+  position of BS's map box, opens the online lobby when tapped); bottom-right: the big yellow PLAY. The
+  footer was removed entirely (the version moved to the bottom of Settings).
+- **The ☰ drawer (which the user specifically asked for):** a list of dark plates sliding in from the right
+  with a 0.14s ease-out — SETTINGS / LEADERBOARD / LOCAL MATCH / ACCOUNT (ACCOUNT → the Account tab of
+  Settings); it closes when you tap outside (a transparent dimming button). `SetDrawer(bool)` + a
+  `SlideDrawer` coroutine, inside MainMenuUI.
+- **Background:** a lively BS lobby instead of pitch-black space: a purple vertical gradient + a giant
+  radial glow (blue on the left, pink on the right) + a **faint pattern texture** (`BuildPattern`: alpha
+  0.022, rotated rounded tiles — the counterpart of BS's skull pattern) + the existing starfield/planet
+  horizon.
+- **The Settings screen moved to BS blue** (the 2nd reference image): a fullscreen blue gradient + the
+  pattern, a white-outlined SETTINGS heading, blue tab plates, and a dark BACK.
+- **Verification:** Play Mode screenshots — the hub (new layout, soft pattern, PLAY's subline correct), the
+  drawer open (the same arrangement as BS's 3rd image), the blue SETTINGS, and the SHOP panel with the new
+  font. The build is clean, no new console errors.
 
-## Oyun Modları (1v1 / FFA / Takım) + Parti Lobisi
-Done (2026-07-10) — kullanıcı isteği: "8 arkadaşımla oynayabilmeliyim, lobide toplanıp mod seçilmeli".
-Proje daha önce tamamen 1v1'e kilitliydi (session `MaxPlayers=2` sabit, `TurnManager` "son karakter
-kazanır" mantığı, davet akışı tek arkadaşa özel). Şimdi 1v1, FFA (3-8 kişi), 2v2, 3v3, 4v4, 2v2v2v2
-hepsi destekleniyor — lobi kapasitesi kullanıcı kararıyla **max 8** ile sınırlandı, bu yüzden 9 oyuncu
-gerektiren 3v3v3 kapsam dışı bırakıldı (yalnızca 2 takımlı + 2v2v2v2 dörtlü mod var, 3 takımlı mod yok).
+## Game Modes (1v1 / FFA / Team) + Party Lobby
+Done (2026-07-10) — user request: "I should be able to play with my 8 friends, we should gather in a lobby
+and pick a mode". The project had previously been entirely locked to 1v1 (a fixed session `MaxPlayers=2`,
+`TurnManager`'s "last character wins" logic, and an invite flow specific to a single friend). Now 1v1, FFA
+(3-8 players), 2v2, 3v3, 4v4 and 2v2v2v2 are all supported — the lobby capacity was capped at **max 8** by
+user decision, so 3v3v3 (which requires 9 players) was left out of scope (there are only 2-team modes + the
+2v2v2v2 four-way mode; there is no 3-team mode).
 
-- **`GameModeDefinition.cs`** (yeni): `GameModeType` enum + her modun takım sayısı/boyutu. `LobbyData`
-  atıl `GameMode` string'i yerine `SelectedMode`/`FfaPlayerCount`/`PartyMembers` aldı.
-- **`GravityBody.teamId`** (yeni `NetworkVariable<int>`, `isActive` ile aynı desen) — takımsız modlarda
-  (Duel1v1/Ffa) her oyuncu kendi tekil takımı, takım modlarında round-robin paylaşılan id. İsim etiketi
-  takım rengiyle boyanıyor (**gövde sprite'ı BİLEREK boyanmadı** — `ShieldSkill.cs` aynı SpriteRenderer'ı
-  kalkan efekti için kullanıyor, çakışsaydı kalkan kapanınca renk silinirdi).
-- **`TurnManager.CheckGameOver`**: "son karakter" yerine "hayatta kalan farklı takım sayısı ≤1" —
-  takımsız modlarda eski davranışla birebir aynı, takım modlarında bütün takım elenene kadar bitmiyor.
-  **Bulunup aynı geçişte kapatılan kritik regresyon**: teamId varsayılan 0 olduğu için bu değişiklik
-  tek başına HER maçı ilk karede bitirirdi — `GameInitializer`/`NetworkPlayerSpawner` artık spawn
-  anında gerçek takım ataması yapıyor.
-- **`PartyLobbyPanelUI.cs`** (yeni, eski `FriendLobbyPanelUI`'nin — sabit 2 slot — yerine): host mod
-  seçer (FFA için 3-8 stepper), PARTİYİ KUR özel bir UGS session açar (MaxPlayers moda göre), 3x3 roster
-  ekranından istediği kadar arkadaşı aynı session koduna davet edebilir (`FriendsManager` üzerinden,
-  tek tek). Misafir tarafı yalnızca canlı "X/N katılımcı" sayacı görüyor — **isim bazlı tam roster
-  senkronu yok** (clientId↔PlayerId eşlemesi/NetworkList gerektirir, kapsam dışı bırakıldı).
-- **Bilinçli kapsam kararı**: Quick Match (herkese açık, dereceli, +30/−20 kupa) **1v1 olarak kaldı** —
-  yeni modlar yalnızca özel parti lobisinden (hep dostluk maçı) erişiliyor. Bu sayede `DUELLO_SAMPIYONU`,
-  `REKABETCI` ve kupa formülü (`LeaderboardManager`) hiç değiştirilmeden doğru kalıyor.
-- **Dostane ateş filtresi**: `CombatEventReporter`, `TurnManager.CurrentShooter` (zaten var olan
-  "şu an ateş eden karakter" takibi) ile hedefin takımını karşılaştırıp `HERKESE_MEYDAN`/`SOSYAL_KELEBEK`
-  gibi "N farklı rakip" başarımlarının takım arkadaşı/kendine isabetle şişmesini engelliyor.
-- **`INTIKAM` düzeltildi**: artık maçın nihai kazananını değil, `FireDefeatedBy` ile gerçek öldürücüyü
-  hedef alıyor (FFA/takımda bunlar farklı kişiler olabilir) — yeni `AchievementEvents.OnDefeatedBy`.
-- **Play-tested (Coplay MCP)**: offline hotseat Duel1v1 (2 karakter, ilk karede bitmiyor — regresyon
-  testi), Team2v2 (4 karakter, round-robin takım ataması, 2 takım ayrıyken bitmiyor), parti lobisi host
-  akışı (mod seç → FFA stepper → PARTİYİ KUR → gerçek UGS session kuruldu, hatasız). Bu geçişte bir
-  gerçek bug bulundu ve düzeltildi: `PartyLobbyPanelUI.BuildRosterRoot()` inaktif hiyerarşide
-  `UiKit.BrawlText()` çağırıyordu (WardrobePanelUI'da daha önce görülenle aynı TMP outline/OnEnable
-  bug'ı) — sıra düzeltildi.
-- **Kalan/bilinçli ertelenen işler**:
-  - Gerçek çok-cihazlı online FFA/takım testi (tek geliştirici ortamı, hiç yapılamadı — arkadaş
-    daveti/presence testiyle aynı kısıtlama, bkz. yol haritası madde 2).
-  - Parti lobisinde host'un takımları elle sürükle-bırak ile yeniden atayabilmesi yok — şu an takım
-    ataması yalnızca katılım sırasına göre otomatik (round-robin).
-  - `KOZMIK_EKIP` hâlâ tek arkadaş id'si takip ediyor (parti akışında yalnızca ilk davet edilen arkadaş
-    için ilerliyor) — gerçek grup takibi ayrı bir iş.
-  - `KARA_DELIK_USTASI` (Black Hole çoklu-çekim) hâlâ kendi ayrı sayaç yolunda, dostane ateş filtresi
-    almadı.
-  - Misafir tarafında diğer katılımcıların isim bazlı roster senkronu yok (yukarıda açıklandı).
+- **`GameModeDefinition.cs`** (new): a `GameModeType` enum + the team count/size for each mode. `LobbyData`
+  received `SelectedMode`/`FfaPlayerCount`/`PartyMembers` in place of the dormant `GameMode` string.
+- **`GravityBody.teamId`** (a new `NetworkVariable<int>`, the same pattern as `isActive`) — in team-less
+  modes (Duel1v1/Ffa) every player is their own singleton team; in team modes it's a round-robin shared id.
+  The name tag is tinted with the team color (**the body sprite was DELIBERATELY not tinted** —
+  `ShieldSkill.cs` uses the same SpriteRenderer for the shield effect, and if they clashed the color would
+  be wiped when the shield ended).
+- **`TurnManager.CheckGameOver`**: "the number of distinct surviving teams ≤1" instead of "the last
+  character" — identical to the old behavior in team-less modes, and in team modes it doesn't end until an
+  entire team is eliminated.
+  **A critical regression found and closed in the same pass**: because teamId defaults to 0, this change on
+  its own would have ended EVERY match on the first frame — `GameInitializer`/`NetworkPlayerSpawner` now
+  perform real team assignment at spawn time.
+- **`PartyLobbyPanelUI.cs`** (new, replacing the old `FriendLobbyPanelUI` — which had a fixed 2 slots): the
+  host picks a mode (a 3-8 stepper for FFA), CREATE PARTY opens a private UGS session (MaxPlayers according
+  to the mode), and from a 3x3 roster screen they can invite as many friends as they like to the same
+  session code (via `FriendsManager`, one at a time). The guest side only sees a live "X/N participants"
+  counter — **there is no full name-based roster sync** (it would require a clientId↔PlayerId
+  mapping/NetworkList, left out of scope).
+- **Deliberate scope decision**: Quick Match (public, ranked, +30/−20 trophies) **stayed 1v1** — the new
+  modes are only reachable from the private party lobby (always a friendly match). This keeps
+  `DUELLO_SAMPIYONU`, `REKABETCI` and the trophy formula (`LeaderboardManager`) correct without any change.
+- **Friendly fire filter**: `CombatEventReporter` compares the target's team using `TurnManager.CurrentShooter`
+  (the already-existing "character currently firing" tracking) to prevent "N different opponents"
+  achievements like `HERKESE_MEYDAN`/`SOSYAL_KELEBEK` from being inflated by teammate/self hits.
+- **`INTIKAM` fixed**: it now targets the actual killer via `FireDefeatedBy` rather than the match's final
+  winner (in FFA/team modes those can be different people) — the new `AchievementEvents.OnDefeatedBy`.
+- **Play-tested (Coplay MCP)**: offline hotseat Duel1v1 (2 characters, doesn't end on the first frame — the
+  regression test), Team2v2 (4 characters, round-robin team assignment, doesn't end while 2 teams are
+  distinct), and the party lobby host flow (pick mode → FFA stepper → CREATE PARTY → a real UGS session was
+  created, no errors). One real bug was found and fixed in this pass:
+  `PartyLobbyPanelUI.BuildRosterRoot()` was calling `UiKit.BrawlText()` in an inactive hierarchy (the same
+  TMP outline/OnEnable bug seen earlier in WardrobePanelUI) — the ordering was fixed.
+- **Remaining/deliberately deferred work**:
+  - A real multi-device online FFA/team test (a single-developer environment, never possible — the same
+    constraint as the friend invite/presence test, see roadmap item 2).
+  - The host cannot reassign teams by drag-and-drop in the party lobby — team assignment is currently
+    automatic by join order only (round-robin).
+  - `KOZMIK_EKIP` still tracks a single friend id (in the party flow it only progresses for the first
+    invited friend) — real group tracking is separate work.
+  - `KARA_DELIK_USTASI` (Black Hole multi-pull) is still on its own separate counter path and did not
+    receive the friendly fire filter.
+  - There is no name-based roster sync of the other participants on the guest side (explained above).
 
-## Terrain yıkımı performans düzeltmesi + Kara Delik VFX yenileme — Done (2026-07-14)
+## Terrain destruction performance fix + Black Hole VFX refresh — Done (2026-07-14)
 
-### DestructiblePlanet patlama maliyeti (~60-87ms/patlama → ~7-10ms/patlama)
-- Play Mode'da gerçek ölçümle bulundu: her `ExplodeWithForce` çağrısı (mermi/RPG/bomba/el bombası
-  isabeti) 60-87ms sürüyordu — 60fps'te 16.6ms'lik frame bütçesinin 4-5 katı, her isabette gerçek
-  bir donma. Kök neden ayrıştırılarak (piksel döngüsü / `Apply` / `Sprite.Create` / collider rebuild
-  ayrı ayrı `Stopwatch` ile ölçüldü) `Sprite.Create(..., generateFallbackPhysicsShape: true)`'ın
-  patlama yarıçapından BAĞIMSIZ sabit ~90-140ms harcadığı bulundu — bu API her çağrıldığında TÜM
-  1280x1280 texture'ın alfa hattını yeniden tarıyor (dirty-region boyutundan bağımsız). `GetPixel`/
-  `SetPixel` döngüsü de büyük yarıçaplarda (RPG/bomba) ayrıca pahalıydı (149ms'e kadar).
+### DestructiblePlanet explosion cost (~60-87ms/explosion → ~7-10ms/explosion)
+- Found by real measurement in Play Mode: every `ExplodeWithForce` call (a projectile/RPG/bomb/grenade
+  hit) took 60-87ms — 4-5× the 16.6ms frame budget at 60fps, a genuine freeze on every hit. By isolating
+  the root cause (measuring the pixel loop / `Apply` / `Sprite.Create` / collider rebuild separately with
+  a `Stopwatch`), it was found that `Sprite.Create(..., generateFallbackPhysicsShape: true)` spends a
+  constant ~90-140ms INDEPENDENT of the explosion radius — that API re-scans the alpha outline of the
+  ENTIRE 1280x1280 texture every time it's called (regardless of the dirty-region size). The
+  `GetPixel`/`SetPixel` loop was also separately expensive at large radii (RPG/bomb), up to 149ms.
 - **Fix (`Assets/Scripts/Planet/DestructiblePlanet.cs`):**
-  1. `GetPixel`/`SetPixel` → `Start()`'ta bir kez alınan `Color32[] pixels` cache'i üzerinden dizi
-     indeksleme, döngü sonunda tek seferlik `SetPixels32`+`Apply()`.
-  2. Görsel güncelleme artık Sprite'ı hiç yeniden OLUŞTURMUYOR — `Apply()` zaten aynı Sprite'ın
-     referans aldığı texture'ı günceller, yeni Sprite şart değildi (eski kod her patlamada
-     gereksiz yere yeniden yaratıyordu).
-  3. Collider artık ayrı, `physicsDownsampleFactor` (varsayılan 8x, Inspector'dan ayarlanabilir,
-     [1,12] aralığı) kadar küçültülmüş tek seferlik bir yardımcı texture'dan üretiliyor
-     (`RebuildColliderFromAlpha`, eski `RebuildCollider`'ın yerini aldı) — küçültülmüş sprite'ın
-     `pixelsPerUnit`'i de aynı oranda küçültülerek (`ppu/factor`) elle ölçekleme gerekmeden doğru
-     local-unit uzayında şekil üretiliyor. Görsel kalite hiç etkilenmiyor (runtimeTex/sr.sprite'a
-     dokunulmuyor), yalnızca collider'ın köşe hassasiyeti düşüyor (karakter ölçeğinde fark edilmiyor).
-- **Ölçüldü (Play Mode, gerçek gezegen, aynı yöntemle önce/sonra):** r=0.3: 65.8→7.1ms, r=1.0:
-  60.7→7.0ms, r=2.0: 79.2→8.8ms, r=3.0: 86.8→10.5ms — ortalama ~8-9x kazanç, 60fps bütçesinin
-  rahatça altında.
-- **Doğrulama:** derleme temiz, Play Mode'da runtime hatası yok, collider fonksiyonel
-  (`pathCount=4`, 124 nokta, `isTrigger=false`) patlama sonrası, ekran görüntüsüyle görsel
-  (dairesel çentikler temiz, bozulma yok) doğrulandı. Diğer patlama çağıran sistemler
-  (BlackHoleZone/BlackHoleProjectile'ın `dp.ExplodeWithForce`, Bomb/Grenade/RPG/Kinetic) aynı yoldan
-  geçtiği için otomatik faydalanıyor, ayrı bir iş gerekmedi.
+  1. `GetPixel`/`SetPixel` → array indexing over a `Color32[] pixels` cache fetched once in `Start()`,
+     with a single `SetPixels32`+`Apply()` at the end of the loop.
+  2. The visual update no longer RECREATES the Sprite at all — `Apply()` already updates the texture the
+     same Sprite references, so a new Sprite was never necessary (the old code recreated one needlessly
+     on every explosion).
+  3. The collider is now generated from a separate, one-off helper texture downscaled by
+     `physicsDownsampleFactor` (default 8x, adjustable from the Inspector, range [1,12])
+     (`RebuildColliderFromAlpha`, which replaced the old `RebuildCollider`) — the downscaled sprite's
+     `pixelsPerUnit` is reduced by the same ratio (`ppu/factor`) so the shape is produced in the correct
+     local-unit space without manual scaling. Visual quality is entirely unaffected (runtimeTex/sr.sprite
+     are untouched); only the collider's corner precision drops (not noticeable at character scale).
+- **Measured (Play Mode, a real planet, before/after with the same method):** r=0.3: 65.8→7.1ms, r=1.0:
+  60.7→7.0ms, r=2.0: 79.2→8.8ms, r=3.0: 86.8→10.5ms — an average gain of ~8-9x, comfortably under the
+  60fps budget.
+- **Verification:** the build is clean, no runtime errors in Play Mode, the collider is functional after
+  an explosion (`pathCount=4`, 124 points, `isTrigger=false`), and the visuals were verified by screenshot
+  (the circular notches are clean, no distortion). The other systems that trigger explosions
+  (BlackHoleZone/BlackHoleProjectile's `dp.ExplodeWithForce`, Bomb/Grenade/RPG/Kinetic) benefit
+  automatically since they go through the same path; no separate work was needed.
 
-### Kara Delik VFX — indirilmiş GIF yerine kullanıcının kendi ürettiği sprite sheet
-- Eski `BlackHoleGif` görseli internetten indirilmiş bir Tenor GIF'ten çıkarılmış 90 ayrı kare
-  PNG'ydi (belirsiz lisans, dosya adı `...gTCLX76XXbiwlrts...` bir Tenor GIF ID'si) — kullanıcının
-  sağladığı 8 kareli (4x2) el çizimi tarzı vortex sprite sheet ile değiştirildi.
-- Siyah arkaplan alfa-key ile şeffaflaştırıldı (`alpha = max(R,G,B)`, Python/Pillow) — kenarlarda
-  halo/leke yok, ekran görüntüsüyle doğrulandı.
-- `Assets/Art/Sprites/BlackHoleVortex/BlackHoleVortex_Sheet.png` olarak içe aktarılıp Unity'de 8
-  sprite'a dilimlendi (4x2 grid, ppu=50). Mevcut `BlackHoleGif.anim` (12fps, 0.67s loop) bu yeni
-  karelerle güncellendi — `BlackHoleProjectile`/`BlackHoleZone`/prefab/controller tarafında hiçbir
-  kod değişikliği gerekmedi (aynı `gifPrefab` referansı, `Assets/Art/Sprites/Projectiles/
-  BlackHoleGif.prefab`).
-- Eski 90 kare PNG (+ meta) silindi.
+### Black Hole VFX — the user's own generated sprite sheet instead of a downloaded GIF
+- The old `BlackHoleGif` art was 90 separate frame PNGs extracted from a Tenor GIF downloaded off the
+  internet (unclear license; the filename `...gTCLX76XXbiwlrts...` is a Tenor GIF ID) — it was replaced
+  with an 8-frame (4x2) hand-drawn-style vortex sprite sheet provided by the user.
+- The black background was made transparent via alpha-keying (`alpha = max(R,G,B)`, Python/Pillow) — no
+  halo/smudging at the edges, verified by screenshot.
+- It was imported as `Assets/Art/Sprites/BlackHoleVortex/BlackHoleVortex_Sheet.png` and sliced into 8
+  sprites in Unity (a 4x2 grid, ppu=50). The existing `BlackHoleGif.anim` (12fps, 0.67s loop) was updated
+  with these new frames — no code changes were needed on the
+  `BlackHoleProjectile`/`BlackHoleZone`/prefab/controller side (the same `gifPrefab` reference,
+  `Assets/Art/Sprites/Projectiles/BlackHoleGif.prefab`).
+- The old 90 frame PNGs (+ meta) were deleted.
 
-### Sıradaki adımlar
-- `physicsDownsampleFactor` şu an tüm gezegenler için sabit Inspector değeri (8) — çok küçük/çok
-  büyük gezegen varyantları eklenirse yarıçap/çözünürlük oranına göre ayrıca ayarlanabilir.
-- Kara delik görseli için üretim akışı (alfa-key + grid dilimleme) tekrarlanabilir — ileride başka
-  görsel efektler (patlama, kalkan vb.) için de kullanıcı kendi ürettiği görseli aynı yöntemle
-  eklettirebilir.
-- Genel proje kontrolünde (aynı geçiş) tespit edilen ama henüz dokunulmayan diğer eksikler için
-  yukarıdaki "YAYIN YOL HARİTASI" bölümüne bak (Google Play Console kurulumu, gerçek cihaz build
-  testi, 150 kostüm sprite'ı, yasal metin onayı gibi kod-dışı kalemler hâlâ öncelikli).
+### Next steps
+- `physicsDownsampleFactor` is currently a fixed Inspector value (8) for all planets — if very small/very
+  large planet variants are added, it can be tuned separately according to the radius/resolution ratio.
+- The production workflow for the black hole art (alpha-key + grid slicing) is repeatable — in the future
+  the user can have other visual effects (explosions, shields, etc.) added the same way from art they
+  generate themselves.
+- For the other gaps identified in the general project review (same pass) but not yet touched, see the
+  "RELEASE ROADMAP" section above (non-code items like the Google Play Console setup, a real device build
+  test, the 150 costume sprites, and legal text approval are still the priority).
 
-## Güvenlik denetimi + düzeltmeler — Done (2026-07-14, 2. tur)
+## Security audit + fixes — Done (2026-07-14, 2nd pass)
 
-Kod tabanı sistematik olarak tarandı (ekonomi/IAP client-authority, multiplayer RPC yetkilendirmesi,
-auth/credential yönetimi, hardcoded secret, save-data bütünlüğü). Bulunanların kod-seviyesinde
-düzeltilebilecek kısmı bu geçişte çözüldü; sunucu/backend altyapısı gerektirenler (Cloud Code vb.)
-açıkça "yapılamadı, şu şekilde yapılmalı" diye işaretlendi — sahte/yarım bir "çözüldü" izlenimi
-verilmedi.
+The codebase was scanned systematically (economy/IAP client authority, multiplayer RPC authorization,
+auth/credential management, hardcoded secrets, save-data integrity). The portion of the findings that
+could be fixed at the code level was resolved in this pass; the ones requiring server/backend
+infrastructure (Cloud Code etc.) were explicitly marked "couldn't be done, here's how it should be done" —
+no fake/half "resolved" impression was given.
 
-### Düzeltildi
+### Fixed
 
-1. **Ability-fire [ServerRpc]'lerinde sunucu tarafı tur kontrolü eksikti.** `Pistol`/`Rpg`/
+1. **Server-side turn validation was missing in the ability-fire [ServerRpc]s.** `Pistol`/`Rpg`/
    `Shotgun`/`HandGrenade`/`Teleport`/`BlackHoleSkill` (`FireServerRpc`/`FirePelletsServerRpc`),
-   `BatHammerSkill` (`SwingServerRpc`), `ShieldSkill` (`ActivateShieldServerRpc`) — "sırası bende
-   mi" kontrolü yalnızca client-side `AbilityBase.Update()`'teydi; sunucu tarafındaki RPC handler
-   hiçbir doğrulama yapmadan direkt çalışıyordu. Değiştirilmiş bir client, rakibin sırasında ateş
-   edebilir veya aynı mermi çözülmeden art arda ateşleyebilirdi. **Fix:** `AbilityBase.cs`'e
-   `protected bool ServerCanAct => gravityBody != null && gravityBody.isActive.Value;` eklendi,
-   tüm 8 RPC handler'ın ilk satırına `if (!ServerCanAct) return;` kondu — bu tek kontrol hem sıra
-   dışı ateşlemeyi hem de `TurnManager.NotifyProjectileLaunched`'ın ilk ateşten hemen sonra
-   `isActive.Value`'yu senkron false yapması sayesinde art arda ateşlemeyi engelliyor.
-   - **Takip edildi ve kapatıldı (2026-07-15, 3. tur) — `CharacterAbilities` network-authoritative
-     yapıldı.** `MonoBehaviour` → `NetworkBehaviour`; tüm cephane sayaçları (`superJumps`, `rpgAmmo`,
-     `pistolAmmo`, `shotgunAmmo`, `grenades`, `shields`) tek bir `AmmoState` (`INetworkSerializable`)
-     struct'ında toplanıp `NetworkVariable<AmmoState>` (Server-write) yapıldı; `HasUsedSkillThisTurn`
-     de `NetworkVariable<bool>` (Server-write) oldu. Yeni `ServerTryConsume(int slotIndex)` —
-     `netHasUsedSkill` true iken HERHANGİ slotu reddeder (turda tek yetenek kuralı, ayrıca
-     silaha-özel server-side cooldown zamanlayıcısı gerekmeden "art arda farklı silah" açığını da
-     kapatıyor) ve ilgili slotun cephanesini kontrol edip düşürür — her 9 ability'nin (Pistol/
-     Shotgun/Rpg/HandGrenade/Teleport/BlackHoleSkill/BatHammerSkill/ShieldSkill/SuperJumpSkill)
-     `[ServerRpc]` handler'ından `ServerCanAct`'ten HEMEN SONRA çağrılıyor. `SuperJumpSkill`'in
-     kendi `[ServerRpc]`'si yoktu (yalnızca `gravityBody.nextJumpIsSuper` client-side bayrağını
-     set ediyordu) — yeni `ConsumeServerRpc`/`ApplySuperJumpClientRpc` çifti eklendi (aynı
-     `GravityBody.ApplyForce`'taki owner-hedefli ClientRpc deseni). Public API (getter'lar,
-     event'ler, `HasUsedSkillThisTurn`) hiç değişmedi — `WeaponUIManager`/`SkillUIManager`'da
-     sıfır değişiklik gerekti. Offline hotseat davranışı bilerek birebir korundu (her `Use*()`
-     metodu `!IsSpawned` dalında eskisiyle aynı doğrudan mutasyonu yapıyor) — `CharacterHealth.
-     Awake()/OnNetworkSpawn()`'daki (zaten test edilmiş) "offline'da doğrudan, online'da yalnızca
-     server" deseni birebir taklit edildi, yeni bir mimari icat edilmedi.
-     **Not — Unity Editor bu geçişte kapalıydı, canlı/iki-process doğrulama yapılamadı**; değişiklik
-     dikkatli statik inceleme + mevcut, zaten doğrulanmış `CharacterHealth` desenine birebir
-     sadakatle yazıldı, ama bir sonraki Unity oturumunda hem offline hem online (iki client) bir
-     maçta ateşleme/cephane/tur geçişini test etmek şart.
-   - **Kalıcı bir mimari sınır (kod ile çözülemez):** bu proje host'u oyunculardan biri olan P2P
-     Relay/NGO kullanıyor ("server" = bir oyuncunun kendi makinesi), yetkili/tarafsız bir dedicated
-     server yok. Yukarıdaki fix hileli bir NON-HOST client'a karşı korur; hileli bir HOST kendi
-     `isActive`/`teamId` gibi server-write NetworkVariable'larını istediği gibi yazabilir — bunu
-     çözmek dedicated/cloud-hosted authoritative server yatırımı gerektirir, bu bir bug-fix
-     oturumunun kapsamı dışında.
-2. **`BatHammerSkill.SwingServerRpc`** client'tan gelen `aimDir`'i normalize etmeden kullanıyordu
-   (birim olmayan bir vektör koni-içi hedef tespitini bozabilirdi). **Fix:** server artık
-   `aimDir.normalized` kullanıyor, sıfıra yakın vektörler reddediliyor.
-3. **`NetworkBootstrap.cs`'te 13 korumasız `Debug.Log`/`LogWarning`/`LogError`** (join code'lar,
-   bağlantı durumu) production build'lerde de cihaz loguna yazılıyordu — projenin geri kalanındaki
-   `#if UNITY_EDITOR` kuralına aykırıydı. **Fix:** hepsi `#if UNITY_EDITOR` ile sarıldı.
-4. **`CurrencyManager`'ın `currency.json`'ı düz metin, imzasız/kurcalamaya açıktı** (save-editor ile
-   Gold/Gem/XP direkt değiştirilebiliyordu). **Fix:** dosya artık `{data, hmac}` zarfında —
-   `HMACSHA256(gömülü anahtar + SystemInfo.deviceUniqueIdentifier)` ile imzalanıyor;
-   `Load()` HMAC uyuşmazlığında kurcalamayı tespit edip güvenli varsayılana dönüyor ve dosyayı temiz
-   +imzalı olarak yeniden yazıyor. Eski (zarfsız) formattaki mevcut oyuncu dosyaları geriye dönük
-   uyumlu okunup ilk fırsatta yeni formatta yeniden yazılıyor (ilerleme silinmiyor).
-   - **Dürüst sınır (yorumlarda da belirtildi):** anahtar client binary'sinde gömülü olduğu için bu
-     save-editor gibi yaygın araçları engeller, ama reverse-engineering yapabilen gelişmiş bir
-     saldırganı DURDURMAZ — kriptografik bir garanti değil, bir caydırıcı/tespit katmanı.
-5. **IAP satın almaları hiçbir makbuz doğrulaması olmadan Gem veriyordu.** **Fix:**
-   `IAPManager.cs`'e Unity IAP'ın `CrossPlatformValidator`'ı ile makbuz doğrulama eklendi —
-   `STEAMWORKS_INSTALLED`/`GPGS_INSTALLED` ile aynı "kod hazır, gerçek anahtar bekliyor" deseni:
-   `IAP_RECEIPT_VALIDATION` define'ı tanımlı değilken (şu an durum bu) `IsReceiptValid()` her zaman
-   `true` döner — Tangle sınıfları (`GooglePlayTangle`/`AppleTangle`) üretilmeden bu define
-   açılırsa derleme hatası olurdu, bu yüzden bilinçli olarak kapalı bırakıldı.
-   **Kalan manuel adım (kod yok):** Play Console → Uygulamanız → Bütünlük → Lisanslama'daki Base64
-   RSA public key'i al → Unity Editor'de Window → Unity IAP → Receipt Validation Obfuscator'a
-   yapıştır → Player Settings → Scripting Define Symbols'a `IAP_RECEIPT_VALIDATION` ekle.
+   `BatHammerSkill` (`SwingServerRpc`), `ShieldSkill` (`ActivateShieldServerRpc`) — the "is it my turn"
+   check only existed in the client-side `AbilityBase.Update()`; the server-side RPC handler ran directly
+   without any validation. A modified client could fire during the opponent's turn, or fire repeatedly
+   before the same projectile resolved. **Fix:**
+   `protected bool ServerCanAct => gravityBody != null && gravityBody.isActive.Value;` was added to
+   `AbilityBase.cs`, and `if (!ServerCanAct) return;` was placed as the first line of all 8 RPC handlers —
+   this single check prevents both out-of-turn firing and repeat firing, thanks to
+   `TurnManager.NotifyProjectileLaunched` synchronously setting `isActive.Value` to false immediately
+   after the first shot.
+   - **Followed up and closed (2026-07-15, 3rd pass) — `CharacterAbilities` was made
+     network-authoritative.** `MonoBehaviour` → `NetworkBehaviour`; all ammo counters (`superJumps`,
+     `rpgAmmo`, `pistolAmmo`, `shotgunAmmo`, `grenades`, `shields`) were collected into a single
+     `AmmoState` (`INetworkSerializable`) struct and made a `NetworkVariable<AmmoState>` (Server-write);
+     `HasUsedSkillThisTurn` also became a `NetworkVariable<bool>` (Server-write). The new
+     `ServerTryConsume(int slotIndex)` rejects ANY slot while `netHasUsedSkill` is true (the one-ability-
+     per-turn rule, which also closes the "different weapon back to back" hole without needing a
+     weapon-specific server-side cooldown timer) and checks and decrements the relevant slot's ammo — it is
+     called from each of the 9 abilities' (Pistol/Shotgun/Rpg/HandGrenade/Teleport/BlackHoleSkill/
+     BatHammerSkill/ShieldSkill/SuperJumpSkill) `[ServerRpc]` handler IMMEDIATELY AFTER `ServerCanAct`.
+     `SuperJumpSkill` had no `[ServerRpc]` of its own (it only set the client-side
+     `gravityBody.nextJumpIsSuper` flag) — a new `ConsumeServerRpc`/`ApplySuperJumpClientRpc` pair was
+     added (the same owner-targeted ClientRpc pattern as in `GravityBody.ApplyForce`). The public API
+     (getters, events, `HasUsedSkillThisTurn`) did not change at all — zero changes were needed in
+     `WeaponUIManager`/`SkillUIManager`. Offline hotseat behavior was deliberately preserved exactly
+     (every `Use*()` method performs the same direct mutation as before in its `!IsSpawned` branch) — the
+     (already tested) "direct offline, server-only online" pattern from
+     `CharacterHealth.Awake()/OnNetworkSpawn()` was imitated exactly; no new architecture was invented.
+     **Note — the Unity Editor was closed during this pass, so live/two-process verification could not be
+     done**; the change was written with careful static review + strict fidelity to the existing, already
+     verified `CharacterHealth` pattern, but testing firing/ammo/turn transitions in both an offline and an
+     online (two-client) match in the next Unity session is essential.
+   - **A permanent architectural limit (unsolvable in code):** this project uses P2P Relay/NGO where the
+     host is one of the players ("server" = one player's own machine); there is no authoritative/neutral
+     dedicated server. The fix above protects against a cheating NON-HOST client; a cheating HOST can write
+     its own server-write NetworkVariables like `isActive`/`teamId` however it likes — solving that
+     requires investing in a dedicated/cloud-hosted authoritative server, which is outside the scope of a
+     bug-fix session.
+2. **`BatHammerSkill.SwingServerRpc`** used the `aimDir` coming from the client without normalizing it
+   (a non-unit vector could have broken the in-cone target detection). **Fix:** the server now uses
+   `aimDir.normalized` and rejects near-zero vectors.
+3. **13 unguarded `Debug.Log`/`LogWarning`/`LogError` calls in `NetworkBootstrap.cs`** (join codes,
+   connection state) were being written to the device log in production builds too — contrary to the
+   `#if UNITY_EDITOR` rule used in the rest of the project. **Fix:** all of them were wrapped in
+   `#if UNITY_EDITOR`.
+4. **`CurrencyManager`'s `currency.json` was plaintext, unsigned/open to tampering** (Gold/Gem/XP could be
+   changed directly with a save editor). **Fix:** the file is now in a `{data, hmac}` envelope, signed with
+   `HMACSHA256(embedded key + SystemInfo.deviceUniqueIdentifier)`; on an HMAC mismatch, `Load()` detects
+   the tampering, falls back to safe defaults, and rewrites the file clean and signed. Existing player
+   files in the old (envelope-less) format are read backward-compatibly and rewritten in the new format at
+   the first opportunity (progress is not wiped).
+   - **An honest limit (also stated in the comments):** since the key is embedded in the client binary,
+     this blocks common tools like save editors but does NOT STOP an advanced attacker capable of reverse
+     engineering — it is a deterrent/detection layer, not a cryptographic guarantee.
+5. **IAP purchases granted Gem without any receipt validation.** **Fix:**
+   receipt validation via Unity IAP's `CrossPlatformValidator` was added to `IAPManager.cs` — the same
+   "code is ready, waiting on the real key" pattern as `STEAMWORKS_INSTALLED`/`GPGS_INSTALLED`: while the
+   `IAP_RECEIPT_VALIDATION` define is not set (which is the current state), `IsReceiptValid()` always
+   returns `true` — enabling that define before the Tangle classes (`GooglePlayTangle`/`AppleTangle`) are
+   generated would be a compile error, so it was deliberately left off.
+   **Remaining manual step (no code):** get the Base64 RSA public key from Play Console → Your app →
+   Integrity → Licensing → paste it into Window → Unity IAP → Receipt Validation Obfuscator in the Unity
+   Editor → add `IAP_RECEIPT_VALIDATION` to Player Settings → Scripting Define Symbols.
 
-### Çözülemedi — backend/altyapı yatırımı gerektiriyor (bilerek yarım bırakılmadı, açıkça işaretlendi)
+### Unresolved — requires backend/infrastructure investment (not left half-done on purpose, explicitly flagged)
 
-6. **`CloudSaveManager.PushAsync`** yerel dosyaların (currency/progress/unlocks/quests/chests/
-   streak/costumes) ham içeriğini hiçbir sunucu-taraflı doğrulama olmadan doğrudan UGS Cloud
-   Save'e yazıyor — HMAC fix'i (madde 4) yalnızca YEREL dosyayı korur, buluta giden veri hâlâ
-   client'ın o an bellekte tuttuğu (dolayısıyla bir bellek-hackleme aracıyla değiştirilebilecek)
-   değerdir. Gerçek çözüm: economy mutasyonlarını (Add/Spend) UGS Cloud Code fonksiyonlarına
-   taşımak (client sadece "bu maçı kazandım" gibi bir isteği sunucuya iletir, gerçek bakiye
-   hesaplaması ve Cloud Save yazımı orada olur) — bu bir Cloud Code yazma/deploy işi, bu Unity
-   client projesinin kapsamı/araçları dışında.
-7. **`LeaderboardManager.ReportOnlineMatchResult`** public bir metod, gerçekten bir maç olduğunu
-   doğrulayan bir sunucu/Cloud Code kontrolü olmadan doğrudan `AddPlayerScoreAsync` çağırıyor —
-   hileli bir client'ın kupayı keyfi şişirmesini engelleyen hiçbir şey yok.
-   - **Neden bu geçişte de yapılmadı (madde 6 ile aynı gerekçe + fazlası):** `ugs` CLI bu makinede
-     kurulu değil, `com.unity.services.cloudcode` paketi projeye eklenmemiş, ve gerçek deploy
-     (Dashboard'a giriş/CLI login) yalnızca kullanıcının kendi Unity kimliğiyle yapılabilecek
-     interaktif bir adım — bu oturumdan fiilen imkansız. ÖNEMLİSİ: bu, madde 1'deki host-güven
-     sınırı yüzünden basit bir "client Cloud Code'u çağırsın" fix'i değil — cheating HOST da
-     zaten sunucu rolünde olduğu için, gerçek bir düzeltme iki taraf arasında ÇAPRAZ DOĞRULAMA
-     (dual-attestation) gerektiriyor: her iki client de maç sonucunu (matchId + winnerId/loserId,
-     her ikisinin de gerçek UGS PlayerId'siyle) BAĞIMSIZ olarak aynı Cloud Code fonksiyonuna
-     bildirir; fonksiyon iki bildirim UYUŞMUYORSA veya yalnızca biri gelmişse kupa vermez, yalnızca
-     ikisi de aynı sonucu bildirirse (tek bir hileli taraf artık tek başına yeterli olmuyor,
-     rakibiyle de anlaşması gerekiyor) kupa güncellenir. Bu, şu an client'larda bilinmeyen
-     rakibin gerçek PlayerId'sinin (Quick Match'te — arkadaş daveti akışında zaten var) karşılıklı
-     değişimini de gerektiriyor; yani bu yalnızca bir Cloud Code scripti değil, yeni bir
-     cross-client protokol. Canlı iki-process test edilemeden (bu oturumda Unity Editor kapalıydı)
-     bunu doğrudan test edilmiş, çalışan dereceli maç akışına kabloyu bağlamak riskli — "sorunsuz"
-     hedefiyle çelişirdi, bu yüzden bilerek yapılmadı.
-   - **Sonraki oturum için somut plan:** (1) `NetworkPlayerSpawner`/`TurnManager`'a match başlangıcında
-     her iki client'ın kendi `AuthenticationService.Instance.PlayerId`'sini bir `[ServerRpc]` ile
-     sunucuya bildirmesi + sunucunun ikisini de her iki client'a bir `[ClientRpc]` ile geri
-     yayması (host taraflı bir `Dictionary<ulong,string>` clientId→PlayerId eşlemesi); (2)
-     `com.unity.services.cloudcode` paketini ekleyip bir `SubmitMatchResult(matchId, winnerId,
-     loserId)` Cloud Code modülü yazmak (JS, Cloud Save Data API ile iki tarafın bildirimini
-     `match_<matchId>` anahtarında biriktirip karşılaştıran); (3) `LeaderboardManager`'ı bunu
-     çağıracak, ama BAŞARISIZ olursa (henüz deploy edilmemiş/ağ hatası) sessizce mevcut doğrudan
-     `AddPlayerScoreAsync` yoluna düşecek şekilde yazmak (geriye dönük kırılmaz); (4) Unity Editor
-     açıkken gerçek iki-process bir dereceli maçla uçtan uca doğrulamak (bu projenin tüm
-     multiplayer milestone'larında izlenen standart, bkz. yukarıdaki "Multiplayer" bölümü).
+6. **`CloudSaveManager.PushAsync`** writes the raw contents of the local files (currency/progress/unlocks/
+   quests/chests/streak/costumes) directly to UGS Cloud Save without any server-side validation — the HMAC
+   fix (item 4) only protects the LOCAL file; the data going to the cloud is still whatever the client
+   holds in memory at that moment (and therefore changeable with a memory-hacking tool). The real solution:
+   move the economy mutations (Add/Spend) into UGS Cloud Code functions (the client only sends a request
+   like "I won this match" to the server, and the real balance calculation and Cloud Save write happen
+   there) — that is a Cloud Code authoring/deployment job, outside the scope/tooling of this Unity client
+   project.
+7. **`LeaderboardManager.ReportOnlineMatchResult`** is a public method that calls `AddPlayerScoreAsync`
+   directly without any server/Cloud Code check verifying that a match actually happened — nothing prevents
+   a cheating client from inflating trophies arbitrarily.
+   - **Why it wasn't done in this pass either (the same rationale as item 6, plus more):** the `ugs` CLI
+     isn't installed on this machine, the `com.unity.services.cloudcode` package hasn't been added to the
+     project, and a real deploy (Dashboard sign-in/CLI login) is an interactive step that can only be done
+     with the user's own Unity identity — effectively impossible from this session. MORE IMPORTANTLY: because
+     of the host-trust limit in item 1, this is not a simple "let the client call Cloud Code" fix — since a
+     cheating HOST is already in the server role, a real fix requires CROSS-VALIDATION (dual attestation)
+     between the two sides: both clients INDEPENDENTLY report the match result (matchId + winnerId/loserId,
+     with both of their real UGS PlayerIds) to the same Cloud Code function; the function awards no
+     trophies if the two reports DISAGREE or if only one arrives, and only updates trophies if both report
+     the same result (a single cheating party is no longer sufficient on its own — they'd have to collude
+     with their opponent). This also requires the mutual exchange of the opponent's real PlayerId, which is
+     currently unknown to the clients (in Quick Match — it already exists in the friend-invite flow); so
+     this isn't just a Cloud Code script, it's a new cross-client protocol. Without being able to test it
+     live across two processes (the Unity Editor was closed in this session), wiring it into the
+     directly-tested, working ranked match flow is risky — it would conflict with the "no problems" goal,
+     so it was deliberately not done.
+   - **A concrete plan for the next session:** (1) have both clients report their own
+     `AuthenticationService.Instance.PlayerId` to the server via a `[ServerRpc]` at match start in
+     `NetworkPlayerSpawner`/`TurnManager`, and have the server broadcast both back to both clients via a
+     `[ClientRpc]` (a host-side `Dictionary<ulong,string>` clientId→PlayerId mapping); (2) add the
+     `com.unity.services.cloudcode` package and write a `SubmitMatchResult(matchId, winnerId, loserId)`
+     Cloud Code module (JS, accumulating and comparing both sides' reports under a `match_<matchId>` key
+     via the Cloud Save Data API); (3) write `LeaderboardManager` to call it, but to silently fall back to
+     the existing direct `AddPlayerScoreAsync` path if it FAILS (not yet deployed/network error) so it
+     doesn't break backward compatibility; (4) verify end-to-end with a real two-process ranked match with
+     the Unity Editor open (the standard followed in all of this project's multiplayer milestones, see the
+     "Multiplayer" section above).
 
-Madde 22 (üstteki YAYIN YOL HARİTASI) zaten bunu "gelir başlayınca öncelik" olarak not etmişti; bu
-denetim somut mekanizmaları (hangi dosya/satır, tam olarak ne kadar açık) doğruladı, bu turda ek
-olarak `CharacterAbilities`'i (madde 1'in takibi) network-authoritative yaptı, kalan iki maddeyi
-(6-7) somut bir uygulama planıyla backend-bağımlı olarak netleştirdi.
+Item 22 (in the RELEASE ROADMAP above) had already noted this as "a priority once revenue starts"; this
+audit confirmed the concrete mechanisms (which file/line, exactly how exposed), additionally made
+`CharacterAbilities` network-authoritative in this round (the follow-up to item 1), and clarified the
+remaining two items (6-7) as backend-dependent with a concrete implementation plan.
