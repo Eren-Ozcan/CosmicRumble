@@ -196,7 +196,14 @@ Singleton, DontDestroyOnLoad
 
 ---
 
-# SECTION 4 — COSTUME SYSTEM (150 COSTUMES)
+# SECTION 4 — COSTUME SYSTEM (15 COSTUMES — 5 CHARACTERS × 3 TIERS)
+
+> 2026-07-16 redesign: the original 150 free-standing costumes (40/35/35/25/15 by rarity) were
+> replaced with 5 characters × 3 tiers = 15 costumes total. Weapon costumes were removed — every
+> costume's `costumeType` is `Character`. Characters are cosmetic-only (`characterId` is not tied to
+> weapon/ability selection; every player unlocks all 9 weapons by level). 2026-07-30 theme decision
+> ("Galactic Rumble Show" — an interplanetary televised arena show, the characters are its famous
+> contestants) named the 5 characters: **Nova, Blitz, Titan, Scope, Vex**.
 
 ## 4.1 CostumeRarity.cs
 `Scripts/Economy/Costumes/CostumeRarity.cs`
@@ -218,10 +225,11 @@ public class CostumeDefinition : ScriptableObject
 {
     public string        costumeId;
     public string        displayName;
+    public int           characterId;     // 1-5, which character this costume belongs to
     public Sprite        previewSprite;   // null-safe: the UI shows a placeholder
-    public CostumeType   costumeType;
+    public CostumeType   costumeType;     // always Character — weapon costumes were removed
     public CostumeRarity rarity;
-    public CostumeTheme  theme;
+    public CostumeTheme  theme;           // currently always Other; real theme arrives with the art
     public CostumeUnlock unlockMethod;
 
     // Unlock conditions (whichever is populated for the given unlockMethod is used)
@@ -249,178 +257,51 @@ public class CostumeDatabase : ScriptableObject
 }
 ```
 
-Create the following 150 costumes as ScriptableObjects and add them to CostumeDatabase.
+Create the following 15 costumes as ScriptableObjects and add them to CostumeDatabase.
 The `previewSprite` field is to be left null — the UI system shows a placeholder automatically.
+`costumeType` is `Character` for all 15 (weapon costumes were removed). `theme` is `Other` for all
+15 for now — the real theme arrives with the character art (Section 4's persona/palette notes above
+are the reference for that art pass, not encoded in data yet).
 
-### COMMON (40 costumes)
-| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
+### Character 1 — Nova (charismatic show host/mascot, gold/red)
+| costumeId | displayName | characterId | rarity | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| c001 | Gray Soldier | Character | Other | Default | Starter |
-| c002 | Standard Blue | Character | Other | Default | Starter |
-| c003 | Red Warrior | Character | Other | ByLevel | Lv 3 |
-| c004 | Green Camo | Character | Nature | ByLevel | Lv 5 |
-| c005 | Yellow Storm | Character | Other | ByGold | 200 Gold |
-| c006 | Orange Ember | Character | Fire | ByGold | 200 Gold |
-| c007 | Purple Night | Character | Dark | ByGold | 250 Gold |
-| c008 | White Snow | Character | Ice | ByGold | 250 Gold |
-| c009 | Brown Earth | Character | Nature | ByLevel | Lv 7 |
-| c010 | Sky Blue | Character | Space | ByLevel | Lv 9 |
-| c011 | Steel Gray | Weapon | Mech | ByGold | 150 Gold |
-| c012 | Rust Brown | Weapon | Mech | ByGold | 150 Gold |
-| c013 | Forest Green | Weapon | Nature | ByLevel | Lv 6 |
-| c014 | Lava Red | Weapon | Fire | ByGold | 175 Gold |
-| c015 | Ice Blue | Weapon | Ice | ByGold | 175 Gold |
-| c016 | Night Black | Weapon | Dark | ByLevel | Lv 8 |
-| c017 | Sun Yellow | Weapon | Other | ByGold | 200 Gold |
-| c018 | Coral Pink | Character | Other | ByGold | 200 Gold |
-| c019 | Sea Teal | Character | Other | ByLevel | Lv 11 |
-| c020 | Lavender | Character | Other | ByGold | 225 Gold |
-| c021 | Bright Copper | Weapon | Mech | ByGold | 175 Gold |
-| c022 | Desert Sand | Character | Nature | ByLevel | Lv 13 |
-| c023 | Pistachio Green | Character | Nature | ByGold | 200 Gold |
-| c024 | Sea Foam | Weapon | Ice | ByGold | 150 Gold |
-| c025 | Fog Gray | Character | Dark | ByLevel | Lv 15 |
-| c026 | Sunset | Character | Fire | ByGold | 250 Gold |
-| c027 | Stardust | Weapon | Space | ByLevel | Lv 12 |
-| c028 | Ocean Depths | Weapon | Other | ByChest | Common Chest |
-| c029 | Chalk White | Character | Other | ByChest | Common Chest |
-| c030 | Anthracite | Character | Dark | ByChest | Common Chest |
-| c031 | Mint Green | Weapon | Nature | ByGold | 175 Gold |
-| c032 | Candy Pink | Character | Other | ByGold | 200 Gold |
-| c033 | Thunder | Weapon | Other | ByLevel | Lv 14 |
-| c034 | Golden Yellow | Weapon | Other | ByGold | 225 Gold |
-| c035 | Emerald | Character | Nature | ByLevel | Lv 16 |
-| c036 | Hedgehog Brown | Character | Nature | ByChest | Common Chest |
-| c037 | Titan Gray | Weapon | Mech | ByChest | Common Chest |
-| c038 | Maroon | Character | Dark | ByGold | 200 Gold |
-| c039 | Cobalt | Weapon | Space | ByGold | 200 Gold |
-| c040 | Indigo Blue | Character | Other | ByLevel | Lv 18 |
+| c1_1 | Standard | 1 | Common | Default | Unlocked from start |
+| c1_2 | Advanced | 1 | Rare | ByGold | 800 Gold |
+| c1_3 | Elite | 1 | Epic | ByLevel | Lv 20 |
 
-### UNCOMMON (35 costumes)
-| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
+### Character 2 — Blitz (fast/energetic acrobat, neon blue)
+| costumeId | displayName | characterId | rarity | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| u001 | Forest Warrior | Character | Nature | ByLevel | Lv 20 |
-| u002 | Ice Mage | Character | Ice | ByLevel | Lv 22 |
-| u003 | Flame Dancer | Character | Fire | ByLevel | Lv 24 |
-| u004 | Night Watcher | Character | Dark | ByGold | 500 Gold |
-| u005 | Lightning Runner | Character | Other | ByGold | 500 Gold |
-| u006 | Sandstorm | Character | Nature | ByLevel | Lv 26 |
-| u007 | Deep Space | Character | Space | ByLevel | Lv 28 |
-| u008 | Iron Fist | Character | Mech | ByGold | 550 Gold |
-| u009 | Wind Spirit | Character | Nature | ByGold | 550 Gold |
-| u010 | Cosmic Purple | Character | Space | ByLevel | Lv 30 |
-| u011 | Dragon Fang | Weapon | Fantasy | ByGold | 500 Gold |
-| u012 | Space Rifle | Weapon | Space | ByLevel | Lv 25 |
-| u013 | Ice Sword | Weapon | Ice | ByGold | 500 Gold |
-| u014 | Flame Spear | Weapon | Fire | ByLevel | Lv 27 |
-| u015 | Shadow Blade | Weapon | Dark | ByGold | 525 Gold |
-| u016 | Fog Pistol | Weapon | Dark | ByChest | Rare Chest |
-| u017 | Plasma Tube | Weapon | Cyber | ByLevel | Lv 29 |
-| u018 | Nature Shield | Weapon | Nature | ByGold | 500 Gold |
-| u019 | Lightning Orb | Weapon | Other | ByChest | Rare Chest |
-| u020 | Iron Shield | Weapon | Mech | ByGold | 550 Gold |
-| u021 | Crystal Warrior | Character | Ice | ByAchievement | achievement_ice_master |
-| u022 | Volcano Man | Character | Fire | ByAchievement | achievement_patlama_uzmani |
-| u023 | Cyber Ninja | Character | Cyber | ByLevel | Lv 32 |
-| u024 | Stone Golem | Character | Nature | ByLevel | Lv 34 |
-| u025 | Neon Jacket | Character | Cyber | ByGold | 600 Gold |
-| u026 | Foam Sailor | Character | Other | ByChest | Rare Chest |
-| u027 | Steppe Soldier | Character | Nature | ByLevel | Lv 36 |
-| u028 | Silver Knight | Character | Fantasy | ByGold | 600 Gold |
-| u029 | Blue Crocodile | Weapon | Nature | ByChest | Rare Chest |
-| u030 | Ember Blade | Weapon | Fire | ByLevel | Lv 31 |
-| u031 | Hologram Weapon | Weapon | Cyber | ByGold | 575 Gold |
-| u032 | Steel Dragon | Weapon | Mech | ByLevel | Lv 33 |
-| u033 | Crystal Bomb | Weapon | Ice | ByGold | 550 Gold |
-| u034 | Root Texture | Weapon | Nature | ByAchievement | PLANET_KILLER |
-| u035 | Storm Sail | Character | Other | ByGold | 600 Gold |
+| c2_1 | Standard | 2 | Common | Default | Unlocked from start |
+| c2_2 | Advanced | 2 | Uncommon | ByChest | Drops from chests (Common/Uncommon pool) |
+| c2_3 | Elite | 2 | Epic | ByGem | 50 Gem |
 
-### RARE (35 costumes)
-| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
+### Character 3 — Titan (heavy/armored show of force, metallic gray)
+| costumeId | displayName | characterId | rarity | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| r001 | Galaxy Wanderer | Character | Space | ByLevel | Lv 40 |
-| r002 | Black Knight | Character | Dark | ByLevel | Lv 42 |
-| r003 | Neon Samurai | Character | Cyber | ByLevel | Lv 44 |
-| r004 | Dragon Hunter | Character | Fantasy | ByLevel | Lv 45 |
-| r005 | Ice God | Character | Ice | ByGold | 1200 Gold |
-| r006 | Lava Giant | Character | Fire | ByGold | 1200 Gold |
-| r007 | Quantum Armor | Character | Cyber | ByLevel | Lv 48 |
-| r008 | Forest God | Character | Nature | ByGold | 1300 Gold |
-| r009 | Dark Sorcerer | Character | Dark | ByAchievement | VETERAN_10 |
-| r010 | Meteor Warrior | Character | Space | ByLevel | Lv 50 |
-| r011 | Plasma Rifle | Weapon | Cyber | ByLevel | Lv 41 |
-| r012 | Dragon Flame | Weapon | Fantasy | ByGold | 1100 Gold |
-| r013 | Black Hole Cannon | Weapon | Space | ByLevel | Lv 43 |
-| r014 | Ice Shield | Weapon | Ice | ByGold | 1100 Gold |
-| r015 | Ember Bomb | Weapon | Fire | ByAchievement | PATLAMA_UZMANI |
-| r016 | Nano Blade | Weapon | Cyber | ByGold | 1200 Gold |
-| r017 | Rune Spear | Weapon | Fantasy | ByLevel | Lv 46 |
-| r018 | Shadow Arrow | Weapon | Dark | ByChest | Epic Chest |
-| r019 | Emerald Dragon | Weapon | Fantasy | ByGold | 1250 Gold |
-| r020 | Star Sword | Weapon | Space | ByLevel | Lv 47 |
-| r021 | Titanium Golem | Character | Mech | ByLevel | Lv 52 |
-| r022 | Light Speed | Character | Space | ByGold | 1400 Gold |
-| r023 | Sea Monster | Character | Nature | ByAchievement | SOSYAL_KELEBEK |
-| r024 | Storm God | Character | Myth | ByLevel | Lv 54 |
-| r025 | Crimson Shaman | Character | Myth | ByGold | 1400 Gold |
-| r026 | Cyber Samurai | Character | Cyber | ByLevel | Lv 56 |
-| r027 | Bionic Warrior | Character | Mech | ByGold | 1500 Gold |
-| r028 | Vortex Rifle | Weapon | Space | ByChest | Epic Chest |
-| r029 | Shaman Staff | Weapon | Myth | ByLevel | Lv 49 |
-| r030 | Titan Hammer | Weapon | Mech | ByGold | 1300 Gold |
-| r031 | Wind Blade | Weapon | Nature | ByAchievement | CEVRECI |
-| r032 | Crystal Staff | Weapon | Fantasy | ByLevel | Lv 51 |
-| r033 | Laser Rifle | Weapon | Cyber | ByGold | 1350 Gold |
-| r034 | Dark Rune | Weapon | Dark | ByLevel | Lv 53 |
-| r035 | Mythic Archer | Character | Myth | ByAchievement | SAVAS_MAKINESI |
+| c3_1 | Standard | 3 | Common | Default | Unlocked from start |
+| c3_2 | Advanced | 3 | Rare | ByLevel | Lv 10 |
+| c3_3 | Elite | 3 | Legendary | ByAchievement | EFSANE |
 
-### EPIC (25 costumes)
-| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
+### Character 4 — Scope (cool-headed sharpshooter, dark green)
+| costumeId | displayName | characterId | rarity | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| e001 | Nebula Warrior | Character | Space | ByLevel | Lv 60 |
-| e002 | Dragon Lord | Character | Fantasy | ByLevel | Lv 63 |
-| e003 | Cyber God | Character | Cyber | ByGem | 50 Gem |
-| e004 | Death Spirit | Character | Dark | ByLevel | Lv 66 |
-| e005 | Volcano God | Character | Fire | ByGem | 60 Gem |
-| e006 | Ice Storm | Character | Ice | ByLevel | Lv 70 |
-| e007 | Forest Deity | Character | Nature | ByAchievement | EFSANE |
-| e008 | Titan Armor | Character | Mech | ByGem | 70 Gem |
-| e009 | Olympian God | Character | Myth | ByLevel | Lv 73 |
-| e010 | Quantum Shadow | Character | Cyber | ByGem | 75 Gem |
-| e011 | Galactic Emperor | Character | Space | ByLevel | Lv 76 |
-| e012 | Ancient Dragon | Character | Fantasy | ByAchievement | KARA_DELIK_USTASI |
-| e013 | Neon Demon | Character | Dark | ByGem | 80 Gem |
-| e014 | Plasma God | Weapon | Cyber | ByLevel | Lv 61 |
-| e015 | Dragon Breath | Weapon | Fantasy | ByGem | 50 Gem |
-| e016 | Dark Star | Weapon | Dark | ByLevel | Lv 64 |
-| e017 | Volcano Cannon | Weapon | Fire | ByGem | 55 Gem |
-| e018 | Ice Crystal | Weapon | Ice | ByAchievement | DOKUNULMAZ |
-| e019 | Nano Swarm | Weapon | Mech | ByLevel | Lv 68 |
-| e020 | Rune Burst | Weapon | Fantasy | ByGem | 65 Gem |
-| e021 | Nebula Bomb | Weapon | Space | ByLevel | Lv 71 |
-| e022 | Titan Laser | Weapon | Mech | ByGem | 70 Gem |
-| e023 | Mythic Armor | Character | Myth | ByAchievement | FIRTINA_TANRISI |
-| e024 | Crystal Golem | Character | Ice | ByGem | 75 Gem |
-| e025 | Crow King | Character | Dark | ByLevel | Lv 80 |
+| c4_1 | Standard | 4 | Common | Default | Unlocked from start |
+| c4_2 | Advanced | 4 | Rare | ByGold | 1200 Gold |
+| c4_3 | Elite | 4 | Epic | ByGem | 80 Gem |
 
-### LEGENDARY (15 costumes)
-| costumeId | displayName | costumeType | theme | unlockMethod | Condition |
+### Character 5 — Vex (mysterious master of control, purple/black)
+| costumeId | displayName | characterId | rarity | unlockMethod | Condition |
 |---|---|---|---|---|---|
-| l001 | Cosmic Master | Character | Space | ByLevel | Lv 100 |
-| l002 | Dragon Emperor | Character | Fantasy | ByGem | 200 Gem |
-| l003 | Dark God | Character | Dark | ByAchievement | COSMIC_100 |
-| l004 | Doom Lord | Character | Dark | ByGem | 250 Gem |
-| l005 | Time Master | Character | Myth | ByLevel | Prestige 1 (Lv 101) |
-| l006 | Universe Warrior | Character | Space | ByGem | 300 Gem |
-| l007 | Ancient Giant | Character | Myth | ByAchievement | GALAKSININ_EFSANESI |
-| l008 | Bionic God | Character | Mech | ByGem | 250 Gem |
-| l009 | Phoenix Warrior | Character | Fire | ByLevel | Prestige 2 (Lv 102) |
-| l010 | Cosmic Destroyer | Weapon | Space | ByLevel | Lv 100 |
-| l011 | God Sword | Weapon | Myth | ByGem | 200 Gem |
-| l012 | Dragon Heart | Weapon | Fantasy | ByAchievement | EJDER_AVCI |
-| l013 | Black Hole Cannon X | Weapon | Space | ByGem | 250 Gem |
-| l014 | Doom Hammer | Weapon | Dark | ByAchievement | HOME_RUN |
-| l015 | Creator's Power | Weapon | Myth | ByLevel | Prestige 3 (Lv 103) |
+| c5_1 | Standard | 5 | Common | Default | Unlocked from start |
+| c5_2 | Advanced | 5 | Uncommon | ByChest | Drops from chests (Common/Uncommon pool) |
+| c5_3 | Elite | 5 | Epic | ByLevel | Lv 35 |
+
+Tier naming: the intended user-facing names are **Rookie → Star → Legend** (a `displayName`/loc
+string change only, no code change — the code-internal names above are Standard/Advanced/Elite).
+This distribution makes all 15 costumes actually obtainable (5 free defaults + a mix of
+Gold/Gem/Level/Chest/Achievement across the other 10) — see `CostumeAssetGenerator.cs`.
 
 ## 4.4 CostumeManager.cs
 `Scripts/Economy/Costumes/CostumeManager.cs`
@@ -482,16 +363,23 @@ Reward table by rarity:
 `Scripts/Achievements/Core/AchievementDatabase.cs`
 ScriptableObject — `Resources/Achievements/AchievementDatabase`
 
-Create the following 50 achievements as ScriptableObjects and add them to the database:
+Create the following 50 achievements as ScriptableObjects and add them to the database.
+
+> `rewardCostumeId` note (2026-07-16): the 12 rows below that originally pointed at old 150-set
+> costume ids were cleaned up when the costume system was redesigned to the 15-item set (Section 4).
+> Only **EFSANE → c3_3** was rewired to a real costume in the new set; the other 11 were cleared to
+> no costume reward (still grant their normal XP/Gold/Gem). The tables below already reflect that
+> real, current state — don't reintroduce the old ids (r009, r035, l003, u034, r015, u022, e012,
+> e018, l014, r023, l007) if you regenerate this data.
 
 ### COMBAT (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
 | FIRST_BLOOD | First Blood | Win your first match | Common | SingleUnlock | 1 | — |
-| VETERAN_10 | Veteran | Win 10 matches | Rare | Cumulative | 10 | r009 |
-| SAVAS_MAKINESI | War Machine | Win 25 matches | Rare | Cumulative | 25 | r035 |
-| EFSANE | Legend | Win 50 matches | Epic | Cumulative | 50 | e007 |
-| COSMIC_100 | Cosmic Master | Win 100 matches | Legendary | Cumulative | 100 | l003 |
+| VETERAN_10 | Veteran | Win 10 matches | Rare | Cumulative | 10 | — |
+| SAVAS_MAKINESI | War Machine | Win 25 matches | Rare | Cumulative | 25 | — |
+| EFSANE | Legend | Win 50 matches | Epic | Cumulative | 50 | c3_3 |
+| COSMIC_100 | Cosmic Master | Win 100 matches | Legendary | Cumulative | 100 | — |
 | FLAWLESS | Flawless | Win a match without taking any damage | Epic | SingleUnlock | 1 | — |
 | UNDERDOG | Underdog | Win while all enemies have more HP | Rare | SingleUnlock | 1 | — |
 | HIZLI_BITIR | Quick Finish | Win a match in 5 turns | Rare | SingleUnlock | 1 | — |
@@ -509,7 +397,7 @@ Create the following 50 achievements as ScriptableObjects and add them to the da
 | TETIKCI | Gunslinger | Fire 30 shots in a single match | Rare | Cumulative | 30 | — |
 | ISABETLI | Accurate | Finish with an 80% hit rate (min 10 shots) | Epic | SingleUnlock | 1 | — |
 | SAGLAMDURUG | Solid Stance | Take 10,000 total damage and survive | Rare | Cumulative | 10000 | — |
-| GEZEGEN_KATILI | Planet Killer | Destroy 10 planets in total | Epic | Cumulative | 10 | u034 |
+| GEZEGEN_KATILI | Planet Killer | Destroy 10 planets in total | Epic | Cumulative | 10 | — |
 | GALAKSI_TAMIRCISI | Galaxy Mechanic | Play 100 matches in total | Common | Cumulative | 100 | — |
 
 ### WEAPONS (10)
@@ -517,8 +405,8 @@ Create the following 50 achievements as ScriptableObjects and add them to the da
 |---|---|---|---|---|---|---|
 | TABANCALI | Pistolero | Hit 50 enemies with the pistol | Common | Cumulative | 50 | — |
 | KESKIN_NISANCI | Sharpshooter | Land 10 headshots with the pistol | Rare | Cumulative | 10 | — |
-| ROKETCI | Rocketeer | Damage 3+ enemies with a single RPG shot | Rare | SingleUnlock | 1 | r015 |
-| PATLAMA_UZMANI | Explosion Expert | Fire 100 total shots with the RPG | Rare | Cumulative | 100 | u022 |
+| ROKETCI | Rocketeer | Damage 3+ enemies with a single RPG shot | Rare | SingleUnlock | 1 | — |
+| PATLAMA_UZMANI | Explosion Expert | Fire 100 total shots with the RPG | Rare | Cumulative | 100 | — |
 | SAÇMA_YAGMURU | Pellet Rain | Land every pellet of a shotgun blast | Epic | SingleUnlock | 1 | — |
 | POMPACI | Pumper | Hit 5 enemies in a row with the shotgun | Rare | SingleUnlock | 1 | — |
 | EL_BOMBACI | Grenadier | Hit 2+ enemies with a single grenade | Rare | SingleUnlock | 1 | — |
@@ -529,21 +417,21 @@ Create the following 50 achievements as ScriptableObjects and add them to the da
 ### SKILLS (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| KARA_DELIK_USTASI | Black Hole Master | Pull 3 enemies with a single Black Hole | Epic | SingleUnlock | 1 | e012 |
+| KARA_DELIK_USTASI | Black Hole Master | Pull 3 enemies with a single Black Hole | Epic | SingleUnlock | 1 | — |
 | OLAY_UFKU | Event Horizon | Pull 50 enemies with Black Hole | Rare | Cumulative | 50 | — |
 | ISINLANAN | Teleported | Teleport behind an enemy and hit them | Rare | SingleUnlock | 1 | — |
 | KUANTUM | Quantum | Use Teleport 5 times in a single match | Common | Cumulative | 5 | — |
-| DOKUNULMAZ | Untouchable | Block 500 damage with Shield | Rare | Cumulative | 500 | e018 |
+| DOKUNULMAZ | Untouchable | Block 500 damage with Shield | Rare | Cumulative | 500 | — |
 | KALKAN_DUVARI | Shield Wall | Block 3 attacks with Shield | Rare | SingleUnlock | 1 | — |
 | CEKIC_ZAMANI | Hammer Time | Knock an enemy off the planet with Bat Hammer | Epic | SingleUnlock | 1 | — |
-| HOME_RUN | Home Run | Make a Bat Hammer-struck enemy collide with another | Legendary | SingleUnlock | 1 | l014 |
+| HOME_RUN | Home Run | Make a Bat Hammer-struck enemy collide with another | Legendary | SingleUnlock | 1 | — |
 | SUPER_KAHRAMAN | Super Hero | Deal damage by landing on an enemy with Super Jump | Rare | SingleUnlock | 1 | — |
 | YÖRÜNGE | Orbit | Change planets with Super Jump and take a shot | Common | SingleUnlock | 1 | — |
 
 ### SOCIAL (10)
 | achievementId | displayName | description | rarity | triggerType | targetValue | rewardCostumeId |
 |---|---|---|---|---|---|---|
-| SOSYAL_KELEBEK | Social Butterfly | Play matches with 8 different players | Common | Cumulative | 8 | r023 |
+| SOSYAL_KELEBEK | Social Butterfly | Play matches with 8 different players | Common | Cumulative | 8 | — |
 | REKABETCI | Competitor | Finish top 3 in a ranked match | Rare | SingleUnlock | 1 | — |
 | KOZMIK_AVCI | Cosmic Hunter | Reach the leaderboard top 10 | Epic | SingleUnlock | 1 | — |
 | BIR_NUMARA | Number One | Reach the top of the leaderboard | Legendary | SingleUnlock | 1 | — |
@@ -552,7 +440,7 @@ Create the following 50 achievements as ScriptableObjects and add them to the da
 | KOZMIK_EKIP | Cosmic Squad | Play 5 matches with the same 3 people | Rare | Cumulative | 5 | — |
 | INTIKAM | Revenge | Beat the player who killed you in the next match | Rare | SingleUnlock | 1 | — |
 | HERKESE_MEYDAN | Challenge Everyone | Damage 7 different players in the same match | Epic | SingleUnlock | 1 | — |
-| GALAKSININ_EFSANESI | Legend of the Galaxy | Complete all 49 achievements | Legendary | SingleUnlock | 1 | l007 |
+| GALAKSININ_EFSANESI | Legend of the Galaxy | Complete all 49 achievements | Legendary | SingleUnlock | 1 | — |
 
 ## 5.3 AchievementEvents.cs
 `Scripts/Achievements/Core/AchievementEvents.cs`
@@ -933,20 +821,24 @@ AchievementEvents.FirePlanetDestroyed();
 - Each quest: name + progress bar + reward + time remaining
 - Completed ones green, incomplete ones normal
 
-### CostumeShopPanel.prefab
-- Grid layout: 4 columns
-- Each card: placeholder art area (128x128 gray rect + "Art Coming Soon" text)
-- Rarity border color
-- Lock icon + condition text (if locked)
-- Gold/Gem price (if not owned)
-- "Equip" button (if owned)
-- Filters: Rarity / Type / Theme / Unlock Method
+### WardrobePanel.prefab (actual implementation name: `WardrobePanelUI.cs`)
+- **Not** a filterable 4-column grid — the 2026-07-16 redesign replaced that with **5 character
+  columns × 3 tiers** (one column per character, tiers stacked top-to-bottom in each column).
+- Locked costumes are VISIBLE (not hidden): Gold/Gem-unlock ones show a price pill with a direct
+  purchase button (disabled when the balance is insufficient, refreshed live on
+  `CurrencyManager.OnCurrencyChanged`); Level/Chest/Achievement-unlock ones show a condition label
+  instead of a price.
+- Each card: placeholder art area (color + initial-letter badge, `previewSprite` null-safe — swaps
+  to the real sprite automatically once art is added, no code change needed) + rarity border color.
+- Tapping an owned card calls `CostumeManager.Equip()` and updates the equipped indicator.
+- No Rarity/Type/Theme/UnlockMethod filter row — with only 15 items across 5 fixed columns, a
+  filter UI isn't needed.
 
 ### MainMenuEconomyWidget.cs
 Persistent widget to add to the main menu Canvas:
 - Top bar: [Level Badge] [━━━━XP BAR━━━━] [Gold] [Gem]
 - Buttons: "Chests (X/3)" → ChestPanel | "Quests" → QuestPanel |
-  "Costumes" → CostumeShopPanel | "Achievements" → AchievementListPanel
+  "Wardrobe" → WardrobePanel | "Achievements" → AchievementListPanel
 
 ---
 
@@ -1057,10 +949,12 @@ Lv 2: Bomb | Lv 4: Super Jump | Lv 6: Grenade
 Lv 8: Shield | Lv 10: Black Hole, Teleport, Bat Hammer
 
 ### Costume System
-- 150 costumes: 40 Common, 35 Uncommon, 35 Rare, 25 Epic, 15 Legendary
-- Type: Character skin + Weapon skin (independent)
+- 15 costumes: 5 characters (Nova, Blitz, Titan, Scope, Vex — "Galactic Rumble Show" theme) × 3
+  tiers each (Standard/Advanced/Elite, user-facing: Rookie/Star/Legend)
+- Type: Character skin only — weapon costumes were removed (2026-07-16 redesign)
 - previewSprite may be null — the UI shows a placeholder automatically
-- Unlock: Level / Gold / Gem / Chest / Achievement
+- Unlock: Default (5× Standard) / Level / Gold / Gem / Chest / Achievement (mixed across the 10
+  Advanced/Elite tiers — see Section 4 for the exact per-costume mapping)
 
 ### Income Sources
 - End of match: XP only (win 50-150, loss 20-50)
@@ -1108,7 +1002,8 @@ Verify in order once the implementation is finished:
 - [ ] Default weapons (Pistol/Shotgun/RPG) are unlocked on first launch
 - [ ] Black Hole, Teleport and Bat Hammer unlock at Lv 10
 - [ ] Costume purchases check both the level and the currency requirement
-- [ ] Prestige costumes (l005, l009, l015) unlock at the correct level
+- [ ] ByLevel costumes (c1_3 Lv 20, c3_2 Lv 10, c5_3 Lv 35) auto-grant on level-up, with a catch-up
+      scan on `Start` for levels already passed (e.g. via Cloud Save restore)
 
 **Achievement:**
 - [ ] An already-unlocked achievement does not grant rewards again
@@ -1136,7 +1031,8 @@ Verify in order once the implementation is finished:
 - [ ] The AchievementPopup queue shows multiple achievements in sequence
 - [ ] CurrencyHUD is visible in all scenes (DontDestroyOnLoad)
 - [ ] LevelUpPopup correctly lists the items that were unlocked
-- [ ] CostumeShop filters work (rarity, type, theme, unlock method)
+- [ ] WardrobePanel shows all 5 character columns × 3 tiers, with locked costumes visible
+      (price pill for Gold/Gem, condition label for Level/Chest/Achievement)
 
 **Save/Load:**
 - [ ] All JSON files are created with default values on first run
