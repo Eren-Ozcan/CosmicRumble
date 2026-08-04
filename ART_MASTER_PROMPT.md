@@ -5,6 +5,15 @@
 > character design was nailed down: **species-neutral mascot astronaut** (not human/animal/insect).
 > Costume production was re-planned around hue-shift economics, and the priority order changed
 > (base character first).
+>
+> **2026-08-04 update:** Section 4 (Costumes) was rewritten. The code-side costume system was
+> redesigned on 2026-07-16 (see `TODO.md` "Costume Redesign") from 150 free-standing costumes down
+> to **5 characters × 3 tiers = 15 costumes total**, with weapon costumes removed entirely
+> (`CostumeDefinition.costumeType` is now always `Character` — see `CostumeAssetGenerator.cs`). The
+> 2026-07-30 "Galactic Rumble Show" theme decision named the 5 characters (Nova/Blitz/Titan/Scope/
+> Vex). This document previously still described the old 150-item plan; it's now aligned with the
+> real 15-item system, so the hue-shift/pattern-overlay production economics (old Section 4.3) no
+> longer apply — 15 is small enough to just generate directly.
 
 ---
 
@@ -16,8 +25,8 @@
    **Section 2.2** negative block too.
 3. First task is **Section 3** (base character). Produce nothing else until the base is approved —
    costumes, icons and avatars will all derive from the base's shape language.
-4. For costumes, follow the production strategy in **Section 4.3**: most Common/Uncommon items are
-   not generation work, they are hue-shift/layer work.
+4. For costumes, see **Section 4** — the current system is only 15 items (5 characters × 3 tiers),
+   small enough to generate directly, no hue-shift/layer economy required.
 
 ### 0.1 Tool selection (free options)
 
@@ -33,7 +42,7 @@ time, verify before using):
 - **Stable Diffusion (local, e.g. A1111/ComfyUI)** — completely free and unlimited; dressing the
   same silhouette in costumes via ControlNet (Section 4.3) works most reliably here. Requires a GPU.
 
-### 0.2 Character consistency (making 150 costumes look like the same character)
+### 0.2 Character consistency (making all 15 costumes look like the same character)
 
 - Once the base character is approved, **one reference PNG** is locked in
   (`Assets/Art/Reference/base_mascot.png`).
@@ -62,12 +71,15 @@ time, verify before using):
 
 | Asset | Generation | In-game |
 |---|---|---|
-| Base character & costume (character) | 1024×1024 | ~512px tall |
-| Costume (weapon) | 1024×1024 | ~256–384px wide |
+| Base character & costume (15 total, character-only) | 1024×1024 | ~512px tall |
 | Avatar | 512×512 | 256×256 |
 | Weapon/ability HUD icon | 512×512 | 128–256 |
 | Planet | 2048×2048 | 1024+ (1/3 of the screen, no zoom) |
 | UI/economy icons | 512×512 | 128–256 |
+| Base weapon (in-hand) / orb prop | 1024×1024 | ~256–384px wide |
+| Projectile (bullet/pellet/rocket/orb) | 512×512 | 32–96px, small and fast on screen |
+| Impact/explosion VFX | 512×512 (vortex sheet: 512×512 per frame) | 128–512 depending on Small/Large |
+| Button/nav icon glyph | 256×256 | 48–64 |
 
 ---
 
@@ -99,8 +111,9 @@ meta-economy feel).
 **Gameplay:** Turn-based; projectiles trace curved trajectories around the planet with custom
 gravity (they can wrap around behind the planet), and the impacted surface is destroyed piece by
 piece (destructible sphere). Weapons: Pistol, Shotgun, RPG, Grenade, Bomb. Abilities: BlackHole,
-Teleport, Shield, BatHammer, SuperJump. Meta: level/prestige, Gold/Gem, 150 cosmetic costumes, 50
-achievements, quests, chests, leaderboard, friends, 7 languages. Platform: Android → iOS.
+Teleport, Shield, BatHammer, SuperJump. Meta: level/prestige, Gold/Gem, 15 cosmetic costumes
+(5 characters × 3 tiers), 50 achievements, quests, chests, leaderboard, friends, 7 languages.
+Platform: Android → iOS.
 
 **Mood-board keywords:**
 
@@ -159,10 +172,10 @@ Rationale (can also be given to the art tool as the answer to "why"):
 1. **360° readability:** The character also stands upside down under the planet. A round helmet +
    capsule body reads the same from every angle; a thin-limbed human/insect loses its silhouette
    when flipped.
-2. **150 costumes on a single silhouette:** On a species-neutral creature the costume becomes the
-   character *itself* (the one wearing the Phoenix costume "is a phoenix"); on a specific
-   human/animal it just looks like "a guy in an outfit". Also, since the face (eye layer) never
-   changes, color-variation costumes come for free (Section 4.3).
+2. **A believable 5-character roster on one silhouette:** On a species-neutral creature the
+   costume becomes the character *itself* (Nova the show host actually reads as a persona, not
+   just "a guy in a red outfit"). Since the face (eye layer) never changes, all 5 characters × 3
+   tiers stay automatically consistent with each other and with the base (Section 4.3).
 3. **Small-screen scale:** Only the eyes and head proportion can carry personality; detail can't.
 4. **IP ownership:** The current placeholder (`player_15.png`) looks like Luigi — unpublishable. The
    mascot must be entirely original; it's the face of the game from the app icon to store artwork.
@@ -222,11 +235,12 @@ and stacked in Unity with separate SpriteRenderers:
 1. **body_base** — suit+boots+gloves (the layer costumes recolor/replace)
 2. **helmet_glass + eyes** — never changes in any costume (character identity)
 3. **costume_overlay** — armor/wing/cape pieces added on Rare+ costumes
-4. **weapon** — the held weapon, fully independent (weapon costumes change only this)
+4. **weapon** — the held weapon (Section 6.1), fully independent and untouched by any costume
 
-Gain: Common/Uncommon character costumes = hue-shift/tint on body_base (NO generation); eyes/
-expressions are automatically identical across all costumes; weapon skins are produced independently
-of the character.
+Gain: eyes/expressions are automatically identical across all 15 costumes since they never touch
+the `helmet_glass + eyes` layer; the held weapon (Section 6.1) is produced fully independently of
+the character, since costumes no longer touch weapons at all (weapon costumes were removed —
+Section 4).
 
 ### 3.6 Base approval checklist (don't start Section 4 before it passes)
 
@@ -240,157 +254,153 @@ of the character.
 
 ---
 
-## 4. Costumes — 150 items
+## 4. Costumes — 15 items (5 characters × 3 tiers, no weapon costumes)
 
-### 4.1 Rarity visual language (colors already coded in the UI)
+The old 150-item plan below this line was superseded by the 2026-07-16 code redesign: 5 characters,
+each with 3 tiers, all `costumeType = Character` (weapon costumes were removed entirely — see
+`CostumeAssetGenerator.cs` and `TODO.md` "Costume Redesign"). This is small enough to just generate
+directly — no hue-shift/pattern-overlay economy needed.
 
-| Rarity | Hex | Material/detail language | Prompt phrase |
+### 4.1 Character roster (5) — "Galactic Rumble Show" theme (2026-07-30 decision)
+
+The game's meta-concept: an interplanetary arena show broadcast on TV; the 5 characters are the
+show's famous contestants (purely cosmetic — `characterId` isn't tied to weapon/ability choice,
+every player unlocks all 9 weapons by level).
+
+| characterId | Name | Persona | Palette |
 |---|---|---|---|
-| Common | `#9EA6B2` gray | flat color, matte, no ornaments | `plain flat recolor, matte fabric, no ornaments` |
-| Uncommon | `#4DD966` green | simple pattern, slight sheen | `simple pattern or texture detail, slight sheen` |
-| Rare | `#4088FF` blue | distinct silhouette detail, blue rim light | `distinct silhouette accessory, soft blue rim light` |
-| Epic | `#A659FF` purple | dramatic silhouette, energy effects | `dramatic silhouette pieces, glowing purple energy particles` |
-| Legendary | `#FFCC33` gold | gold/prismatic plating, aura | `ornate golden prismatic plating, dynamic radiant energy aura` |
+| 1 | **Nova** | charismatic show host/mascot | bright, fiery, gold/red |
+| 2 | **Blitz** | fast, energetic acrobat | neon blue, electric effects |
+| 3 | **Titan** | heavy, armored show of force | metallic gray, coarse lines |
+| 4 | **Scope** | cool-headed sharpshooter | minimal, technical, dark green |
+| 5 | **Vex** | mysterious master of control | purple/black, black hole motifs |
 
-### 4.2 Type and rarity distribution
+Note: "Nova" is deliberately shared with the profile-avatar system (Section 5's `av01 Nova`) — same
+name used for brand consistency, since Nova is the main mascot identity in both systems.
 
-| Rarity | Character | Weapon | Total |
-|---|---|---|---|
-| Common | 24 | 16 | 40 |
-| Uncommon | 19 | 16 | 35 |
-| Rare | 18 | 17 | 35 |
-| Epic | 16 | 9 | 25 |
-| Legendary | 9 | 6 | 15 |
-| **TOTAL** | **86** | **64** | **150** |
+### 4.2 Tier structure (3 per character)
 
-### 4.3 Production strategy — NOT 150 generations, ~70 generations + hue-shift
+Code-internal tier names are `Standard/Advanced/Elite`; the intended user-facing names (a
+`displayName`/loc-string-only change, no code change) are **Rookie → Star → Legend**. Going up a
+tier does **not** change the character's persona color — it only increases ornamentation/energy
+density, reusing the old rarity material language:
 
-| Layer | Scope | Method | Actual generations |
-|---|---|---|---|
-| Common character (24) | all color variations | hue-shift/tint on body_base (Unity material or Photopea) | **0** |
-| Common weapon (16) | color variation | first generate 5 base weapon sprites, then tint | **5** (base weapons) |
-| Uncommon (35) | color + simple pattern | hue-shift + generate 8-10 pattern overlays (camo, ice crack, circuit, leaf...) and mix | **~10** (overlays) |
-| Rare (35) | unique detail | generate one by one (img2img with reference) | 35 |
-| Epic (25) | dramatic silhouette | generate one by one | 25 |
-| Legendary (15) | fully unique | generate one by one, 2-3 attempts if needed | 15 |
+| Tier | Actual `CostumeRarity` (varies per character — see 4.3 table) | Prompt phrase |
+|---|---|---|
+| _1 Standard / Rookie | Common on all 5 | `plain flat recolor, matte fabric, no ornaments` |
+| _2 Advanced / Star | Uncommon or Rare | `simple pattern detail` (Uncommon) or `distinct silhouette accessory, soft blue rim light` (Rare) |
+| _3 Elite / Legend | Epic or Legendary | `dramatic silhouette pieces, glowing energy particles matching the character's OWN persona color` (Epic) or `ornate golden prismatic plating, dynamic radiant golden energy aura` (Legendary) |
 
-Total actual generations ≈ **90 images** (instead of 150), and Common/Uncommon come out instantly,
-for free, and 100% consistent. Hue-shift color targets are obvious from the costume name (e.g. c005
-Yellow Storm → yellow).
-
-### 4.4 Theme descriptor dictionary (the English block that replaces {THEME})
-
-| Theme | Descriptor |
-|---|---|
-| Space | `cosmic starfield pattern, swirling nebula colors, glowing constellation accents` |
-| Fantasy | `medieval fantasy armor, dragon scale texture, glowing runes, ornate engravings` |
-| Cyber | `neon circuit lines, holographic panels, glowing tech visor, cyberpunk color glow` |
-| Nature | `leafy vines, moss and bark textures, organic shapes, mushroom/flower accents` |
-| Dark | `shadowy black-purple wisps, ominous glow, smoky dark aura` |
-| Fire | `living flames, glowing ember cracks, molten lava veins, heat glow` |
-| Ice | `crystalline ice shards, frost patterns, frozen mist, cold blue glow` |
-| Mech | `riveted metal armor plates, hydraulic joints, exhaust vents, robotic parts` |
-| Myth | `ancient god motifs, laurel and gold ornaments, marble and divine radiant glow` |
-| Other | `clean bold single-color design` |
-
-### 4.5 Prompt templates
-
-**Character costume (Rare+):**
+### 4.3 Prompt template
 
 ```
 same character as the reference image, identical silhouette, identical round glass helmet and
-big oval eyes, only the space suit costume changes: "{NAME}" costume, theme: {THEME DESCRIPTOR},
-{RARITY PROMPT PHRASE}, accent color {RARITY_HEX}, full-body side-view 2D game sprite,
-[+ 2.1 style block] [+ 2.2 negative block]
+big oval eyes, only the space suit costume changes: "{CHARACTER NAME} — {TIER NAME}" costume,
+persona: {PERSONA DESCRIPTOR}, dominant color {PALETTE}, {TIER MATERIAL PHRASE}, full-body
+side-view 2D game sprite, [+ 2.1 style block] [+ 2.2 negative block]
 ```
 
-**Weapon costume:**
+### 4.4 Full list — 15 filled-in prompts (copy-paste ready, matches `CostumeAssetGenerator.cs` ids exactly)
 
 ```
-sci-fi cartoon {pistol|shotgun|rocket launcher|grenade|time bomb} weapon skin, "{NAME}",
-theme: {THEME DESCRIPTOR}, {RARITY PROMPT PHRASE}, accent color {RARITY_HEX}, side-view 2D game
-asset, chunky oversized toylike proportions, bold silhouette, [+ 2.1] [+ 2.2]
-```
-
-**Filled-in examples:**
-
-```
-(e002 Dragon Lord — Epic Character)
+(c1_1 — Nova, Rookie tier, Common)
 same character as the reference image, identical silhouette, identical round glass helmet and
-big oval eyes, only the space suit costume changes: "Dragon Lord" costume, theme: medieval
-fantasy armor, dragon scale texture, glowing runes, ornate engravings, dramatic silhouette
-pieces with small dragon-wing back ornaments and horned helmet rim, glowing purple energy
-particles, accent color #A659FF, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+big oval eyes, only the space suit costume changes: "Nova — Rookie" costume, persona:
+charismatic galactic show host/mascot, dominant color bright gold and red, plain flat recolor,
+matte fabric, no ornaments, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
 
-(l013 Black Hole Cannon X — Legendary Weapon)
-sci-fi cartoon rocket launcher weapon skin, "Black Hole Cannon X", theme: cosmic starfield
-pattern, swirling nebula colors, glowing constellation accents, ornate golden prismatic plating,
-dynamic radiant energy aura, a tiny swirling black hole visible inside the barrel, accent color
-#FFCC33, side-view 2D game asset, chunky oversized toylike proportions, [+ 2.1] [+ 2.2]
+(c1_2 — Nova, Star tier, Rare, unlock: 800 Gold)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Nova — Star" costume, persona: charismatic
+galactic show host/mascot, dominant color bright gold and red, distinct silhouette accessory (a
+small showman's cape or shoulder spotlight rig), soft warm rim light, full-body side-view 2D
+game sprite, [+ 2.1] [+ 2.2]
+
+(c1_3 — Nova, Legend tier, Epic, unlock: Level 20)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Nova — Legend" costume, persona:
+charismatic galactic show host/mascot at the peak of fame, dominant color bright gold and red,
+dramatic silhouette pieces (a radiant spotlight-crown/antenna array), glowing orange-gold
+energy particles matching Nova's own persona color, full-body side-view 2D game sprite,
+[+ 2.1] [+ 2.2]
+
+(c2_1 — Blitz, Rookie tier, Common)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Blitz — Rookie" costume, persona: fast
+energetic acrobat, dominant color neon blue, plain flat recolor, matte fabric, no ornaments,
+full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c2_2 — Blitz, Star tier, Uncommon, unlock: chest drop)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Blitz — Star" costume, persona: fast
+energetic acrobat, dominant color neon blue, simple lightning-bolt pattern detail, slight
+metallic sheen, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c2_3 — Blitz, Legend tier, Epic, unlock: 50 Gem)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Blitz — Legend" costume, persona: fast
+energetic acrobat at top speed, dominant color neon blue, dramatic silhouette pieces (small
+speed-fin accents on the boots/shoulders), glowing electric-blue energy particles and crackling
+speed-lines matching Blitz's own persona color, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c3_1 — Titan, Rookie tier, Common)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Titan — Rookie" costume, persona: heavy
+armored show of force, dominant color metallic gray, plain flat recolor, matte fabric, no
+ornaments, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c3_2 — Titan, Star tier, Rare, unlock: Level 10)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Titan — Star" costume, persona: heavy
+armored show of force, dominant color metallic gray, distinct silhouette accessory (thicker
+shoulder plating), soft blue rim light, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c3_3 — Titan, Legend tier, Legendary, unlock: achievement EFSANE)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Titan — Legend" costume, persona: heavy
+armored champion of the show, dominant color metallic gray with ornate golden prismatic
+plating, dynamic radiant golden energy aura, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c4_1 — Scope, Rookie tier, Common)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Scope — Rookie" costume, persona:
+cool-headed sharpshooter, dominant color dark green, plain flat recolor, matte fabric, no
+ornaments, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c4_2 — Scope, Star tier, Rare, unlock: 1200 Gold)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Scope — Star" costume, persona:
+cool-headed sharpshooter, dominant color dark green, distinct silhouette accessory (a small
+targeting-scope visor attachment), soft blue rim light, full-body side-view 2D game sprite,
+[+ 2.1] [+ 2.2]
+
+(c4_3 — Scope, Legend tier, Epic, unlock: 80 Gem)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Scope — Legend" costume, persona:
+cool-headed elite marksman, dominant color dark green, dramatic silhouette pieces (a precision
+targeting-array shoulder rig), glowing lime-green energy particles matching Scope's own persona
+color, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c5_1 — Vex, Rookie tier, Common)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Vex — Rookie" costume, persona: mysterious
+master of control, dominant color deep purple and black, plain flat recolor, matte fabric, no
+ornaments, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c5_2 — Vex, Star tier, Uncommon, unlock: chest drop)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Vex — Star" costume, persona: mysterious
+master of control, dominant color deep purple and black, simple swirling void pattern detail,
+slight dark sheen, full-body side-view 2D game sprite, [+ 2.1] [+ 2.2]
+
+(c5_3 — Vex, Legend tier, Epic, unlock: Level 35)
+same character as the reference image, identical silhouette, identical round glass helmet and
+big oval eyes, only the space suit costume changes: "Vex — Legend" costume, persona: mysterious
+master of control at full power, dominant color deep purple and black, dramatic silhouette
+pieces (a small orbiting black-hole motif on the shoulder), glowing violet-purple energy
+particles with tiny event-horizon wisps matching Vex's own persona color, full-body side-view
+2D game sprite, [+ 2.1] [+ 2.2]
 ```
-
-### 4.6 Full list (id · Name · Type · Theme)
-
-**COMMON (40)** — characters are hue-shifts, weapons are 5 base + tint (Section 4.3):
-c001 Gray Soldier · C · Other (starter) — c002 Standard Blue · C · Other (starter) — c003 Red
-Warrior · C · Other — c004 Green Camo · C · Nature — c005 Yellow Storm · C · Other — c006 Orange
-Ember · C · Fire — c007 Purple Night · C · Dark — c008 White Snow · C · Ice — c009 Brown Earth ·
-C · Nature — c010 Sky Blue · C · Space — c011 Steel Gray · W · Mech — c012 Rust Brown · W · Mech —
-c013 Forest Green · W · Nature — c014 Lava Red · W · Fire — c015 Ice Blue · W · Ice — c016 Night
-Black · W · Dark — c017 Sun Yellow · W · Other — c018 Coral Pink · C · Other — c019 Sea Teal · C ·
-Other — c020 Lavender · C · Other — c021 Bright Copper · W · Mech — c022 Desert Sand · C · Nature —
-c023 Pistachio Green · C · Nature — c024 Sea Foam · W · Ice — c025 Fog Gray · C · Dark — c026
-Sunset · C · Fire — c027 Stardust · W · Space — c028 Ocean Depths · W · Other — c029 Chalk White ·
-C · Other — c030 Anthracite · C · Dark — c031 Mint Green · W · Nature — c032 Candy Pink · C ·
-Other — c033 Thunder · W · Other — c034 Golden Yellow · W · Other — c035 Emerald · C · Nature —
-c036 Hedgehog Brown · C · Nature — c037 Titan Gray · W · Mech — c038 Maroon · C · Dark — c039
-Cobalt · W · Space — c040 Indigo Blue · C · Other
-
-**UNCOMMON (35)** — hue-shift + pattern overlay:
-u001 Forest Warrior · C · Nature — u002 Ice Mage · C · Ice — u003 Flame Dancer · C · Fire — u004
-Night Watcher · C · Dark — u005 Lightning Runner · C · Other — u006 Sandstorm · C · Nature — u007
-Deep Space · C · Space — u008 Iron Fist · C · Mech — u009 Wind Spirit · C · Nature — u010 Cosmic
-Purple · C · Space — u011 Dragon Fang · W · Fantasy — u012 Space Rifle · W · Space — u013 Ice
-Sword · W · Ice — u014 Flame Spear · W · Fire — u015 Shadow Blade · W · Dark — u016 Fog Pistol ·
-W · Dark — u017 Plasma Tube · W · Cyber — u018 Nature Shield · W · Nature — u019 Lightning Orb ·
-W · Other — u020 Iron Shield · W · Mech — u021 Crystal Warrior · C · Ice — u022 Volcano Man · C ·
-Fire — u023 Cyber Ninja · C · Cyber — u024 Stone Golem · C · Nature — u025 Neon Jacket · C ·
-Cyber — u026 Foam Sailor · C · Other — u027 Steppe Soldier · C · Nature — u028 Silver Knight · C ·
-Fantasy — u029 Blue Crocodile · W · Nature — u030 Ember Blade · W · Fire — u031 Hologram Weapon ·
-W · Cyber — u032 Steel Dragon · W · Mech — u033 Crystal Bomb · W · Ice — u034 Root Texture · W ·
-Nature — u035 Storm Sail · C · Other
-
-**RARE (35)** — generated one by one:
-r001 Galaxy Wanderer · C · Space — r002 Black Knight · C · Dark — r003 Neon Samurai · C · Cyber —
-r004 Dragon Hunter · C · Fantasy — r005 Ice God · C · Ice — r006 Lava Giant · C · Fire — r007
-Quantum Armor · C · Cyber — r008 Forest God · C · Nature — r009 Dark Sorcerer · C · Dark — r010
-Meteor Warrior · C · Space — r011 Plasma Rifle · W · Cyber — r012 Dragon Flame · W · Fantasy —
-r013 Black Hole Cannon · W · Space — r014 Ice Shield · W · Ice — r015 Ember Bomb · W · Fire —
-r016 Nano Blade · W · Cyber — r017 Rune Spear · W · Fantasy — r018 Shadow Arrow · W · Dark — r019
-Emerald Dragon · W · Fantasy — r020 Star Sword · W · Space — r021 Titanium Golem · C · Mech —
-r022 Light Speed · C · Space — r023 Sea Monster · C · Nature — r024 Storm God · C · Myth — r025
-Crimson Shaman · C · Myth — r026 Cyber Samurai · C · Cyber — r027 Bionic Warrior · C · Mech —
-r028 Vortex Rifle · W · Space — r029 Shaman Staff · W · Myth — r030 Titan Hammer · W · Mech —
-r031 Wind Blade · W · Nature — r032 Crystal Staff · W · Fantasy — r033 Laser Rifle · W · Cyber —
-r034 Dark Rune · W · Dark — r035 Mythic Archer · C · Myth
-
-**EPIC (25)** — generated one by one:
-e001 Nebula Warrior · C · Space — e002 Dragon Lord · C · Fantasy — e003 Cyber God · C · Cyber —
-e004 Death Spirit · C · Dark — e005 Volcano God · C · Fire — e006 Ice Storm · C · Ice — e007
-Forest Deity · C · Nature — e008 Titan Armor · C · Mech — e009 Olympian God · C · Myth — e010
-Quantum Shadow · C · Cyber — e011 Galactic Emperor · C · Space — e012 Ancient Dragon · C ·
-Fantasy — e013 Neon Demon · C · Dark — e014 Plasma God · W · Cyber — e015 Dragon Breath · W ·
-Fantasy — e016 Dark Star · W · Dark — e017 Volcano Cannon · W · Fire — e018 Ice Crystal · W ·
-Ice — e019 Nano Swarm · W · Mech — e020 Rune Burst · W · Fantasy — e021 Nebula Bomb · W · Space —
-e022 Titan Laser · W · Mech — e023 Mythic Armor · C · Myth — e024 Crystal Golem · C · Ice — e025
-Crow King · C · Dark
-
-**LEGENDARY (15)** — generated one by one, with the highest care:
-l001 Cosmic Master · C · Space — l002 Dragon Emperor · C · Fantasy — l003 Dark God · C · Dark —
-l004 Doom Lord · C · Dark — l005 Time Master · C · Myth — l006 Universe Warrior · C · Space —
-l007 Ancient Giant · C · Myth — l008 Bionic God · C · Mech — l009 Phoenix Warrior · C · Fire —
-l010 Cosmic Destroyer · W · Space — l011 God Sword · W · Myth — l012 Dragon Heart · W · Fantasy —
-l013 Black Hole Cannon X · W · Space — l014 Doom Hammer · W · Dark — l015 Creator's Power · W · Myth
 
 ---
 
@@ -453,6 +463,104 @@ at 64px, subtle dark vignette inside icon frame, [+ 2.1] [+ 2.2]
 The current icons (`Assets/Art/Sprites/UI/*_icon.png`) are random placeholders — all of them will be
 replaced by this set. `fly_icon.png` corresponds to SuperJump; migrate it to the new naming scheme.
 
+### 6.1 Base weapon in-hand art — 6 items (full-size, held by the mascot)
+
+Distinct from Section 6's small HUD icons above: this is the **full-size weapon sprite the
+character actually holds** in a match — produced once per weapon, used directly for the in-hand
+combat art. There are no weapon costumes/skins in the current system (Section 4), so each of these
+6 is the single, final art for that weapon — not a tint source. Layered independently from the
+character body per Section 3.5 (`weapon` layer) — same held scale as Section 3.2/3.3.
+
+Shared prompt skeleton (each entry below fills in `{weapon description}`):
+
+```
+sci-fi cartoon {weapon description}, toylike chunky oversized proportions, gripped by a stubby
+round mascot glove visible only at the handle (cropped, matches the base character's glove
+shape), side-view 2D game weapon sprite, same scale relationship as the base character,
+neutral light-gray/anthracite body color with one warm orange accent stripe (matches the base
+character's default palette so recolors and costume skins read clearly on top), bold thick dark
+outline, flat color blocks, soft two-tone cel shading, [+ 2.1 style block] [+ 2.2 negative block]
+```
+
+| id | Full weapon description to drop into `{weapon description}` |
+|---|---|
+| weapon_pistol_base | `compact fast-draw blaster pistol, short round barrel with a glowing energy-cell window near the grip, single bright muzzle-tip ring, tiny fold-down sight` |
+| weapon_shotgun_base | `heavy wide double-barrel blaster shotgun, oversized flared barrel mouths, chunky pump-grip under the barrel, a row of 3 small glowing shell-charge indicators on the side` |
+| weapon_rpg_base | `shoulder-fired rocket launcher tube, wide open rear vent, a chunky rocket already loaded with its orange-striped warning nose cone peeking out of the front, small carry handle on top` |
+| weapon_grenade_base | `round comedic hand grenade, oversized safety pin and lever exaggerated in size for readability, simple segmented sphere body, small pull-ring dangling` |
+| weapon_bomb_base | `hand-held cylindrical time-bomb canister before it's placed, a round glass-covered analog clock-face timer on top, one blinking red light, a fold-out magnetic clamp foot tucked against the side` |
+| weapon_bathammer_base | `chunky sci-fi bat/hammer hybrid, thick round barrel-shaped hitting end with a glowing horizontal energy-cell stripe, short sturdy handle wrapped in grip tape, tiny spark particles around the hitting end` |
+
+### 6.2 Ability orb props — held before throw (BlackHole & Teleport only)
+
+BlackHole and Teleport are thrown as a small orb (see `BlackHoleProjectile`/`TeleportOrbProjectile`),
+so — like the grenade above — the character needs a held-orb sprite for the aim pose. Shield and
+SuperJump are **self-cast** (no held prop; see 6.3 for their pure-VFX treatment) and need no new
+character-held art beyond the existing pose set in Section 3.4.
+
+```
+(blackhole_orb_held)
+a small dense dark-purple-black sphere held between two stubby round glove fingers,
+swirling event-horizon rings visible on its surface, thin crackling purple energy tendrils
+reaching outward a short distance, ready-to-throw pose, side-view 2D game prop sprite,
+[+ 2.1 style block] [+ 2.2 negative block]
+
+(teleport_orb_held)
+a small glowing cyan-blue crystal orb held between two stubby round glove fingers,
+a faint spiral portal-swirl pattern visible inside the crystal, a few loose light particles
+already drifting off its surface, ready-to-throw pose, side-view 2D game prop sprite,
+[+ 2.1 style block] [+ 2.2 negative block]
+```
+
+### 6.3 Projectiles, trails & impact VFX — 16 items
+
+This is currently the biggest real gap in the project: `Assets/Art/Sprites/Projectiles/` holds only
+four mismatched placeholders (`pistol_bullet.png`, `assault_bullet.png`, `grenade.png`,
+`rocket grenade.png`) and one placeholder sheet (`BlackHoleVortex_Sheet.png`) — none share a style,
+and Bomb/Teleport/muzzle-flash/impact-spark/explosion have no dedicated asset at all. Every
+projectile must read as a small, fast, clear silhouette against the dark starfield (Section 7's
+background), and every impact/explosion must stay in the game's "comedic, not gory" register
+(Section 1).
+
+**Projectiles** — shared skeleton:
+
+```
+{projectile description}, small fast-traveling 2D game projectile sprite, side-view, bold thick
+dark outline, flat saturated color with a bright glowing energy core, a short motion-streak tail
+suggesting speed, reads clearly as a tiny object against a dark starfield, [+ 2.1] [+ 2.2]
+```
+
+| id | `{projectile description}` | Note |
+|---|---|---|
+| proj_pistol_bullet | `elongated capsule-shaped energy bolt, orange-yellow glowing core with a white-hot tip` | replaces `pistol_bullet.png` |
+| proj_shotgun_pellet | `tiny round energy pellet, cyan-white glowing dot with a short soft tail` | single pellet — the game instantiates a 6–8 pellet spread from this one sprite; replaces `assault_bullet.png` |
+| proj_rpg_rocket | `chunky toylike rocket with small tail fins and a bright orange thruster-flame trail, red-and-white body with a bold warning-stripe nose cone` | replaces the misnamed `rocket grenade.png` |
+| proj_grenade_flight | `same silhouette as weapon_grenade_base, tumbling in flight with soft curved motion-lines around it, pin already pulled, a tiny lit fuse spark on top` | in-flight variant of 6.1's held grenade |
+| proj_blackhole_orb | `small dense dark-purple sphere with visible swirling event-horizon rings and thin lightning-like energy tendrils reaching outward` | in-flight variant of 6.2's held orb, pre-vortex |
+| proj_teleport_orb | `glowing cyan crystal orb leaving a spiral particle trail behind it, faint translucent afterimages suggesting warp speed` | in-flight variant of 6.2's held orb |
+| proj_bomb_placed | `cylindrical time-bomb canister sitting on the ground, a fold-out magnetic clamp foot gripping the surface, round glass-covered analog clock-face timer with one big blinking red light, comedic "about to go off" tension` | placed/idle state, distinct from the hand-held `weapon_bomb_base` |
+
+**Impact & explosion VFX** — shared skeleton (single "peak frame" sprite; Unity scales/fades it in
+code, no sprite-sheet animation needed unless noted):
+
+```
+{effect description}, cartoon comedic burst, radial flat spiky shapes, bright warm core fading
+outward, thick dark outline, no smoke realism, no blood, big and flashy but toylike, side-view
+2D game VFX sprite, [+ 2.1] [+ 2.2]
+```
+
+| id | `{effect description}` | Note |
+|---|---|---|
+| vfx_muzzle_flash | `small star-burst flash at a gun barrel tip, white-yellow core with a few short orange spikes` | plays once per shot, Pistol/Shotgun/RPG |
+| vfx_bullet_impact | `small spark burst on impact, thin bright radiating white-cyan lines, a tiny cartoon dust puff` | plays on any bullet/pellet hit |
+| vfx_explosion_small | `mid-size explosion burst, bright yellow-white core fading to orange at the tips, a few comedic soot-smudge specks flying outward, no gore` | Grenade, RPG, HandGrenade |
+| vfx_explosion_large | `big screen-filling explosion burst, same yellow-orange language as the small explosion but roughly 3× larger, with an extra faint shockwave ring` | Bomb |
+| vfx_blackhole_vortex | `swirling dark purple-black vortex pulling in thin light-streaks, a pulsing glowing event-horizon core at the center` | replaces `BlackHoleVortex_Sheet.png`; keep as a short 4–6 frame looping sheet, not a single frame |
+| vfx_teleport_portal | `ring-shaped cyan-blue warp portal, swirling energy particles forming the rim, a bright flash at the core` | reused at both the departure and arrival point |
+| vfx_shield_bubble | `translucent glowing energy bubble made of soft hexagon panel seams, a thin bright rim light, semi-transparent so whatever is inside stays visible` | wraps around the character sprite — not a standalone icon, needs alpha transparency across the whole shape |
+| vfx_bathammer_impact | `a few bold cartoon star/spark shapes plus a short motion-swoosh line, bright yellow-white` | plays on melee contact |
+| vfx_superjump_trail | `a soft glowing dust-puff cloud plus upward speed-lines`, warm orange-white glow | plays under the boots during the jump arc |
+
 ---
 
 ## 7. Planet / Map Art — 4 themes
@@ -504,6 +612,168 @@ All with the 2.1 style block + the suffix `square game UI icon, bold silhouette 
 | **App icon** | `tiny round planet with the mascot astronaut standing on top waving,
   bold readable at 48px, app icon composition` — produced once the mascot is approved, using the reference |
 
+### 8.1 Navigation & action button icons — 15 items
+
+Every button in the game is drawn procedurally in code (`UiKit.cs`: rounded-rect shape + solid
+color + shadow/stroke, no image assets at all — see `MakeBrawlBtn`/`Item` in `MainMenuUI.cs`).
+Today the drawer-menu buttons fall back to a **single capital letter inside a colored circle**
+(e.g. `"S"` for Settings, `"L"` for Leaderboard — `MainMenuUI.cs` lines ~710–733) instead of a real
+icon, and the big action buttons (`btn_wardrobe`, `btn_shop`, `btn_social`, `btn_quests`) have no
+icon at all, only text. This set replaces every letter placeholder with a real glyph and adds an
+icon to every icon-less action button. These are **glyphs meant to sit inside the existing
+procedural button shape** — don't design a new button shell, just the icon layer.
+
+Shared prompt skeleton:
+
+```
+square game UI icon glyph, {icon description}, bold simple silhouette readable at 48px,
+flat single-color or two-tone glyph (works when tinted to any button accent color),
+centered composition, transparent background, [+ 2.1 style block] [+ 2.2 negative block]
+```
+
+| id | Replaces / used by | `{icon description}` |
+|---|---|---|
+| btn_icon_settings | drawer `dw_settings` (was letter "S") | `mechanical gear/cog wheel, simple bold teeth` |
+| btn_icon_leaderboard | drawer `dw_leaderboard` (was letter "L") | `three-step winner's podium with a small star above the tallest step` |
+| btn_icon_achievements | drawer `dw_achievements` (was letter "A") | `circular medal badge with a star at its center and a short ribbon tail below` |
+| btn_icon_account | drawer `dw_account` (was letter "@") | `the mascot's round glass helmet silhouette with the two big oval eyes, front-facing (identity/profile glyph, reuses Section 3 character design)` |
+| btn_icon_training | drawer `dw_training` (was letter "T") | `round practice target with concentric rings and a dart stuck near the center` |
+| btn_icon_party | drawer `dw_party` (was letter "P") | `two of the mascot's round helmets side by side, small "+" between them` |
+| btn_icon_botmatch | drawer `dw_botmatch` (was letter "B") | `simple robot head with two square glowing eyes and a small antenna` |
+| btn_icon_wardrobe | `btn_wardrobe` (text-only today) | `coat hanger with a small folded cape/costume draped over it` |
+| btn_icon_shop | `btn_shop` (text-only today) | `space-themed shopping bag with a coin icon printed on the front` |
+| btn_icon_social | `btn_social` (text-only today) | `two overlapping chat speech-bubbles, one with a small "+" for add-friend` |
+| btn_icon_quests | `btn_quests` (text-only today) | `rolled scroll/checklist with one checkmark and one empty checkbox line` |
+| btn_icon_play | `btn_play_big` main CTA (currently text-only "PLAY") | `bold solid play triangle pointing right, slightly rounded corners to match the game's shape language` |
+| btn_icon_edit_avatar | `btn_edit_avatar` pencil badge | `simple pencil at a 45° angle, small sparkle at the tip` |
+| btn_icon_close | `UiKit.CloseButton` (currently a text "X") | `bold rounded X mark, thick even stroke weight` |
+| btn_icon_buy | `ShopPanelUI` `btn_buy` (currently text-only) | `single gold coin with a small "+" badge at its top-right corner` |
+
+Note: no social-login provider buttons exist in the code (`LoginPanelUI`/`LoginScreenUI` have no
+Google/Apple/Facebook branding), so there is nothing to generate there — if that ever changes, use
+each provider's official brand asset, never an AI-generated approximation of a trademarked logo.
+
+#### 8.1.1 Generation method — one icon per request, NOT a 15-icon grid sheet
+
+**Don't generate all 15 as a single grid/contact-sheet image.** A first attempt at that produced a
+sheet with a radial gradient background — cropping the 15 cells apart was easy, but making the
+background transparent afterward was not: simple corner-color chroma-keying leaves grainy
+noise and clips icon glow effects, because the gradient's color shifts across each cell (the same
+"white halo" risk Section 0.3 already warns about). **Generate each icon as its own separate
+request**, on a **solid flat plain white background** (not gradient, not radial, not a scene) —
+a flat single color keys out to transparency reliably with a basic tool (or even Unity's own alpha
+threshold), which a gradient never does. If the tool outputs true alpha transparency natively
+(Recraft, some Leonardo presets), use that directly instead of white + keying.
+
+Each prompt below is self-contained and ready to paste as-is (style block already folded in):
+
+```
+(btn_icon_settings)
+mechanical gear/cog wheel icon, simple bold teeth, single isolated icon only, one object
+centered in frame, no other icons, no grid, no text, no label, no caption, solid flat plain
+white background (not gradient, not radial, not a scene), chunky cartoon mobile game art
+style, thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes,
+soft two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_leaderboard)
+three-step winner's podium with a small glowing star above the tallest step, single isolated
+icon only, one object centered in frame, no other icons, no grid, no text, no label, no
+caption, solid flat plain white background, chunky cartoon mobile game art style, thick bold
+dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel
+shading, high-quality 2D game icon, no watermark
+
+(btn_icon_achievements)
+circular gold medal badge with a star at its center and a short red-blue ribbon tail below,
+single isolated icon only, one object centered in frame, no other icons, no grid, no text, no
+label, no caption, solid flat plain white background, chunky cartoon mobile game art style,
+thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft
+two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_account)
+a round glass astronaut-helmet silhouette with two big glowing oval eyes inside, front-facing,
+single isolated icon only, one object centered in frame, no other icons, no grid, no text, no
+label, no caption, solid flat plain white background, chunky cartoon mobile game art style,
+thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft
+two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_training)
+round archery practice target with concentric red-white rings and an arrow stuck near the
+center, single isolated icon only, one object centered in frame, no other icons, no grid, no
+text, no label, no caption, solid flat plain white background, chunky cartoon mobile game art
+style, thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft
+two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_party)
+two round astronaut-helmet silhouettes side by side with glowing oval eyes, a small blue "+"
+symbol between them, single isolated icon only, one object centered in frame, no other icons,
+no grid, no text, no label, no caption, solid flat plain white background, chunky cartoon
+mobile game art style, thick bold dark outlines, flat saturated vibrant colors, clean
+vector-like shapes, soft two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_botmatch)
+simple robot head with two square glowing cyan eyes and a small antenna on top, single
+isolated icon only, one object centered in frame, no other icons, no grid, no text, no label,
+no caption, solid flat plain white background, chunky cartoon mobile game art style, thick
+bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel
+shading, high-quality 2D game icon, no watermark
+
+(btn_icon_wardrobe)
+a coat hanger with a small folded blue-gold cape/costume draped over it, single isolated icon
+only, one object centered in frame, no other icons, no grid, no text, no label, no caption,
+solid flat plain white background, chunky cartoon mobile game art style, thick bold dark
+outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel shading,
+high-quality 2D game icon, no watermark
+
+(btn_icon_shop)
+a space-themed shopping bag with a small planet and stars printed on it and a gold coin icon
+on the front, single isolated icon only, one object centered in frame, no other icons, no
+grid, no text, no label, no caption, solid flat plain white background, chunky cartoon mobile
+game art style, thick bold dark outlines, flat saturated vibrant colors, clean vector-like
+shapes, soft two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_social)
+two overlapping chat speech-bubbles, one containing a small green "+" symbol for add-friend,
+single isolated icon only, one object centered in frame, no other icons, no grid, no text, no
+label, no caption, solid flat plain white background, chunky cartoon mobile game art style,
+thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft
+two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_quests)
+a rolled parchment scroll/checklist with one green checkmark line and one empty checkbox line,
+single isolated icon only, one object centered in frame, no other icons, no grid, no text, no
+label, no caption, solid flat plain white background, chunky cartoon mobile game art style,
+thick bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft
+two-tone cel shading, high-quality 2D game icon, no watermark
+
+(btn_icon_play)
+a bold solid green play triangle pointing right, slightly rounded corners, single isolated
+icon only, one object centered in frame, no other icons, no grid, no text, no label, no
+caption, solid flat plain white background, chunky cartoon mobile game art style, thick bold
+dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel
+shading, high-quality 2D game icon, no watermark
+
+(btn_icon_edit_avatar)
+a simple wooden pencil tilted at a 45-degree angle with a small sparkle near the tip, single
+isolated icon only, one object centered in frame, no other icons, no grid, no text, no label,
+no caption, solid flat plain white background, chunky cartoon mobile game art style, thick
+bold dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel
+shading, high-quality 2D game icon, no watermark
+
+(btn_icon_close)
+a bold rounded red X mark with thick even stroke weight, single isolated icon only, one object
+centered in frame, no other icons, no grid, no text, no label, no caption, solid flat plain
+white background, chunky cartoon mobile game art style, thick bold dark outlines, flat
+saturated vibrant colors, clean vector-like shapes, soft two-tone cel shading, high-quality 2D
+game icon, no watermark
+
+(btn_icon_buy)
+a single shiny gold coin with a small dark "+" badge at its top-right corner, single isolated
+icon only, one object centered in frame, no other icons, no grid, no text, no label, no
+caption, solid flat plain white background, chunky cartoon mobile game art style, thick bold
+dark outlines, flat saturated vibrant colors, clean vector-like shapes, soft two-tone cel
+shading, high-quality 2D game icon, no watermark
+```
+
 Store artwork (Play Console feature graphic, screenshot frames) is separate marketing work — don't
 start it before the base + 2-3 costumes + 1 planet are ready.
 
@@ -520,13 +790,19 @@ reference: v1 Section 9.
 
 1. **Base mascot character** (Section 3) — start nothing before the approval checklist passes; the
    Luigi-like placeholder is a release blocker.
-2. **5 base weapon sprites** (Section 4.3) — both the in-hand weapon art and the tint source for the
-   16 Common weapon costumes.
+2. **6 base weapon sprites + 2 held orb props** (Section 6.1–6.2) — the final in-hand weapon art
+   used directly in every match (no weapon costumes/skins exist in the current system).
 3. **Weapon/ability HUD icons** (Section 6) — on screen in every match, the current ones are random.
-4. **16 avatars** (Section 5) — the code side is ready, only the art is missing; can be produced
+4. **Projectiles & impact VFX** (Section 6.3) — currently the biggest true gap: 4 mismatched
+   placeholders and no dedicated bomb/teleport/muzzle-flash/impact/explosion art at all; every shot
+   fired in a match uses these.
+5. **Navigation & action button icons** (Section 8.1) — replaces the single-letter drawer
+   placeholders (`"S"`, `"L"`, `"A"`...) and adds icons to the currently text-only Wardrobe/Shop/
+   Social/Quests buttons; visible on every screen of the app.
+6. **16 avatars** (Section 5) — the code side is ready, only the art is missing; can be produced
    without a reference, independent/parallel work.
-5. **Costumes** (Section 4) — order: Common (hue-shift, ~1 day) → Uncommon (overlay) →
-   Legendary (15, highest showcase value) → Epic → Rare.
-6. **Planet variety** (Section 7) — 2-3 new themes.
-7. **App icon + store artwork** (Section 8) — mandatory for Play Console registration, but can't be
+7. **Costumes** (Section 4) — only 15 total, generate all directly: 5× Rookie tier first (Common,
+   what every new player sees immediately) → 5× Legend tier (showcase/aspirational) → 5× Star tier.
+8. **Planet variety** (Section 7) — 2-3 new themes.
+9. **App icon + store artwork** (Section 8) — mandatory for Play Console registration, but can't be
    done before the mascot is finalized.
