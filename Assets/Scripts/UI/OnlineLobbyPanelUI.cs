@@ -86,6 +86,8 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     async void OnQuickMatchClicked()
     {
+        if (_connectionActive) return; // double-tap guard — already matchmaking/connected
+
         _quickMatchStatusText.text = Loc.T("Searching for opponent...");
         _connectionActive = true;
         bool ok = await NetworkBootstrap.Instance.QuickMatchAsync();
