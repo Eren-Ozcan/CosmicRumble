@@ -41,8 +41,11 @@ namespace CosmicRumble.Cloud
         public const int TrophiesPerWin  = 30;
         public const int TrophiesPerLoss = 20;
 
-        private const string TrophyPrefKey    = "leaderboard_trophies";
-        private const string TrophySigPrefKey = "leaderboard_trophies_sig";
+        // Account-scoped: an unscoped key would let a device-local trophy cache from a
+        // previously logged-in account leak into whichever account is signed in next.
+        private static string AccountSuffix => AuthManager.Instance?.UserFileKey ?? "guest";
+        private static string TrophyPrefKey    => "leaderboard_trophies_" + AccountSuffix;
+        private static string TrophySigPrefKey => "leaderboard_trophies_sig_" + AccountSuffix;
 
         /// <summary>
         /// Yerelde bilinen güncel kupa sayısı. Değer, cihaza bağlı bir HMAC ile imzalanır
