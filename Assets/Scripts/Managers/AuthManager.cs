@@ -447,6 +447,8 @@ public class AuthManager : MonoBehaviour
         DestroyIfExists(LoginStreakManager.Instance?.gameObject);
         DestroyIfExists(AchievementManager.Instance?.gameObject);
         DestroyIfExists(AchievementTracker.Instance?.gameObject);
+        DestroyIfExists(AvatarManager.Instance?.gameObject);
+        DestroyIfExists(CostumeManager.Instance?.gameObject);
 
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
