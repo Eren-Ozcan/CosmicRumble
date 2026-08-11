@@ -89,11 +89,12 @@ namespace CosmicRumble.Economy
                 }
             }
 
+            // Always persist — totalXP changes on every XP gain, not just on level-up,
+            // and saving only inside the level-up branch left unlevelled XP unsaved.
+            Save();
+
             if (_data.currentLevel != oldLevel)
-            {
-                Save();
                 OnLevelUp?.Invoke(oldLevel, _data.currentLevel);
-            }
         }
 
         public PlayerProgressData GetProgress()
