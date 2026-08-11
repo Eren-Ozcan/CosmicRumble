@@ -251,6 +251,7 @@ public class MainMenuUI : MonoBehaviour
         if (LeaderboardManager.Instance  == null) new GameObject("LeaderboardManager").AddComponent<LeaderboardManager>();
         // Paneller MenuScene'e bağlı yaşar (DontDestroyOnLoad değil) — her menü dönüşünde yeniden kurulur.
         if (LeaderboardPanelUI.Instance  == null) new GameObject("LeaderboardPanelUI").AddComponent<LeaderboardPanelUI>();
+        if (AchievementsPanelUI.Instance == null) new GameObject("AchievementsPanelUI").AddComponent<AchievementsPanelUI>();
         if (SocialPanelUI.Instance       == null) new GameObject("SocialPanelUI").AddComponent<SocialPanelUI>();
         if (PartyLobbyPanelUI.Instance   == null) new GameObject("PartyLobbyPanelUI").AddComponent<PartyLobbyPanelUI>();
         if (InvitePopupUI.Instance       == null) new GameObject("InvitePopupUI").AddComponent<InvitePopupUI>();
