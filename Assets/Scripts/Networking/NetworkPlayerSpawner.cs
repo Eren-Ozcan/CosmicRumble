@@ -233,9 +233,10 @@ namespace CosmicRumble.Networking
             _playerObjects.Remove(clientId);
             if (netObj == null) return; // zaten yok olmuş
 
+            string ugsId = CosmicRumble.Utilities.NetworkIdentityRegistry.Get(clientId);
             _orphaned[clientId] = netObj;
             _orphanedSince[clientId] = Time.time;
-            _orphanUgsIds[clientId] = CosmicRumble.Utilities.NetworkIdentityRegistry.Get(clientId);
+            _orphanUgsIds[clientId] = ugsId;
 
             Debug.Log($"[NET] clientId={clientId} koptu — {netObj.name} sahipsiz bırakıldı, {reconnectTimeout}s içinde geri dönülebilir.");
             NetworkBootstrap.Instance?.ShowStatus(Loc.T("Opponent disconnected, waiting for reconnect..."));
@@ -243,8 +244,9 @@ namespace CosmicRumble.Networking
             // NGO'nun disconnect'i sadece transport bağlantısını koparır -- UGS Session/Lobby'nin
             // kendi üyelik kaydı ayrı bir katman ve otomatik silinmiyor. Bunu açıkça temizlemezsek
             // aynı kimlikle bir rejoin denemesi "already a member of the lobby" hatasıyla
-            // sürekli başarısız olur (canlı testte doğrulandı).
-            _ = NetworkBootstrap.Instance?.RemoveDisconnectedPeerAsync();
+            // sürekli başarısız olur (canlı testte doğrulandı). ugsId ile hedeflenir — birden fazla
+            // rakip olan modlarda (party/FFA) "ben olmayan ilk oyuncu" yanlış kişiyi atabilirdi.
+            _ = NetworkBootstrap.Instance?.RemoveDisconnectedPeerAsync(ugsId);
         }
     }
 }

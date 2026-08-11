@@ -244,7 +244,12 @@ namespace CosmicRumble.Networking
         /// "player is already a member of the lobby" hatası alınıyordu) — bu yüzden aynı kimlikle
         /// gerçek bir rejoin'in çalışabilmesi için host'un bunu açıkça yapması gerekiyor.
         /// </summary>
-        public async Task RemoveDisconnectedPeerAsync()
+        /// <param name="playerId">
+        /// UGS session player id of the client that disconnected (see
+        /// NetworkIdentityRegistry.Get). When null/empty, falls back to removing the first
+        /// non-self player — only correct for 2-player sessions.
+        /// </param>
+        public async Task RemoveDisconnectedPeerAsync(string playerId = null)
         {
             try
             {
@@ -255,6 +260,7 @@ namespace CosmicRumble.Networking
                 foreach (var p in host.Players)
                 {
                     if (p.Id == myId) continue;
+                    if (!string.IsNullOrEmpty(playerId) && p.Id != playerId) continue;
                     await host.RemovePlayerAsync(p.Id);
 #if UNITY_EDITOR
                     Debug.Log($"[NET] RemoveDisconnectedPeerAsync: removed stale session player {p.Id}");
