@@ -41,6 +41,7 @@ namespace CosmicRumble.Cloud
             { "chests",   "chests.json"   },
             { "streak",   "streak.json"   },
             { "costumes", "costumes.json" },
+            { "avatar",   "avatar.json"   },
         };
 
         private const string AchievementsKey = "achievements";
