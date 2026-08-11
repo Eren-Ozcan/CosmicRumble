@@ -200,6 +200,14 @@ public class AuthManager : MonoBehaviour
                 var done = await Task.WhenAny(credTask, Task.Delay(5000));
                 if (done != credTask) return (false, null);
             }
+            else
+            {
+                // Native callback hiç tetiklenmezse (ör. Play Services bağlantısı düşerse)
+                // credTask'in TaskCompletionSource'u sonsuza dek tamamlanmaz — kullanıcıyı
+                // sonsuza kadar beklemeye bırakmamak için burada da bir üst sınır var.
+                var done = await Task.WhenAny(credTask, Task.Delay(60000));
+                if (done != credTask) return (false, Loc.T("Sign-in timed out, try again."));
+            }
             credential = await credTask;
         }
         catch (Exception e) { return (false, silent ? null : e.Message); }
