@@ -99,7 +99,7 @@ public class GravitySource : MonoBehaviour
                 // tam temas etmeden uyuyabilir — GravityBody yoksa (mermi vb.) veya varsa ama
                 // grounded değilse, kuvveti uygulamaya devam et (bu AddForce onu otomatik uyandırır).
                 var gb = rb.GetComponent<GravityBody>();
-                if (gb == null || gb.IsGrounded) continue;
+                if (gb != null && gb.IsGrounded) continue;
             }
 
             Vector2 direction = center - rb.position;
