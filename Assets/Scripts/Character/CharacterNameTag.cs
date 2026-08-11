@@ -70,5 +70,7 @@ public class CharacterNameTag : MonoBehaviour
 
     void LateUpdate()
     {
+        if (_canvasTransform != null)
+            _canvasTransform.rotation = Quaternion.identity;
     }
 }
