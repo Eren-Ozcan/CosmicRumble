@@ -133,15 +133,21 @@ public class SocialPanelUI : MonoBehaviour
         if (_copyToast != null) _copyToast.text = "";
     }
 
+    bool _addRequestBusy;
+
     async void OnAddClicked()
     {
+        if (_addRequestBusy) return; // double-tap guard — avoid duplicate friend requests
         var fm = FriendsManager.Instance;
         if (fm == null) return;
         string code = _addInput.text;
         _addStatusText.color = TextSec;
         _addStatusText.text  = Loc.T("Sending...");
 
+        _addRequestBusy = true;
         var (ok, error) = await fm.AddFriendByCodeAsync(code);
+        _addRequestBusy = false;
+
         if (ok)
         {
             _addStatusText.color = AccGreen;
