@@ -17,6 +17,7 @@ public class ColliderDebugVisualizer : MonoBehaviour
 
     void Update()
     {
+#if UNITY_EDITOR
         Collider2D[] colliders = FindObjectsByType<Collider2D>(FindObjectsSortMode.None);
 
         foreach (var col in colliders)
@@ -26,6 +27,7 @@ public class ColliderDebugVisualizer : MonoBehaviour
 
             DrawCollider2D(col, c);
         }
+#endif
     }
 
     void DrawCollider2D(Collider2D col, Color color)
