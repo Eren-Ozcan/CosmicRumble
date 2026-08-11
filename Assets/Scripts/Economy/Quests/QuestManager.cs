@@ -300,7 +300,8 @@ namespace CosmicRumble.Economy
         {
             if (!DateTime.TryParse(stored, out DateTime prev)) return false;
             // Same ISO week: Monday is start
-            DateTime monday = now.AddDays(-(int)now.DayOfWeek == 0 ? 6 : (int)now.DayOfWeek - 1);
+            int daysSinceMonday = (int)now.DayOfWeek == 0 ? 6 : (int)now.DayOfWeek - 1;
+            DateTime monday = now.AddDays(-daysSinceMonday);
             return prev >= monday.Date;
         }
 
