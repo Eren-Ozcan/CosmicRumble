@@ -43,6 +43,7 @@ public class CameraController : MonoBehaviour
     Camera        _cam;
     float         _normalZoom;   // zoom to restore after projectile phase
     bool          _firstActivation = true;
+    int           _activeProjectileCount; // multi-pellet shots (Shotgun) spawn several trackees at once
 
     // ── Lifecycle ──────────────────────────────────────────────────
 
@@ -90,16 +91,20 @@ public class CameraController : MonoBehaviour
     public static void OnProjectileSpawned(Transform projectile)
     {
         if (Instance == null) return;
+        Instance._activeProjectileCount++;
         Instance.StartProjectileTracking(projectile);
     }
 
     /// <summary>
-    /// Call when the tracked projectile is destroyed / arrives.
+    /// Call when a tracked projectile is destroyed / arrives. Only returns the camera
+    /// once every in-flight projectile from a multi-pellet shot (e.g. Shotgun) has settled.
     /// </summary>
     public static void OnProjectileDestroyed()
     {
         if (Instance == null) return;
-        Instance.BeginReturn();
+        Instance._activeProjectileCount = Mathf.Max(0, Instance._activeProjectileCount - 1);
+        if (Instance._activeProjectileCount == 0)
+            Instance.BeginReturn();
     }
 
     // ── Internal ───────────────────────────────────────────────────
