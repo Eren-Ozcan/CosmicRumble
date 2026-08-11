@@ -78,7 +78,16 @@ namespace CosmicRumble.Achievements
             if (col == null) return false;
 
             Vector2 local = target.InverseTransformPoint(worldImpactPoint);
-            float halfHeight = (col is CapsuleCollider2D capsule) ? capsule.size.y * 0.5f : col.bounds.extents.y;
+
+            // halfHeight must stay in the same local space as `local` — col.bounds is a
+            // world-space AABB and mixing it with a local-space y produced wrong results for
+            // any rotated character with a non-capsule collider (GravityBody rotates characters
+            // to arbitrary angles around the planet, so this is the common case, not an edge one).
+            float halfHeight;
+            if (col is CapsuleCollider2D capsule) halfHeight = capsule.size.y * 0.5f;
+            else if (col is BoxCollider2D box) halfHeight = box.size.y * 0.5f;
+            else halfHeight = col.bounds.extents.y; // best-effort fallback for other collider types
+
             if (halfHeight <= 0f) return false;
 
             return local.y > halfHeight * 0.5f;
