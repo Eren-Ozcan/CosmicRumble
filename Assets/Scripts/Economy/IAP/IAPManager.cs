@@ -198,6 +198,25 @@ namespace CosmicRumble.Economy.IAP
 #endif
         }
 
+        // Redelivered pending orders (app killed/network dropped before ConfirmPurchase went
+        // through) must not grant Gem twice for the same transaction — see finding below.
+        private const string ProcessedOrdersKey = "iap_processed_transaction_ids";
+
+        private static bool TryMarkOrderProcessed(string transactionId)
+        {
+            if (string.IsNullOrEmpty(transactionId)) return true; // can't dedupe, allow through
+
+            string stored = PlayerPrefs.GetString(ProcessedOrdersKey, "");
+            var ids = new List<string>(stored.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries));
+            if (ids.Contains(transactionId)) return false;
+
+            ids.Add(transactionId);
+            if (ids.Count > 200) ids.RemoveRange(0, ids.Count - 200); // bounded history
+            PlayerPrefs.SetString(ProcessedOrdersKey, string.Join("|", ids));
+            PlayerPrefs.Save();
+            return true;
+        }
+
         private void OnPurchasePending(PendingOrder pendingOrder)
         {
             var items = pendingOrder.CartOrdered.Items();
@@ -207,7 +226,7 @@ namespace CosmicRumble.Economy.IAP
                 ? Array.Find(GemPacks, p => p.productId == productId)
                 : null;
 
-            if (pack != null && IsReceiptValid(pendingOrder))
+            if (pack != null && IsReceiptValid(pendingOrder) && TryMarkOrderProcessed(pendingOrder.Info.TransactionID))
             {
                 CurrencyManager.Instance?.Add(CurrencyType.Gem, pack.gemAmount);
                 OnPurchaseSucceeded?.Invoke(productId);
