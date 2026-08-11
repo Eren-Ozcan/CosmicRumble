@@ -45,9 +45,6 @@ public class DeathBoundary : MonoBehaviour
             }
         }
 
-        foreach (var p in FindObjectsByType<ProjectileBase>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
-            CheckProjectile(p);
-
         foreach (var p in FindObjectsByType<HandGrenadeProjectile>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             CheckProjectile(p);
 
