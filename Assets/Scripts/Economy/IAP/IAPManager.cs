@@ -39,6 +39,7 @@ namespace CosmicRumble.Economy.IAP
         public event Action<string, string> OnPurchaseFailedEvent;
 
         private StoreController _storeController;
+        private bool _purchaseInFlight;
 
 #if IAP_RECEIPT_VALIDATION
         private CrossPlatformValidator _validator;
@@ -161,6 +162,14 @@ namespace CosmicRumble.Economy.IAP
         /// <summary>Bir Gem paketinin satın alma akışını başlatır.</summary>
         public void BuyGemPack(string productId)
         {
+            if (_purchaseInFlight)
+            {
+#if UNITY_EDITOR
+                Debug.LogWarning("[IAPManager] Purchase already in flight, ignoring.");
+#endif
+                return;
+            }
+
             if (!IsInitialized || _storeController == null)
             {
 #if UNITY_EDITOR
@@ -178,6 +187,7 @@ namespace CosmicRumble.Economy.IAP
                 return;
             }
 
+            _purchaseInFlight = true;
             _storeController.PurchaseProduct(productId);
         }
 
@@ -251,10 +261,13 @@ namespace CosmicRumble.Economy.IAP
 #endif
 
             _storeController.ConfirmPurchase(pendingOrder);
+            _purchaseInFlight = false;
         }
 
         private void OnPurchaseFailed(FailedOrder failedOrder)
         {
+            _purchaseInFlight = false;
+
             var items = failedOrder.CartOrdered.Items();
             string productId = items.Count > 0 ? items[0].Product.definition.id : null;
 
