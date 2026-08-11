@@ -19,6 +19,7 @@ public class SceneFader : MonoBehaviour
     Canvas    _canvas;
     Image     _panel;
     CanvasGroup _cg;
+    bool      _isFadingToScene;
 
     void Awake()
     {
@@ -55,7 +56,12 @@ public class SceneFader : MonoBehaviour
 
     // ── Public API ───────────────────────────────────────────────
 
-    public void FadeToScene(string sceneName)       => StartCoroutine(DoFade(sceneName));
+    public void FadeToScene(string sceneName)
+    {
+        if (_isFadingToScene) return; // re-entrancy guard — double-tap could double-load the scene
+        StartCoroutine(DoFade(sceneName));
+    }
+
     public void FadeIn()                            => StartCoroutine(DoFadeAlpha(0f));
     public void FadeOut()                           => StartCoroutine(DoFadeAlpha(1f));
 
@@ -63,12 +69,14 @@ public class SceneFader : MonoBehaviour
 
     IEnumerator DoFade(string sceneName)
     {
+        _isFadingToScene = true;
         _cg.blocksRaycasts = true;
         yield return DoFadeAlpha(1f);
         SceneManager.LoadScene(sceneName);
         yield return null;          // bir frame bekle (sahne yüklensin)
         yield return DoFadeAlpha(0f);
         _cg.blocksRaycasts = false;
+        _isFadingToScene = false;
     }
 
     IEnumerator DoFadeAlpha(float target)
