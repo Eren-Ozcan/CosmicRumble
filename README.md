@@ -1,6 +1,8 @@
 # CosmicRumble
 
-**CosmicRumble** is a 2D turn based shooter prototype built with Unity. Multiple characters battle on small planets where gravity comes from local `GravitySource` objects. Players take turns performing actions such as jumping, using weapons and activating special skills.
+**CosmicRumble** is a 2D turn-based shooter built with Unity. Multiple characters battle on small planets where gravity comes from local `GravitySource` objects, taking turns to jump, use weapons and activate special skills.
+
+The project is in release preparation: the core game, online multiplayer (Unity NGO), economy (currency, chests, costumes), achievements, quests, trophies/leaderboard, cloud save, localization (7 languages), and a Brawl Stars-style UI are all implemented. See `TODO.md` for the detailed release roadmap.
 
 ## Gameplay Overview
 
