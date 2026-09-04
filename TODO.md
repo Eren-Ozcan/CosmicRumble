@@ -22,6 +22,14 @@ names into the other 6 languages.
    private match → match end). Verified one-sided; the two-sided flow has never been tested.
 3. First real Android device build test — the new sign-in flow, real store IAP behavior,
    performance. So far the project has only run in the Editor + Device Simulator.
+3b. **Host migration** (added 2026-09-04) — a host drop currently kills the match for all 3-8 players.
+   The transport half is already provided by `com.unity.services.multiplayer` 2.2.4
+   (`SessionOptions.WithHostMigration`, automatic relay reallocation and client rejoin); what we owe is an
+   `IMigrationDataHandler` that snapshots and restores the match. Plan: `docs/HOST_MIGRATION_PLAN.md`.
+3c. **Release test plan** (added 2026-09-04) — `docs/TEST_PLAN.md`: 15 suites, ~110 cases, 5 test levels,
+   5 network-condition profiles, a smoke suite and a wave-ordered execution schedule. Wave 0 requires
+   installing `com.unity.multiplayer.playmode` and `com.unity.multiplayer.tools`, neither of which is in
+   `Packages/manifest.json` yet.
 
 ### 2. Mandatory before release — store/account work (not code, long lead time, start in parallel)
 4. Google Play Console: app registration, the **12 test users × 14 days closed-testing requirement**
@@ -1158,8 +1166,11 @@ are now fully verified end-to-end, nothing left open from that milestone.
 Requested explicitly (mobile ships first, Steam may never happen, so multiplayer robustness matters more than
 Steam-specific polish right now). Scope: a player whose connection drops mid-match can relaunch and rejoin with
 the same code, reclaiming their exact character — not spawning a duplicate, not losing the match immediately.
-Host migration (the *host* disconnecting) stays explicitly out of scope, same as always — no reconnect target
-exists for that case, the whole session ends.
+Host migration (the *host* disconnecting) was out of scope for this milestone — no reconnect target exists for
+that case, so the whole session ends. **Reversed 2026-09-04 at the user's request**: ending everyone's match
+because one player dropped is unacceptable in the 3-8 player modes. Host migration is now planned work — the
+feasibility study, what the SDK already provides, and a four-phase implementation plan are in
+`docs/HOST_MIGRATION_PLAN.md`; its test cases are suite HM in `docs/TEST_PLAN.md`.
 
 - **Root prerequisite fix: `Player.prefab`'s `NetworkObject.DontDestroyWithOwner` was `false`** (the default) —
   meaning NGO destroyed a player's character the instant their owning client disconnected, before any reconnect
