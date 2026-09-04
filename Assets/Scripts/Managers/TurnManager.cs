@@ -53,6 +53,10 @@ public class TurnManager : NetworkBehaviour
     /// <summary>Havada en az 1 mermi var mı?</summary>
     public bool ProjectileInFlight => _activeProjectiles > 0;
 
+    /// <summary>Sırası olan karakterin <see cref="characters"/> içindeki indeksi — host migration
+    /// snapshot'ı (HostMigrationDataHandler) sıra düzenini bununla kaydeder.</summary>
+    public int CurrentTurnIndex => currentIndex;
+
     /// <summary>Şu an havadaki mermi(ler)i ateşleyen karakter — NotifyProjectileLaunched'ta set
     /// edilir, ilgili mermi(ler) çözülene kadar geçerlidir (tur başına tek aktif karakter olduğu
     /// için bir sonraki atışa kadar değişmez). CombatEventReporter'ın dostane ateş filtresi için.</summary>
