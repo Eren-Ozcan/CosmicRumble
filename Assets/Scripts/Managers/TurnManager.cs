@@ -57,6 +57,15 @@ public class TurnManager : NetworkBehaviour
     /// snapshot'ı (HostMigrationDataHandler) sıra düzenini bununla kaydeder.</summary>
     public int CurrentTurnIndex => currentIndex;
 
+    /// <summary>Maç başından beri oynanmış tur sayısı (ilk tur = 1). Host migration snapshot'ı
+    /// bunu taşır ki maç yeni host'ta 1. turdan başlıyormuş gibi görünmesin.</summary>
+    public int TurnNumber => _turnNumber;
+
+    /// <summary>Aktif turun kalan süresi (saniye) — migration snapshot'ı için.</summary>
+    public float RemainingTurnTime => turnTimer;
+
+    private int _turnNumber = 0;
+
     /// <summary>Şu an havadaki mermi(ler)i ateşleyen karakter — NotifyProjectileLaunched'ta set
     /// edilir, ilgili mermi(ler) çözülene kadar geçerlidir (tur başına tek aktif karakter olduğu
     /// için bir sonraki atışa kadar değişmez). CombatEventReporter'ın dostane ateş filtresi için.</summary>
@@ -226,6 +235,41 @@ public class TurnManager : NetworkBehaviour
         ActivateCharacter(0);
     }
 
+    /// <summary>
+    /// Host migration sonrası maçı yeni host'ta kaldığı yerden sürdürür: BeginMatch'in
+    /// "sıfırdan başlat" yolunun yerine geçer. Sıra, snapshot'taki oyuncuya verilir ve turun
+    /// kalan süresi korunur — yeni host'ta tur baştan başlamaz.
+    ///
+    /// Maç istatistiği sayaçları (AchievementEvents.FirePlayerCountInMatch) bilerek yeniden
+    /// tetiklenmez: aynı maç için ikinci kez sayılmaları başarım ilerlemesini çift artırırdı.
+    /// </summary>
+    public void ResumeMatchAfterMigration(int activeIndex, float remainingTurnTime, int turnNumber)
+    {
+        if (characters == null || characters.Count == 0) return;
+
+        if (GameConfig.Instance != null)
+            turnDuration = GameConfig.Instance.TurnDuration;
+
+        _matchStartTime = Time.time;
+        gameOver        = false;
+
+        ActivateCharacter(Mathf.Clamp(activeIndex, 0, characters.Count - 1));
+
+        // ActivateCharacter turu tam süreyle başlatır; snapshot'taki kalan süre onun yerine geçer.
+        // 0 veya negatif bir kalan süre turu anında bitirirdi — migration'ın kendisi yüzünden
+        // tur kaybedilmesin diye asgari bir pay bırakılır.
+        if (remainingTurnTime > 0f)
+        {
+            turnTimer = Mathf.Min(remainingTurnTime, turnDuration);
+            if (IsSpawned && IsServer) netTurnTimer.Value = turnTimer;
+            TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, turnDuration);
+        }
+
+        _turnNumber = Mathf.Max(turnNumber, _turnNumber);
+
+        Debug.Log($"[HM] Match resumed: activeIndex={currentIndex} remaining={turnTimer:F1}s turn={_turnNumber}");
+    }
+
     private void Update()
     {
         // Client: tur mantığı çalışmaz ama zamanlayıcı server'ın yazdığı NetworkVariable'dan
@@ -381,6 +425,8 @@ public class TurnManager : NetworkBehaviour
                 }
             }
         }
+
+        _turnNumber++;
 
         // Yeni turn süresi başlat
         turnTimer = turnDuration;
