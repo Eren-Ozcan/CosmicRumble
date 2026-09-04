@@ -93,6 +93,28 @@ namespace CosmicRumble.Networking
             try
             {
                 var snapshot = CaptureCurrentMatch();
+                var bytes = Serialize(snapshot);
+#if UNITY_EDITOR
+                Debug.Log($"[HM] Generate: {snapshot} ({bytes.Length} bytes)");
+#endif
+                return bytes;
+            }
+            catch (Exception e)
+            {
+                // Snapshot üretememek maçı bozmamalı — sadece o turdaki yükleme atlanır.
+                Debug.LogWarning($"[HM] Generate failed: {e.Message}");
+                return Array.Empty<byte>();
+            }
+        }
+
+        /// <summary>
+        /// Snapshot'ı Lobby'ye yüklenecek kompakt ikili biçime çevirir. Canlı sahneden bağımsız,
+        /// saf bir dönüşüm — <see cref="Deserialize"/> ile birlikte testten sürülebilsin diye
+        /// Generate/Apply'dan ayrı tutulur.
+        /// </summary>
+        public static byte[] Serialize(HostMigrationSnapshot snapshot)
+        {
+            {
                 using var stream = new MemoryStream();
                 using var writer = new BinaryWriter(stream, Encoding.UTF8);
 
@@ -125,17 +147,7 @@ namespace CosmicRumble.Networking
                 }
 
                 writer.Flush();
-                var bytes = stream.ToArray();
-#if UNITY_EDITOR
-                Debug.Log($"[HM] Generate: {snapshot} ({bytes.Length} bytes)");
-#endif
-                return bytes;
-            }
-            catch (Exception e)
-            {
-                // Snapshot üretememek maçı bozmamalı — sadece o turdaki yükleme atlanır.
-                Debug.LogWarning($"[HM] Generate failed: {e.Message}");
-                return Array.Empty<byte>();
+                return stream.ToArray();
             }
         }
 
@@ -149,14 +161,38 @@ namespace CosmicRumble.Networking
 
             try
             {
+                var snapshot = Deserialize(migrationData);
+                if (snapshot == null) return;   // sürüm uyuşmazlığı, Deserialize uyardı
+
+                Pending = snapshot;
+
+                // NetworkManager bu noktada KAPALI; yalnızca sahne dışı, düz statik durum yazılabilir.
+                LobbyData.SelectedMode   = snapshot.Mode;
+                LobbyData.FfaPlayerCount = snapshot.FfaPlayerCount;
+
+                Debug.Log($"[HM] Apply: restored snapshot {snapshot}");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[HM] Apply failed: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// <see cref="Serialize"/>'ın tersi. Sürüm uyuşmazlığında null döner — eski bir snapshot'ı
+        /// yeni alan düzeniyle okumak sessizce yanlış bir maç kurardı.
+        /// </summary>
+        public static HostMigrationSnapshot Deserialize(byte[] migrationData)
+        {
+            {
                 using var stream = new MemoryStream(migrationData);
                 using var reader = new BinaryReader(stream, Encoding.UTF8);
 
                 byte version = reader.ReadByte();
                 if (version != k_Version)
                 {
-                    Debug.LogWarning($"[HM] Apply: snapshot version {version} != expected {k_Version}, discarding.");
-                    return;
+                    Debug.LogWarning($"[HM] Deserialize: snapshot version {version} != expected {k_Version}, discarding.");
+                    return null;
                 }
 
                 var snapshot = new HostMigrationSnapshot
@@ -198,17 +234,7 @@ namespace CosmicRumble.Networking
                     snapshot.TurnOrder.Add(p.UgsPlayerId);
                 }
 
-                Pending = snapshot;
-
-                // NetworkManager bu noktada KAPALI; yalnızca sahne dışı, düz statik durum yazılabilir.
-                LobbyData.SelectedMode   = snapshot.Mode;
-                LobbyData.FfaPlayerCount = snapshot.FfaPlayerCount;
-
-                Debug.Log($"[HM] Apply: restored snapshot {snapshot}");
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[HM] Apply failed: {e.Message}");
+                return snapshot;
             }
         }
 
