@@ -11,9 +11,31 @@ using CosmicRumble.Utilities;
 namespace CosmicRumble.Networking
 {
     /// <summary>
-    /// Host migration sırasında taşınan maç durumu. FAZ 1 kapsamı: yalnızca maç yapılandırması
-    /// ve sıra düzeni — oyuncu canları/pozisyonları (Faz 2) ve gezegen tahribatı (Faz 3) henüz
-    /// taşınmıyor. Ayrıntılı plan: docs/HOST_MIGRATION_PLAN.md
+    /// Bir oyuncunun migration'da taşınan durumu. Anahtar HER ZAMAN UGS PlayerId'dir —
+    /// NGO clientId ve NetworkObjectId migration sonrası değişir.
+    /// </summary>
+    public struct HostMigrationPlayerState
+    {
+        public string  UgsPlayerId;
+        public string  DisplayName;
+        public int     TeamId;
+
+        public float   Health;
+        public bool    IsShielded;
+
+        public Vector2 Position;
+        public Vector2 UpDirection;   // karakterin gezegen yüzeyindeki "yukarı"sı (transform.up)
+        public Vector2 Velocity;
+
+        public AmmoState Ammo;
+        public bool    HasUsedSkillThisTurn;
+    }
+
+    /// <summary>
+    /// Host migration sırasında taşınan maç durumu. FAZ 2 kapsamı: maç yapılandırması, sıra
+    /// düzeni/tur durumu ve oyuncu başına can/kalkan/konum/hız/cephane. Gezegen tahribatı hâlâ
+    /// taşınmıyor (Faz 3) ve uçuştaki mermiler bilerek taşınmıyor — kesilen tur baştan başlar.
+    /// Ayrıntılı plan: docs/HOST_MIGRATION_PLAN.md
     /// </summary>
     public class HostMigrationSnapshot
     {
@@ -28,8 +50,18 @@ namespace CosmicRumble.Networking
         /// <summary>TurnOrder içinde o an sırası olan oyuncunun indeksi.</summary>
         public int           ActiveTurnIndex;
 
+        /// <summary>Aktif turun kalan süresi (saniye) — yeni host'ta tur baştan başlamasın diye.</summary>
+        public float         RemainingTurnTime;
+
+        /// <summary>Maç başından beri oynanan tur sayısı.</summary>
+        public int           TurnNumber;
+
+        /// <summary>Oyuncu durumları; sıra <see cref="TurnOrder"/> ile birebir aynıdır.</summary>
+        public List<HostMigrationPlayerState> Players = new List<HostMigrationPlayerState>();
+
         public override string ToString() =>
-            $"mode={Mode} ffa={FfaPlayerCount} ranked={IsRanked} players={TurnOrder.Count} active={ActiveTurnIndex}";
+            $"mode={Mode} ffa={FfaPlayerCount} ranked={IsRanked} players={Players.Count} " +
+            $"active={ActiveTurnIndex} turn={TurnNumber} remaining={RemainingTurnTime:F1}s";
     }
 
     /// <summary>
@@ -40,14 +72,15 @@ namespace CosmicRumble.Networking
     /// KRİTİK SIRALAMA: Apply(), NetworkModule içinde ResetAsync() ile StartRelayNetworkAsync()
     /// ARASINDA çalışır — yani NetworkManager KAPALIYKEN. Burada hiçbir şey spawn edilemez ve
     /// hiçbir NetworkVariable yazılamaz. Bu yüzden Apply yalnızca çözümleyip <see cref="Pending"/>
-    /// içine bırakır; sahneyi gerçekten kuran taraf, host başladıktan ve client'lar geri
-    /// bağlandıktan sonra bu snapshot'ı tüketen NetworkPlayerSpawner/TurnManager tarafıdır.
+    /// içine bırakır; sahneyi gerçekten kuran taraf, host başladıktan sonra bu snapshot'ı tüketen
+    /// NetworkPlayerSpawner.RebuildFromMigrationSnapshot'tır.
     /// </summary>
     public class HostMigrationDataHandler : IMigrationDataHandler
     {
         /// <summary>Serileştirme sürümü — ileride alan eklenirse eski snapshot'ı sessizce
-        /// yanlış okumak yerine reddedebilmek için.</summary>
-        const byte k_Version = 1;
+        /// yanlış okumak yerine reddedebilmek için. v1: yalnız maç yapılandırması + sıra düzeni.
+        /// v2: tur durumu + oyuncu başına can/kalkan/konum/hız/cephane.</summary>
+        const byte k_Version = 2;
 
         /// <summary>Yeni host'ta Apply() ile bırakılan, henüz uygulanmamış snapshot.
         /// Tüketen taraf işi bitince <see cref="ConsumePending"/> çağırmalı.</summary>
@@ -68,9 +101,28 @@ namespace CosmicRumble.Networking
                 writer.Write(snapshot.FfaPlayerCount);
                 writer.Write(snapshot.IsRanked);
                 writer.Write(snapshot.ActiveTurnIndex);
-                writer.Write(snapshot.TurnOrder.Count);
-                foreach (var id in snapshot.TurnOrder)
-                    writer.Write(id ?? string.Empty);
+                writer.Write(snapshot.RemainingTurnTime);
+                writer.Write(snapshot.TurnNumber);
+
+                writer.Write(snapshot.Players.Count);
+                foreach (var p in snapshot.Players)
+                {
+                    writer.Write(p.UgsPlayerId ?? string.Empty);
+                    writer.Write(p.DisplayName ?? string.Empty);
+                    writer.Write(p.TeamId);
+                    writer.Write(p.Health);
+                    writer.Write(p.IsShielded);
+                    writer.Write(p.Position.x);    writer.Write(p.Position.y);
+                    writer.Write(p.UpDirection.x); writer.Write(p.UpDirection.y);
+                    writer.Write(p.Velocity.x);    writer.Write(p.Velocity.y);
+                    writer.Write(p.Ammo.superJumps);
+                    writer.Write(p.Ammo.rpgAmmo);
+                    writer.Write(p.Ammo.pistolAmmo);
+                    writer.Write(p.Ammo.shotgunAmmo);
+                    writer.Write(p.Ammo.grenades);
+                    writer.Write(p.Ammo.shields);
+                    writer.Write(p.HasUsedSkillThisTurn);
+                }
 
                 writer.Flush();
                 var bytes = stream.ToArray();
@@ -109,15 +161,42 @@ namespace CosmicRumble.Networking
 
                 var snapshot = new HostMigrationSnapshot
                 {
-                    Mode            = (GameModeType)reader.ReadInt32(),
-                    FfaPlayerCount  = reader.ReadInt32(),
-                    IsRanked        = reader.ReadBoolean(),
-                    ActiveTurnIndex = reader.ReadInt32(),
+                    Mode              = (GameModeType)reader.ReadInt32(),
+                    FfaPlayerCount    = reader.ReadInt32(),
+                    IsRanked          = reader.ReadBoolean(),
+                    ActiveTurnIndex   = reader.ReadInt32(),
+                    RemainingTurnTime = reader.ReadSingle(),
+                    TurnNumber        = reader.ReadInt32(),
                 };
 
                 int count = reader.ReadInt32();
                 for (int i = 0; i < count; i++)
-                    snapshot.TurnOrder.Add(reader.ReadString());
+                {
+                    var p = new HostMigrationPlayerState
+                    {
+                        UgsPlayerId = reader.ReadString(),
+                        DisplayName = reader.ReadString(),
+                        TeamId      = reader.ReadInt32(),
+                        Health      = reader.ReadSingle(),
+                        IsShielded  = reader.ReadBoolean(),
+                    };
+                    p.Position    = new Vector2(reader.ReadSingle(), reader.ReadSingle());
+                    p.UpDirection = new Vector2(reader.ReadSingle(), reader.ReadSingle());
+                    p.Velocity    = new Vector2(reader.ReadSingle(), reader.ReadSingle());
+                    p.Ammo = new AmmoState
+                    {
+                        superJumps  = reader.ReadInt32(),
+                        rpgAmmo     = reader.ReadInt32(),
+                        pistolAmmo  = reader.ReadInt32(),
+                        shotgunAmmo = reader.ReadInt32(),
+                        grenades    = reader.ReadInt32(),
+                        shields     = reader.ReadInt32(),
+                    };
+                    p.HasUsedSkillThisTurn = reader.ReadBoolean();
+
+                    snapshot.Players.Add(p);
+                    snapshot.TurnOrder.Add(p.UgsPlayerId);
+                }
 
                 Pending = snapshot;
 
@@ -133,8 +212,8 @@ namespace CosmicRumble.Networking
             }
         }
 
-        /// <summary>Host tarafında o anki maçın Faz 1 durumunu toplar. Maç henüz başlamadıysa
-        /// (menüde/lobide) sıra düzeni boş kalır — yükleme zaten yalnızca 2+ oyuncuda yapılır.</summary>
+        /// <summary>Host tarafında o anki maçın durumunu toplar. Maç henüz başlamadıysa
+        /// (menüde/lobide) oyuncu listesi boş kalır — yükleme zaten yalnızca 2+ oyuncuda yapılır.</summary>
         static HostMigrationSnapshot CaptureCurrentMatch()
         {
             var snapshot = new HostMigrationSnapshot
@@ -150,13 +229,44 @@ namespace CosmicRumble.Networking
             foreach (var character in turnManager.characters)
             {
                 if (character == null) continue;
+
                 // Generate() yalnızca host'ta çalışır, dolayısıyla registry burada doludur.
                 string playerId = NetworkIdentityRegistry.Get(character.OwnerClientId);
-                snapshot.TurnOrder.Add(playerId ?? string.Empty);
+
+                var state = new HostMigrationPlayerState
+                {
+                    UgsPlayerId = playerId ?? string.Empty,
+                    DisplayName = character.playerName.Value.ToString(),
+                    TeamId      = character.teamId.Value,
+                    Position    = character.transform.position,
+                    UpDirection = character.transform.up,
+                };
+
+                var rb = character.GetComponent<Rigidbody2D>();
+                if (rb != null) state.Velocity = rb.linearVelocity;
+
+                var health = character.GetComponent<CharacterHealth>();
+                if (health != null)
+                {
+                    state.Health     = health.GetCurrentHealth();
+                    state.IsShielded = health.isShielded;
+                }
+
+                var abilities = character.GetComponent<CharacterAbilities>();
+                if (abilities != null)
+                {
+                    state.Ammo                 = abilities.CurrentAmmo;
+                    state.HasUsedSkillThisTurn = abilities.HasUsedSkillThisTurn;
+                }
+
+                snapshot.Players.Add(state);
+                snapshot.TurnOrder.Add(state.UgsPlayerId);
             }
 
-            snapshot.ActiveTurnIndex = Mathf.Clamp(turnManager.CurrentTurnIndex, 0,
-                                                  Mathf.Max(0, snapshot.TurnOrder.Count - 1));
+            snapshot.ActiveTurnIndex   = Mathf.Clamp(turnManager.CurrentTurnIndex, 0,
+                                                    Mathf.Max(0, snapshot.Players.Count - 1));
+            snapshot.RemainingTurnTime = turnManager.RemainingTurnTime;
+            snapshot.TurnNumber        = turnManager.TurnNumber;
             return snapshot;
         }
     }
