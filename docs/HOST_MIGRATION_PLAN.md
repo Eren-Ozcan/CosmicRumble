@@ -1,6 +1,6 @@
 # Host Migration — feasibility study and implementation plan
 
-Status: **planned, not implemented.** Written 2026-09-04 after reading the installed
+Status: **phases 1 and 2 implemented, not yet play-tested.** Written 2026-09-04 after reading the installed
 `com.unity.services.multiplayer@2.2.4` source in `Library/PackageCache/` and the current Unity
 Multiplayer Services documentation.
 
@@ -120,6 +120,10 @@ UGS PlayerId, never by `clientId` or `NetworkObjectId`.
    cheater can gain the server role deliberately by outlasting the host.
 
 ## 6. Phased plan
+
+Progress as of 2026-09-04: phases 1 and 2 are written and compile clean (headless editor
+compile, zero errors); neither has been play-tested. Phase 1 needed one unrelated fix first —
+Multiplayer Play Mode 1.5.0 broke editor compilation outright and was bumped to 1.6.3.
 
 - **Phase 1 — plumbing, no state.** Add `.WithHostMigration(...)` with a stub handler that
   serialises only the match config and turn order. Verify the transport half end-to-end: 3 processes,
