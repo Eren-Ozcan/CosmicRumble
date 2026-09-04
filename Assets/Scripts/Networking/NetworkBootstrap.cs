@@ -46,9 +46,35 @@ namespace CosmicRumble.Networking
         [Tooltip("Denemeler arası bekleme (saniye)")]
         public float reconnectDelaySeconds = 5f;
 
+        [Header("Host migration (3+ oyunculu modlar)")]
+        [Tooltip("Host koptuktan sonra SDK'nın kendi migration'ını (yeni host seçimi + yeni Relay " +
+                 "allocation + otomatik rejoin) tamamlaması için beklenecek azami süre. Bu süre " +
+                 "Lobby'nin host'u ölü sayma gecikmesini de kapsar — o gecikme ölçülmüş bir sayı " +
+                 "değil (bkz. docs/TEST_PLAN.md HM-20), Photon'daki muadili ~10 saniye. Süre " +
+                 "dolarsa kendi elle yeniden katılma döngümüze düşeriz.")]
+        public float hostMigrationWaitSeconds = 30f;
+
         private ISession _session;
         private bool _wasClient;          // JoinSessionAsync ile bağlandık mı (host değil)
         private bool _intentionalLeave;   // LeaveSessionAsync bilinçli çağrıldıysa true
+
+        // ── Host migration durumu ──────────────────────────────────────────
+        private bool _hostMigrationEnabled;   // bu oturum migration açık kurulduysa true
+        private bool _migrationInProgress;    // SessionHostChanged geldi, SessionMigrated henüz gelmedi
+        private bool _migrationCompleted;     // SessionMigrated geldi (bekleme döngüsü bunu yoklar)
+
+        // HM-20 ölçümü: kopuş → yeni host seçimi → migration tamam zaman damgaları.
+        private DateTime? _tLocalDisconnectUtc;
+        private DateTime? _tHostChangedUtc;
+
+        /// <summary>Bu oturum host migration ile mi kuruldu (3+ oyunculu modlar). 1v1'de host'un
+        /// çıkması migration değil, kalan oyuncunun hükmen galibiyetidir — bkz.
+        /// docs/HOST_MIGRATION_PLAN.md, kural 1.</summary>
+        public bool HostMigrationEnabled => _hostMigrationEnabled;
+
+        /// <summary>Yeni host seçildi ama taşıma henüz bitmedi. UI/oynanış tarafı bu sırada
+        /// girdi ve tur zamanlayıcısını dondurmalı (bkz. TEST_PLAN HM-22).</summary>
+        public bool MigrationInProgress => _migrationInProgress;
 
         GameObject      _statusRoot;
         TextMeshProUGUI _statusText;
@@ -87,8 +113,18 @@ namespace CosmicRumble.Networking
 
                 int totalPlayers = GameModeCatalog.ResolveTotalPlayers(LobbyData.SelectedMode, LobbyData.FfaPlayerCount);
                 var options = new SessionOptions { MaxPlayers = totalPlayers, IsPrivate = true }.WithRelayNetwork();
+
+                // Host migration yalnızca 3+ oyunculu modlarda anlamlı: 1v1'de host çıkınca geriye
+                // tek oyuncu kalır, o da hükmen galibiyettir (SDK zaten PlayerCount<2 iken snapshot
+                // yüklemiyor). Faz 1 kapsamı için bkz. docs/HOST_MIGRATION_PLAN.md.
+                if (totalPlayers >= 3)
+                {
+                    options = options.WithHostMigration(new HostMigrationDataHandler());
+                    _hostMigrationEnabled = true;
+                }
+
                 var session = await MultiplayerService.Instance.CreateSessionAsync(options);
-                _session = session;
+                AttachSession(session);
 
                 LastJoinCode = session.Code;
                 _wasClient = false;
@@ -124,6 +160,7 @@ namespace CosmicRumble.Networking
             {
                 await EnsureUgsReadyAsync();
 
+                // Quick Match her zaman 1v1 — host migration bilerek kapalı, bkz. HostSessionAsync.
                 var sessionOptions = new SessionOptions { MaxPlayers = 2 }.WithRelayNetwork();
                 var quickJoinOptions = new QuickJoinOptions
                 {
@@ -132,7 +169,7 @@ namespace CosmicRumble.Networking
                 };
 
                 var session = await MultiplayerService.Instance.MatchmakeSessionAsync(quickJoinOptions, sessionOptions);
-                _session = session;
+                AttachSession(session);
                 LastJoinCode = session.Code;
                 IsRankedMatch = true; // Quick Match = dereceli (kupa sistemi işler)
 
@@ -175,7 +212,7 @@ namespace CosmicRumble.Networking
                 await EnsureUgsReadyAsync();
 
                 var session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, new JoinSessionOptions());
-                _session = session;
+                AttachSession(session);
                 LastJoinCode = code;
                 _wasClient = true;
                 _intentionalLeave = false;
@@ -213,7 +250,7 @@ namespace CosmicRumble.Networking
                 if (_session != null)
                 {
                     await _session.LeaveAsync();
-                    _session = null;
+                    DetachSession();
                 }
             }
             catch (Exception e)
@@ -230,8 +267,17 @@ namespace CosmicRumble.Networking
                     if (NetworkManager.Singleton.IsListening)
                         NetworkManager.Singleton.Shutdown();
                 }
-                LastJoinCode = null;
+                DetachSession();
+                LastJoinCode  = null;
                 IsRankedMatch = false;
+
+                _hostMigrationEnabled = false;
+                _migrationInProgress  = false;
+                _migrationCompleted   = false;
+                _tLocalDisconnectUtc  = null;
+                _tHostChangedUtc      = null;
+                HostMigrationDataHandler.ConsumePending();
+
                 HideStatus();
             }
         }
@@ -277,8 +323,87 @@ namespace CosmicRumble.Networking
         }
 
         // ════════════════════════════════════════════════════════════════════
-        //  RECONNECT (sadece client tarafı — host'un kendisi kopunca oturumun
-        //  tamamı zaten sona erer, host migration kapsam dışı)
+        //  HOST MIGRATION (3+ oyunculu modlar)
+        //  Seçimi ve taşımayı SDK yapar: Lobby yeni host'u atar → NetworkModule
+        //  yeni host'ta Relay'i yeniden tahsis edip NetworkManager'ı host olarak
+        //  başlatır → diğer client'ları oraya kendisi taşır. Buradaki kod yalnızca
+        //  (a) durumu kullanıcıya gösterir, (b) kendi elle rejoin döngümüzün
+        //  SDK'nın migration'ıyla yarışmasını engeller, (c) HM-20 için süre ölçer.
+        // ════════════════════════════════════════════════════════════════════
+
+        void AttachSession(ISession session)
+        {
+            DetachSession();
+            _session = session;
+
+            // Katılan taraf, oturumun migration ile kurulup kurulmadığını doğrudan göremez;
+            // kural kapasiteden okunur — 3+ kişilik her oturum migration'lıdır (bkz.
+            // HostSessionAsync).
+            if (session != null && session.MaxPlayers >= 3) _hostMigrationEnabled = true;
+
+            if (session == null) return;
+            session.SessionHostChanged += OnSessionHostChanged;
+            session.SessionMigrated    += OnSessionMigrated;
+        }
+
+        void DetachSession()
+        {
+            if (_session == null) return;
+            _session.SessionHostChanged -= OnSessionHostChanged;
+            _session.SessionMigrated    -= OnSessionMigrated;
+            _session = null;
+        }
+
+        void OnSessionHostChanged(string newHostId)
+        {
+            _tHostChangedUtc     = DateTime.UtcNow;
+            _migrationInProgress = true;
+            _migrationCompleted  = false;
+
+            string gap = _tLocalDisconnectUtc.HasValue
+                ? $"{(_tHostChangedUtc.Value - _tLocalDisconnectUtc.Value).TotalSeconds:F1}s after local disconnect"
+                : "no local disconnect recorded";
+            Debug.Log($"[HM] SessionHostChanged newHost={newHostId} ({gap})");
+
+            ShowStatus(Loc.T("Host changed, reconnecting..."));
+        }
+
+        void OnSessionMigrated()
+        {
+            _migrationInProgress = false;
+            _migrationCompleted  = true;
+
+            // Migration sonrası bu makine host olmuş olabilir — elle rejoin döngüsü artık
+            // bizim için geçersiz.
+            bool nowHost = _session != null && _session.IsHost;
+            _wasClient = !nowHost;
+
+            double total = _tLocalDisconnectUtc.HasValue
+                ? (DateTime.UtcNow - _tLocalDisconnectUtc.Value).TotalSeconds : -1;
+            Debug.Log($"[HM] SessionMigrated: isHost={nowHost}, total visible downtime={total:F1}s");
+
+            HideStatus();
+        }
+
+        /// <summary>SDK'nın migration'ını bekler. Tamamlanırsa true — bu durumda elle yeniden
+        /// katılma denenmemeli, aksi halde SDK taşırken ikinci bir üyelik açıp yarışırız.</summary>
+        async Task<bool> WaitForHostMigrationAsync()
+        {
+            var deadline = Time.realtimeSinceStartupAsDouble + hostMigrationWaitSeconds;
+            while (Time.realtimeSinceStartupAsDouble < deadline)
+            {
+                if (_intentionalLeave) return true;   // kullanıcı çıktı, rejoin denemesi anlamsız
+                if (_migrationCompleted) return true;
+                await Task.Delay(250);
+            }
+
+            Debug.LogWarning($"[HM] Host migration did not complete within {hostMigrationWaitSeconds}s " +
+                             $"(hostChanged={_tHostChangedUtc.HasValue}) — falling back to manual rejoin.");
+            return false;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        //  RECONNECT (client tarafı — kendi bağlantımız koptuğunda)
         // ════════════════════════════════════════════════════════════════════
 
         async void OnUnexpectedDisconnect(ulong clientId)
@@ -286,6 +411,19 @@ namespace CosmicRumble.Networking
             if (!_wasClient) return;                 // biz host'tuk, bu bizim işimiz değil
             if (_intentionalLeave) return;            // kendi isteğimizle ayrıldık
             if (clientId != NetworkManager.Singleton.LocalClientId) return; // başkasının kopuşu
+
+            // Banner, Lobby'nin yeni host'u seçmesini BEKLEMEDEN burada açılır: aradaki tespit
+            // boşluğu saniyeler sürebiliyor ve oyuncu o sırada donmuş bir maça bakıyor olur
+            // (HM-21). Ölçüm için kopuş anı da burada damgalanır (HM-20).
+            _tLocalDisconnectUtc = DateTime.UtcNow;
+            _tHostChangedUtc     = null;
+            _migrationCompleted  = false;
+            ShowStatus(Loc.T("Connection lost, reconnecting..."));
+
+            // Migration'lı bir oturumda önce SDK'ya şansı verilir; elle rejoin yalnızca o
+            // başarısız olursa devreye girer.
+            if (_hostMigrationEnabled && await WaitForHostMigrationAsync())
+                return;
 
             string codeToRetry = LastJoinCode;
             bool wasRanked = IsRankedMatch; // JoinSessionAsync bayrağı sıfırlar; rejoin sonrası geri yüklenir
