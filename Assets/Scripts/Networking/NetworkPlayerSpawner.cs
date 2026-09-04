@@ -49,17 +49,19 @@ namespace CosmicRumble.Networking
         {
             var nm = NetworkManager.Singleton;
             if (nm == null || !nm.IsListening) return; // offline hotseat — GameInitializer halleder
-            if (!nm.IsServer) return;                  // sadece server spawn eder
 
-            // clientId'ler oturumlar arasında yeniden kullanılır — bayat kimlikler taşınmasın.
-            CosmicRumble.Utilities.NetworkIdentityRegistry.Clear();
-            CosmicRumble.Utilities.NetworkIdentityRegistry.OnIdentityReported += OnIdentityReported;
+            if (!nm.IsServer)
+            {
+                // Host migration: bu makine host DEĞİL, ama host düşerse SDK onu yeni host olarak
+                // seçebilir. O an sahne yeniden yüklenmediği için Start() bir daha çalışmaz —
+                // yeniden kurmanın tek tetikleyicisi bu abonelik.
+                nm.OnServerStarted += OnBecameServerAfterMigration;
+                return;
+            }
 
+            BeginServerSession(nm);
             SpawnAllConnectedClients(nm);
             _matchStarted = true;
-
-            nm.OnClientConnectedCallback += OnClientConnectedAfterMatchStart;
-            nm.OnClientDisconnectCallback += OnClientDisconnectedMidMatch;
         }
 
         void OnDestroy()
@@ -68,9 +70,22 @@ namespace CosmicRumble.Networking
             var nm = NetworkManager.Singleton;
             if (nm != null)
             {
+                nm.OnServerStarted -= OnBecameServerAfterMigration;
                 nm.OnClientConnectedCallback -= OnClientConnectedAfterMatchStart;
                 nm.OnClientDisconnectCallback -= OnClientDisconnectedMidMatch;
             }
+        }
+
+        /// <summary>Server rolüne geçerken kurulan ortak kancalar — hem ilk host hem migration
+        /// sonrası yeni host aynı yolu kullanır.</summary>
+        void BeginServerSession(NetworkManager nm)
+        {
+            // clientId'ler oturumlar arasında yeniden kullanılır — bayat kimlikler taşınmasın.
+            CosmicRumble.Utilities.NetworkIdentityRegistry.Clear();
+            CosmicRumble.Utilities.NetworkIdentityRegistry.OnIdentityReported += OnIdentityReported;
+
+            nm.OnClientConnectedCallback  += OnClientConnectedAfterMatchStart;
+            nm.OnClientDisconnectCallback += OnClientDisconnectedMidMatch;
         }
 
         void Update()
@@ -155,6 +170,139 @@ namespace CosmicRumble.Networking
 
             TurnManager.Instance?.RegisterPlayers(allPlayers);
             TurnManager.Instance?.BeginMatch();
+        }
+
+        // ── Host migration: yeni host'ta maçı yeniden kurma ────────────────────────────────
+
+        /// <summary>
+        /// SDK bu makineyi yeni host seçtiğinde çalışır. NetworkManager yeni bir Relay
+        /// allocation'ıyla host olarak başlamıştır; eski oturumun NetworkObject'leri kapanışta
+        /// yok olduğu için sahnede hiç karakter yoktur — hepsi snapshot'tan yeniden kurulur.
+        /// </summary>
+        void OnBecameServerAfterMigration()
+        {
+            var nm = NetworkManager.Singleton;
+            if (nm == null || !nm.IsServer) return;
+
+            nm.OnServerStarted -= OnBecameServerAfterMigration;
+
+            var snapshot = HostMigrationDataHandler.Pending;
+            if (snapshot == null || snapshot.Players.Count == 0)
+            {
+                // Snapshot yoksa maçı uydurmak, herkesi tam canla rastgele yerlere koymak demek
+                // olurdu — sessizce yanlış bir maç sürdürmektense durumu bildirip bırakmak doğru.
+                Debug.LogWarning("[HM] Became host but no migration snapshot is pending — cannot rebuild the match.");
+                NetworkBootstrap.Instance?.ShowStatus(Loc.T("Match could not be restored."));
+                return;
+            }
+
+            BeginServerSession(nm);
+            StartCoroutine(RebuildWhenReady(nm, snapshot));
+        }
+
+        /// <summary>TurnManager sahne NetworkObject'i host başlarken spawn edilir; sırası
+        /// OnServerStarted'a göre garanti değil, o yüzden hazır olana kadar beklenir.</summary>
+        System.Collections.IEnumerator RebuildWhenReady(NetworkManager nm, HostMigrationSnapshot snapshot)
+        {
+            float deadline = Time.time + 5f;
+            while (TurnManager.Instance == null && Time.time < deadline)
+                yield return null;
+
+            if (TurnManager.Instance == null)
+            {
+                Debug.LogError("[HM] TurnManager never appeared after migration — match cannot be rebuilt.");
+                yield break;
+            }
+
+            RebuildFromMigrationSnapshot(nm, snapshot);
+            HostMigrationDataHandler.ConsumePending();
+            _matchStarted = true;
+        }
+
+        void RebuildFromMigrationSnapshot(NetworkManager nm, HostMigrationSnapshot snapshot)
+        {
+            if (playerPrefab == null)
+            {
+                Debug.LogError("[NetworkPlayerSpawner] playerPrefab atanmamış — migration sonrası yeniden kurulamıyor!");
+                return;
+            }
+
+            string myUgsId = null;
+            try { myUgsId = Unity.Services.Authentication.AuthenticationService.Instance.PlayerId; }
+            catch { /* auth kapalıysa host kendi karakterini sahiplenemez, aşağıda sahipsiz kalır */ }
+
+            // Sahipsiz karakterlere verilecek sahte clientId'ler: gerçek clientId'lerle (0,1,2…)
+            // çakışmaması için yukarıdan aşağı sayılır. Devir yine kimlik doğrulamalı yoldan
+            // (TryResolveClaim) yapılır, tek fark anahtarın artık eski bir bağlantı değil bir
+            // snapshot satırı olması.
+            ulong syntheticKey = ulong.MaxValue;
+
+            var allPlayers = new List<GravityBody>();
+
+            foreach (var state in snapshot.Players)
+            {
+                var go = Instantiate(playerPrefab, state.Position, Quaternion.identity);
+                go.transform.up = state.UpDirection;
+
+                var netObj = go.GetComponent<NetworkObject>();
+                if (netObj == null)
+                {
+                    Debug.LogError("[NetworkPlayerSpawner] playerPrefab'ta NetworkObject yok!");
+                    Destroy(go);
+                    continue;
+                }
+
+                bool isMine = !string.IsNullOrEmpty(myUgsId) && state.UgsPlayerId == myUgsId;
+                if (isMine)
+                {
+                    go.name = $"Player_{nm.LocalClientId}";
+                    netObj.SpawnAsPlayerObject(nm.LocalClientId);
+                    _playerObjects[nm.LocalClientId] = netObj;
+                }
+                else
+                {
+                    // Sahibi henüz geri bağlanmadı: karakter server sahipliğinde spawn edilir ve
+                    // aynı UGS kimliğiyle dönen bağlantıya devredilmek üzere sahipsiz işaretlenir.
+                    go.name = $"Player_orphan_{state.UgsPlayerId}";
+                    netObj.Spawn();
+
+                    ulong key = syntheticKey--;
+                    _orphaned[key]      = netObj;
+                    _orphanedSince[key] = Time.time;
+                    _orphanUgsIds[key]  = state.UgsPlayerId;
+                }
+
+                ApplyPlayerState(go, state);
+
+                var gb = go.GetComponent<GravityBody>();
+                if (gb != null) allPlayers.Add(gb);
+            }
+
+            TurnManager.Instance.RegisterPlayers(allPlayers);
+            TurnManager.Instance.ResumeMatchAfterMigration(
+                snapshot.ActiveTurnIndex, snapshot.RemainingTurnTime, snapshot.TurnNumber);
+
+            Debug.Log($"[HM] Rebuilt {allPlayers.Count} players on the new host " +
+                      $"({_orphaned.Count} awaiting reconnect): {snapshot}");
+        }
+
+        /// <summary>Snapshot'taki tek bir oyuncunun durumunu yeni spawn edilmiş karaktere basar.
+        /// Spawn anında CharacterHealth/CharacterAbilities kendini "tam can, dolu cephane" olarak
+        /// kurar; buradaki geri yükleme onların üzerine yazar.</summary>
+        void ApplyPlayerState(GameObject go, HostMigrationPlayerState state)
+        {
+            var gb = go.GetComponent<GravityBody>();
+            if (gb != null)
+            {
+                gb.teamId.Value = state.TeamId;
+                gb.ApplyTeamColor();
+            }
+
+            var rb = go.GetComponent<Rigidbody2D>();
+            if (rb != null) rb.linearVelocity = state.Velocity;
+
+            go.GetComponent<CharacterHealth>()?.RestoreState(state.Health, state.IsShielded);
+            go.GetComponent<CharacterAbilities>()?.RestoreState(state.Ammo, state.HasUsedSkillThisTurn);
         }
 
         /// <summary>
