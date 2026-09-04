@@ -174,4 +174,24 @@ public class CharacterHealth : NetworkBehaviour, IDamageable
     {
         return currentHealth.Value;
     }
+
+    /// <summary>
+    /// Host migration sonrası yeni host'ta canı ve kalkan durumunu snapshot'tan geri yükler.
+    /// Yalnızca server yazabilir; TakeDamage'ten farklı olarak kalkan indirimi uygulanmaz ve
+    /// ölüm tetiklenmez — buradaki değer zaten tüm hasar hesapları yapılmış bitmiş bir sonuçtur.
+    /// Ölü oyuncular yeni host'ta hiç spawn edilmez, dolayısıyla 0 can geri yüklenmez.
+    /// </summary>
+    public void RestoreState(float health, bool shielded)
+    {
+        if (IsSpawned && !IsServer) return;
+
+        currentHealth.Value = Mathf.Clamp(health, 0f, maxHealth);
+        _isShielded.Value   = shielded;
+
+        if (!IsSpawned)
+        {
+            OnHealthChanged?.Invoke(currentHealth.Value);
+            OnShieldedChanged?.Invoke(shielded);
+        }
+    }
 }

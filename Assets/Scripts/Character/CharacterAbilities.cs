@@ -63,6 +63,25 @@ public class CharacterAbilities : NetworkBehaviour
     // turn başına 1 skill kuralı — artık server-authoritative (bkz. yukarı).
     public bool HasUsedSkillThisTurn => netHasUsedSkill.Value;
 
+    /// <summary>Cephanenin o anki hali — host migration snapshot'ı bunu taşır.</summary>
+    public AmmoState CurrentAmmo => netAmmo.Value;
+
+    /// <summary>
+    /// Host migration sonrası yeni host'ta cephaneyi ve "bu turda skill kullanıldı" kilidini
+    /// snapshot'tan geri yükler. Yalnızca server yazar. Karakter yeni spawn edildiği için
+    /// OnNetworkSpawn cephaneyi dolu (maxRpgAmmo vb.) kurar; bu çağrı onun üzerine yazar —
+    /// aksi halde migration herkese bedava cephane dağıtırdı.
+    /// </summary>
+    public void RestoreState(AmmoState ammo, bool hasUsedSkillThisTurn)
+    {
+        if (IsSpawned && !IsServer) return;
+
+        netAmmo.Value         = ammo;
+        netHasUsedSkill.Value = hasUsedSkillThisTurn;
+
+        if (!IsSpawned) FireAllChangeEvents();
+    }
+
     [Header("Super Jump Ayarları")]
     public int maxSuperJumps = 3;
 
