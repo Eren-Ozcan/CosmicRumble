@@ -1,0 +1,31 @@
+plugins {
+    // If you are changing the Android Gradle Plugin version, make sure it is compatible with the Gradle version preinstalled with Unity
+    // See which Gradle version is preinstalled with Unity here https://docs.unity3d.com/Manual/android-gradle-overview.html
+    // See official Gradle and Android Gradle Plugin compatibility table here https://developer.android.com/studio/releases/gradle-plugin#updating-gradle
+    // To specify a custom Gradle version in Unity, go do "Preferences > External Tools", uncheck "Gradle Installed with Unity (recommended)" and specify a path to a custom Gradle version
+    id 'com.android.application' version '8.7.2' apply false
+    id 'com.android.library' version '8.7.2' apply false
+    **BUILD_SCRIPT_DEPS**
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}
+
+// Kotlin stdlib duplicate-class fix, applied to EVERY module (:launcher included).
+// gpgs-plugin-support brings kotlin-stdlib 1.8.22 while transitive Play Services deps still ask
+// for kotlin-stdlib-jdk7/jdk8 1.6.21, and :launcher:checkReleaseDuplicateClasses then fails with
+// "Duplicate class kotlin.io.path.PathsKt ...". From Kotlin 1.8 on the jdk7/jdk8 artifacts are
+// folded into kotlin-stdlib and their 1.8.x builds are empty stubs, so forcing one version removes
+// the duplicates without excluding any class the plugin might actually call. It has to live here rather than in
+// mainTemplate.gradle: that template is the unityLibrary module only, and the duplicate check runs
+// in :launcher.
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+        }
+    }
+}

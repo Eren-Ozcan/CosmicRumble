@@ -4,8 +4,37 @@ apply from: '../shared/keepUnitySymbols.gradle'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+// Android Resolver Dependencies Start
+    implementation 'com.google.games:gpgs-plugin-support:2.1.0' // Assets/GooglePlayGames/com.google.play.games/Editor/GooglePlayGamesPluginDependencies.xml:11
+// Android Resolver Dependencies End
 **DEPS**}
 
+// Kotlin stdlib duplicate-class fix. gpgs-plugin-support pulls kotlin-stdlib 1.8.22 while some of
+// its transitive Play Services deps still ask for kotlin-stdlib-jdk7/jdk8 1.6.21, and the build
+// dies in :launcher:checkReleaseDuplicateClasses ("Duplicate class kotlin.io.path.PathsKt ...").
+// From Kotlin 1.8 on, the jdk7/jdk8 artifacts are folded into kotlin-stdlib itself and their 1.8.x
+// versions are empty stubs, so forcing them to the same version removes the duplicates instead of
+// excluding classes the code might need.
+configurations.all {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
+    }
+}
+
+// Android Resolver Exclusions Start
+android {
+  packaging {
+      exclude ('/lib/armeabi/*' + '*')
+      exclude ('/lib/armeabi-v7a/*' + '*')
+      exclude ('/lib/mips/*' + '*')
+      exclude ('/lib/mips64/*' + '*')
+      exclude ('/lib/x86/*' + '*')
+      exclude ('/lib/x86_64/*' + '*')
+  }
+}
+// Android Resolver Exclusions End
 android {
     namespace "com.unity3d.player"
     ndkPath "**NDKPATH**"

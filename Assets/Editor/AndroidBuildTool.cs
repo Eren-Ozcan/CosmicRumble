@@ -76,7 +76,18 @@ namespace CosmicRumble.EditorTools
         [MenuItem("Tools/Android/Build APK (device test)")]
         public static void BuildApk() => BuildAndroid(aab: false, development: false);
 
-        static void BuildAndroid(bool aab, bool development)
+        /// <summary>
+        /// Cihazda oyunu gerçekten oynayabilmek için misafir girişli APK. Mağaza build'inde giriş
+        /// ekranı yalnız Google ve Cosmic ID sunuyor; ikisi de hesap/parola istiyor, yani otomatik
+        /// bir cihaz testi kapıdan içeri giremiyor. CR_DEV_CLIENT "MİSAFİR OLARAK DEVAM" düğmesini
+        /// açar (bkz. LoginScreenUI), CR_AUTOTEST ise AutoTestBot'u derlemeye katar. Paket adı
+        /// mağaza sürümüyle aynı olduğu için ikisi aynı cihazda yan yana DURAMAZ — bu build sadece
+        /// test cihazı içindir, Console'a asla yüklenmez.
+        /// </summary>
+        [MenuItem("Tools/Android/Build APK (guest login, device test only)")]
+        public static void BuildApkGuest() => BuildAndroid(aab: false, development: false, guest: true);
+
+        static void BuildAndroid(bool aab, bool development, bool guest = false)
         {
             ApplyPlayerSettings();
 
@@ -92,7 +103,7 @@ namespace CosmicRumble.EditorTools
             string dir = "Builds/Android";
             Directory.CreateDirectory(dir);
             string path = $"{dir}/CosmicRumble-{PlayerSettings.bundleVersion}-{PlayerSettings.Android.bundleVersionCode}" +
-                          (aab ? ".aab" : ".apk");
+                          (guest ? "-guest" : "") + (aab ? ".aab" : ".apk");
 
             var options = new BuildPlayerOptions
             {
@@ -100,6 +111,9 @@ namespace CosmicRumble.EditorTools
                 locationPathName = path,
                 target = BuildTarget.Android,
                 options = development ? BuildOptions.Development : BuildOptions.None,
+                extraScriptingDefines = guest
+                    ? new[] { "CR_DEV_CLIENT", "CR_AUTOTEST" }
+                    : System.Array.Empty<string>(),
             };
 
             BuildReport report = BuildPipeline.BuildPlayer(options);

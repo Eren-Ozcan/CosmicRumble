@@ -1,4 +1,4 @@
-// Assets/Scripts/Gravity/GravityBody.cs
+﻿// Assets/Scripts/Gravity/GravityBody.cs
 using System;
 using System.Collections.Generic;
 using Unity.Collections;
@@ -207,11 +207,14 @@ public class GravityBody : NetworkBehaviour
         float h = 0f;
         if (Input.GetKey(leftKey))  h += 1f;
         if (Input.GetKey(rightKey)) h -= 1f;
+        // Mobilde klavye yok: ekran üstü ◀ ▶ butonları aynı isaret duzeniyle katkida bulunur
+        // (bkz. TouchControlsUI — masaustunde hic olusturulmaz, o yuzden burasi 0 kalir).
+        if (Mathf.Approximately(h, 0f)) h = TouchControlsUI.Horizontal;
         cachedHorizontalInput = h;
 
         bool grounded = _isGrounded;
 
-        if (cooldownTimer <= 0f && Input.GetKeyDown(jumpKey))
+        if (cooldownTimer <= 0f && (Input.GetKeyDown(jumpKey) || TouchControlsUI.ConsumeJump()))
         {
             if (grounded)
             {
