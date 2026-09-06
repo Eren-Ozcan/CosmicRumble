@@ -53,6 +53,13 @@ public class GameConfig : MonoBehaviour
         MoveRightKey    = (KeyCode)PlayerPrefs.GetInt("MoveRightKey", (int)KeyCode.D);
         JumpKey         = (KeyCode)PlayerPrefs.GetInt("JumpKey",      (int)KeyCode.Space);
 
+#if CR_DEV_CLIENT
+        // Çoklu-instance testinde üç pencere aynı anda ses çalınca dinlenmez oluyor: dev client
+        // her zaman sessiz açılır (kayıtlı PlayerPrefs değeri de ezilir). Gerçek oyuncu
+        // build'lerini etkilemez — CR_DEV_CLIENT sadece BuildDevClientTool ile derlenir.
+        MasterVolume = 0f;
+#endif
+
         Screen.fullScreen = Fullscreen;
         ApplyGraphics();
     }

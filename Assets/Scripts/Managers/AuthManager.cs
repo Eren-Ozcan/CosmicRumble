@@ -66,6 +66,53 @@ public class AuthManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+#if CR_DEV_CLIENT
+    /// <summary>Bu process için kararlı, tekrar başlatmalarda AYNI kalan bir Authentication
+    /// profile adı üretir — komut satırındaki <c>-logFile</c> argümanını kullanır (bkz.
+    /// docs/HOST_MIGRATION_PLAN.md test akışı: hm01_host.log/hm01_client2.log/hm01_client3.log
+    /// gibi her pencere için ayrı bir isimle başlatılıyor), yoksa process id'ye düşer.
+    /// SwitchProfile yalnızca [a-zA-Z0-9_-]{1,30} kabul ettiği için sanitize edilir.</summary>
+    static string DevClientAuthProfile()
+    {
+        string raw = null;
+        var args = Environment.GetCommandLineArgs();
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == "-logFile") { raw = System.IO.Path.GetFileNameWithoutExtension(args[i + 1]); break; }
+        }
+        if (string.IsNullOrEmpty(raw))
+            raw = "pid" + System.Diagnostics.Process.GetCurrentProcess().Id;
+
+        var sb = new System.Text.StringBuilder(30);
+        foreach (char c in raw)
+        {
+            if (sb.Length >= 30) break;
+            sb.Append(char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
+        }
+        return sb.Length > 0 ? sb.ToString() : "devclient";
+    }
+
+    /// <summary>Host migration testi aynı makinede aynı .exe'nin birden çok kopyasını çalıştırıyor.
+    /// UGS'nin anonim oturum token'ı Application.persistentDataPath'te önbelleklenir ve bu yol
+    /// tüm kopyalar için AYNI — düzeltilmezse hepsi aynı PlayerId ile açılır ("arkadaş ekle" kendi
+    /// kendine eklemeye dönüşür, UGS hata 24033, ve Friends'te başka çakışmalar 500 olarak dönebilir).
+    /// Bu yüzden İLK sign-in çağrısından ÖNCE (burada, AuthManager'da) her process'e ayrı bir
+    /// Authentication "profile" atanır — yalnızca SignedOut durumdayken çağrılabilir.</summary>
+    static void EnsureDevClientProfile()
+    {
+        if (AuthenticationService.Instance.IsSignedIn) return;
+        try { AuthenticationService.Instance.SwitchProfile(DevClientAuthProfile()); }
+        catch (Exception e)
+        {
+#if UNITY_EDITOR
+            Debug.LogWarning($"[AuthManager] DevClient SwitchProfile skipped: {e.Message}");
+#endif
+        }
+    }
+#else
+    static void EnsureDevClientProfile() { }
+#endif
+
     // ── Public API ───────────────────────────────────────────────────────
 
     /// <summary>
@@ -79,6 +126,8 @@ public class AuthManager : MonoBehaviour
         {
             if (UnityServices.State != ServicesInitializationState.Initialized)
                 await UnityServices.InitializeAsync();
+
+            EnsureDevClientProfile();
 
             if (!AuthenticationService.Instance.IsSignedIn &&
                 AuthenticationService.Instance.SessionTokenExists)
@@ -329,6 +378,7 @@ public class AuthManager : MonoBehaviour
     public async Task LoginAsGuest()
     {
         bool wasNamedAccount = HasNamedAccount;
+        EnsureDevClientProfile();
         try
         {
             if (wasNamedAccount)
