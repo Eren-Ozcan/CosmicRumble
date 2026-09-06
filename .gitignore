@@ -79,3 +79,8 @@ docs/store-assets-originals/
 
 # Android upload keystore - private, mirrored to Eren-Ozcan/pictures/CosmicRumble/
 /android-keystore/
+
+# EDM4U local maven repo + Unity temp, both regenerated on demand
+/Assets/GeneratedLocalRepo/
+/Assets/GeneratedLocalRepo.meta
+/.utmp/
