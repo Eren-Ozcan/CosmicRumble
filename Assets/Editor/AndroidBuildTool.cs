@@ -79,6 +79,13 @@ namespace CosmicRumble.EditorTools
         static void BuildAndroid(bool aab, bool development)
         {
             ApplyPlayerSettings();
+
+            // Açık sahnelerden biri kirliyse BuildPlayer önce "Scene(s) Have Been Modified"
+            // modalını açıyor; otomasyondan tetiklenen build'de kimse tıklayamaz ve editör ana
+            // thread'i (Coplay köprüsü dahil) sonsuza kadar kilitleniyor — canlı olarak yaşandı.
+            // BuildDevClientTool'daki aynı önlem.
+            UnityEditor.SceneManagement.EditorSceneManager.SaveOpenScenes();
+
             EditorUserBuildSettings.buildAppBundle = aab;
 
             var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray();

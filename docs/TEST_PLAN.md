@@ -29,8 +29,9 @@ Sev-2 defects, and the closed-testing round completes 14 days with 12 testers an
 
 ### 2.1 Tooling to install before the first pass
 
-Neither of these is in `Packages/manifest.json` today; both are free first-party packages and both
-are prerequisites for large parts of this plan.
+**Both are installed as of 2026-09-06** (`com.unity.multiplayer.playmode` 1.6.3 and
+`com.unity.multiplayer.tools` 2.2.4 in `Packages/manifest.json`); this section used to say neither
+was. They remain prerequisites for large parts of this plan.
 
 | Package | Why |
 |---|---|
