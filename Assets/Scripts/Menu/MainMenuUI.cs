@@ -948,11 +948,9 @@ public class MainMenuUI : MonoBehaviour
             new Color(1f, 1f, 1f, 0.55f), TextAlignmentOptions.Center,
             new Vector2(0.5f, 0f), new Vector2(360, 20), new Vector2(0, 12));
 
-        // Yasal linkler — tüm sekmelerde görünür (tab içeriği değil, panel geneli footer)
-        MakeLinkText(_settingsPanel, "lbl_privacy", Loc.T("Privacy Policy"), new Vector2(-95, 32),
+        // Yasal link — tüm sekmelerde görünür (tab içeriği değil, panel geneli footer)
+        MakeLinkText(_settingsPanel, "lbl_privacy", Loc.T("Privacy Policy"), new Vector2(0, 32),
             () => Application.OpenURL(LegalLinks.PrivacyPolicyUrl));
-        MakeLinkText(_settingsPanel, "lbl_terms", Loc.T("Terms of Service"), new Vector2(95, 32),
-            () => Application.OpenURL(LegalLinks.TermsOfServiceUrl));
 
         // ── Tab row ──────────────────────────────────────────────────────────
         MakeTabBtn("tab_audio",     Loc.T("AUDIO"),    -168, 170, () => ShowSettingsTab(_audioTab));

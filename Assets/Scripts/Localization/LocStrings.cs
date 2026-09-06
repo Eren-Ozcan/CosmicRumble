@@ -301,7 +301,6 @@ namespace CosmicRumble.Localization
 
             // ── Legal links ──────────────────────────────────────────────────
             ["Privacy Policy"]    = new[] { "Gizlilik Politikası", "隐私政策", "Política de Privacidad", "プライバシーポリシー", "개인정보 처리방침", "Datenschutzrichtlinie" },
-            ["Terms of Service"]  = new[] { "Kullanım Koşulları", "服务条款", "Términos de Servicio", "利用規約", "이용약관", "Nutzungsbedingungen" },
         };
     }
 }
