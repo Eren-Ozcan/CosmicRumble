@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 
@@ -43,16 +43,18 @@ namespace CosmicRumble.Achievements
         public void UnlockAchievement(string id)
         {
 #if GPGS_INSTALLED
-            if (!Social.localUser.authenticated) return;
-            Social.ReportProgress(id, 100.0, _ => { });
+            // UnityEngine ile tam nitelenir: projede bir CosmicRumble.Social ad alani var ve
+            // sade 'Social' once onu cozuyor (Android derlemesinde CS0234 ile patliyordu).
+            if (!UnityEngine.Social.localUser.authenticated) return;
+            UnityEngine.Social.ReportProgress(id, 100.0, _ => { });
 #endif
         }
 
         public void UpdateProgress(string id, int current, int max)
         {
 #if GPGS_INSTALLED
-            if (!Social.localUser.authenticated || max <= 0) return;
-            Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
+            if (!UnityEngine.Social.localUser.authenticated || max <= 0) return;
+            UnityEngine.Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
 #endif
         }
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.SocialPlatforms;
 #if UNITY_IOS
@@ -15,7 +15,7 @@ namespace CosmicRumble.Achievements
         public void Initialize(Action onReady)
         {
             GameCenterPlatform.ShowDefaultAchievementCompletionBanner(true);
-            Social.localUser.Authenticate(success =>
+            UnityEngine.Social.localUser.Authenticate(success =>
             {
 #if UNITY_EDITOR
                 Debug.Log($"[AppStoreAchievementProvider] Authenticate: {success}");
@@ -28,14 +28,14 @@ namespace CosmicRumble.Achievements
 
         public void UnlockAchievement(string id)
         {
-            if (!Social.localUser.authenticated) return;
-            Social.ReportProgress(id, 100.0, _ => { });
+            if (!UnityEngine.Social.localUser.authenticated) return;
+            UnityEngine.Social.ReportProgress(id, 100.0, _ => { });
         }
 
         public void UpdateProgress(string id, int current, int max)
         {
-            if (!Social.localUser.authenticated || max <= 0) return;
-            Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
+            if (!UnityEngine.Social.localUser.authenticated || max <= 0) return;
+            UnityEngine.Social.ReportProgress(id, (double)current / max * 100.0, _ => { });
         }
 
         // Game Center achievement state requires an async Social.LoadAchievements callback;
