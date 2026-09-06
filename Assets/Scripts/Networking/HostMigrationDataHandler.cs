@@ -1,4 +1,4 @@
-// Assets/Scripts/Networking/HostMigrationDataHandler.cs
+﻿// Assets/Scripts/Networking/HostMigrationDataHandler.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -102,7 +102,9 @@ namespace CosmicRumble.Networking
             {
                 var snapshot = CaptureCurrentMatch();
                 var bytes = Serialize(snapshot);
-#if UNITY_EDITOR
+#if UNITY_EDITOR || CR_DEV_CLIENT
+                // Dev client'ta da gorunur: coklu-process migration kosularinda host'un gercekten
+                // snapshot yukleyip yuklemedigi yalnizca bu satirdan anlasiliyor.
                 Debug.Log($"[HM] Generate: {snapshot} ({bytes.Length} bytes)");
 #endif
                 return bytes;

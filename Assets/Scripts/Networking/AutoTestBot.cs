@@ -1,4 +1,4 @@
-#if CR_AUTOTEST
+﻿#if CR_AUTOTEST
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -46,7 +46,8 @@ namespace CosmicRumble.AutoTest
         int    _requiredPlayers = 2;
         string _joinCode;
         bool   _isHost;
-        float  _killAt = -1f;
+        float  _killAt  = -1f;
+        float  _leaveAt = -1f;
 
         void Awake()
         {
@@ -66,12 +67,17 @@ namespace CosmicRumble.AutoTest
                     case "-autokill":
                         if (i + 1 < args.Length && float.TryParse(args[i + 1], out float s)) _killAt = s;
                         break;
+                    case "-autoleave":
+                        if (i + 1 < args.Length && float.TryParse(args[i + 1], out float l)) _leaveAt = l;
+                        break;
                 }
             }
 
-            Debug.Log($"{Tag} boot isHost={_isHost} requiredPlayers={_requiredPlayers} joinCode={_joinCode} killAt={_killAt}");
+            Debug.Log($"{Tag} boot isHost={_isHost} requiredPlayers={_requiredPlayers} joinCode={_joinCode} " +
+                      $"killAt={_killAt} leaveAt={_leaveAt}");
 
-            if (_killAt >= 0f) StartCoroutine(KillTimer());
+            if (_killAt  >= 0f) StartCoroutine(KillTimer());
+            if (_leaveAt >= 0f) StartCoroutine(LeaveTimer());
             StartCoroutine(Run());
         }
 
@@ -80,6 +86,22 @@ namespace CosmicRumble.AutoTest
             yield return new WaitForSecondsRealtime(_killAt);
             Debug.Log($"{Tag} autokill firing at {_killAt}s, force-closing process");
             Process.GetCurrentProcess().Kill();
+        }
+
+        /// <summary>
+        /// -autoleave: process'i öldürmek yerine oturumdan DÜZGÜN ayrılır. Çöken host ile
+        /// bilerek çıkan host, Lobby açısından farklı iki yol: çöken host'un üyeliği ancak
+        /// hareketsizlik zaman aşımıyla düşerken (ölçüldü: 108 s, bkz. docs/HOST_MIGRATION_PLAN.md)
+        /// düzgün ayrılma üyeliği anında kaldırır, yani yeni host seçimi de anında olmalı.
+        /// Bu ikinci yolun gerçekten migration ürettiğini ölçmek için gerekli.
+        /// </summary>
+        IEnumerator LeaveTimer()
+        {
+            yield return new WaitForSecondsRealtime(_leaveAt);
+            Debug.Log($"{Tag} autoleave firing at {_leaveAt}s, leaving the session gracefully");
+            var task = NetworkBootstrap.Instance.LeaveSessionAsync();
+            while (!task.IsCompleted) yield return null;
+            Debug.Log($"{Tag} autoleave done");
         }
 
         IEnumerator Run()

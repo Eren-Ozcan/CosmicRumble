@@ -234,7 +234,15 @@ namespace CosmicRumble.Networking
             {
                 await EnsureUgsReadyAsync();
 
-                var session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, new JoinSessionOptions());
+                // KATILAN TARAF DA migration'i acmak ZORUNDA. SDK'nin NetworkModule'u host
+                // degisince su kontrolu yapiyor: HostMigrationHandler == null ise
+                // "Host migration is disabled" deyip donuyor — ve o handler YALNIZCA
+                // WithHostMigration verilen options'tan kuruluyor. Yani yalnizca host tarafinda
+                // acmak, secilen yeni host'un (bir client) hic re-host edememesi demek: canli
+                // testte host cikinca SessionHostChanged geliyor ama SessionMigrated hic gelmiyordu
+                // (bkz. docs/HOST_MIGRATION_PLAN.md, 2026-09-06 olcumleri).
+                var joinOptions = new JoinSessionOptions().WithHostMigration(new HostMigrationDataHandler());
+                var session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code, joinOptions);
                 AttachSession(session);
                 LastJoinCode = code;
                 _wasClient = true;
@@ -334,6 +342,15 @@ namespace CosmicRumble.Networking
             try
             {
                 if (_session == null) return;
+
+                // KENDIMIZ cikiyorsak burasi calismamali. Host LeaveSessionAsync cagirinca NGO
+                // her client icin OnClientDisconnect uretiyor; her biri buraya dusup KALAN
+                // oyunculari Lobby'den atiyordu — yani cikan host, arkasinda kalanlarin oturumunu
+                // yok ediyordu ve host migration'a devredilecek bir lobi kalmiyordu (canli testte
+                // "SessionNotFound: lobby not found" olarak goruldu). Kopan tek bir client icin bu
+                // temizlik hala dogru; kapanan host icin degil.
+                if (_intentionalLeave) return;
+
                 var host = _session.AsHost();
                 string myId = AuthenticationService.Instance.PlayerId;
 
