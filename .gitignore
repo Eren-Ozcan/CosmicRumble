@@ -73,3 +73,6 @@ crashlytics-build.properties
 
 # Private/local-only store & marketing assets (mirrored to private Eren-Ozcan/pictures repo)
 docs/store-assets-originals/
+
+# AutoTestBot / host migration run logs (see Assets/Scripts/Networking/AutoTestBot.cs)
+/*.log
