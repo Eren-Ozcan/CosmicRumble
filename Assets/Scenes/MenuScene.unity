@@ -774,9 +774,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   reconnectAttempts: 3
   reconnectDelaySeconds: 2
-  hostMigrationWaitSeconds: 30
+  hostMigrationWaitSeconds: 140
   transportWaitSeconds: 10
-  maxDowntimeSeconds: 60
+  maxDowntimeSeconds: 180
 --- !u!4 &1815067798
 Transform:
   m_ObjectHideFlags: 0

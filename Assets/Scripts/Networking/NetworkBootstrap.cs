@@ -51,15 +51,19 @@ namespace CosmicRumble.Networking
                  "allocation + otomatik rejoin) tamamlaması için beklenecek azami süre. Bu süre " +
                  "Lobby'nin host'u ölü sayma gecikmesini de kapsar — o gecikme ölçülmüş bir sayı " +
                  "değil (bkz. docs/TEST_PLAN.md HM-20), Photon'daki muadili ~10 saniye. Süre " +
-                 "dolarsa kendi elle yeniden katılma döngümüze düşeriz.")]
-        public float hostMigrationWaitSeconds = 30f;
+                 "dolarsa kendi elle yeniden katılma döngümüze düşeriz. " +
+                 "ÖLÇÜLDÜ (2026-09-06): host'un process'i çökerse Lobby yeni host'u ancak ~99-108 " +
+                 "saniye sonra seçiyor; düzgün çıkışta ise 0,3 saniye. Bu yüzden varsayılan 140s — " +
+                 "daha kısa bir değer, çökme senaryosunda birkaç saniye sonra gerçekten gelecek " +
+                 "olan migration'ı beklemeden maçı iptal ederdi.")]
+        public float hostMigrationWaitSeconds = 140f;
         [Tooltip("Lobby uyeligi geri alindiktan sonra NGO tasima katmaninin gercekten baglanmasi " +
                  "icin beklenecek sure (saniye). Dolmasi 'bu deneme basarisiz' demektir — bkz. " +
                  "WaitForTransportAsync.")]
         public float transportWaitSeconds = 10f;
         [Tooltip("Kopustan sonra oyuncunun donmus bir maca bakmasina izin verilen azami toplam sure " +
                  "(saniye). Dolarsa migration/rejoin denemeleri birakilir ve menuye donulur.")]
-        public float maxDowntimeSeconds = 60f;
+        public float maxDowntimeSeconds = 180f;
 
         private ISession _session;
         private bool _wasClient;          // JoinSessionAsync ile bağlandık mı (host değil)

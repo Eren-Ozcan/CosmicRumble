@@ -176,39 +176,51 @@ bumped to 1.6.3.
 
 Testing for every phase is defined in `docs/TEST_PLAN.md`, section HM.
 
-## 7. Live results, 2026-09-06 — the SDK path does not carry a crashed host
+## 7. Live results, 2026-09-06 — migration works; the crash-detection gap is the service's
 
-Three standalone DevClient processes (`-autohost 3` + two `-autojoin`), match started, then the
-host process hard-killed with `taskkill /F`. Runs `hm10`–`hm12`, logs kept out of the repo.
+Three standalone DevClient processes (`-autohost 3` + two `-autojoin`), match started, then the host
+either hard-killed (`taskkill /F`) or made to leave gracefully (`-autoleave`). Runs `hm10`-`hm17`.
 
-**HM-20 measured at last: `SessionHostChanged` fires 108 seconds after the local disconnect.**
-Both surviving clients reported the same figure (108.1 s and 108.2 s) and the same elected host id.
-That is not the ~10 s Photon-equivalent the plan assumed — it is the Lobby's own host-inactivity
-timeout, and it is an order of magnitude too long to sit behind a "reconnecting…" banner.
+### What was broken
 
-**`SessionMigrated` never arrived at all**, not even 42 s after the host change, with no error or
-exception from the SDK on either client. So for a *crashed* host the SDK gives us host election and
-nothing else: the elected host never re-hosts, so `MigrateClientNetworkAsync` has nothing to join.
-A deliberate quit (a graceful `LeaveSessionAsync`, which removes the member immediately instead of
-waiting out the timeout) is a different path and is not covered by these runs.
+Migration never completed at first — `SessionHostChanged` arrived, `SessionMigrated` never did.
+Two causes, either one sufficient on its own:
 
-Two defects fell out of the same runs and are fixed (see the commits):
+1. **Only the host had migration enabled.** The SDK's `NetworkModule.OnSessionHostChanged` returns
+   early with "Host migration is disabled" when `HostMigrationHandler == null`, and that handler is
+   built purely from the options the *local* client passed. Our joiners called
+   `JoinSessionByCodeAsync(code, new JoinSessionOptions())`, so an elected client could never
+   re-host. `WithHostMigration(...)` now goes on the join options too.
+2. **A leaving host evicted everyone else.** `LeaveSessionAsync` makes NGO raise `OnClientDisconnect`
+   for every client, and each one ran the stale-peer cleanup — so the departing host removed the
+   remaining players from the lobby and the session ceased to exist ("SessionNotFound: lobby not
+   found"). The cleanup is correct for one dropped client, wrong while we are shutting ourselves
+   down; it is now skipped when the leave is our own.
 
-- `ReconnectAsync()` succeeds on the lobby membership even when no host process exists, so the
-  client logged "Reconnect succeeded" and then sat in a frozen match forever. The transport, not the
-  membership, is now the criterion (`WaitForTransportAsync`).
-- With the network gone, `TurnManager.Update` fell into the offline hotseat branch and every
-  survivor declared *itself* the winner, rewards included (`_wasOnline` freeze).
+Two further defects surfaced in the same runs and are fixed: `ReconnectAsync()` succeeds on a lobby
+membership even when no host process is left (the transport, not the membership, is now the
+criterion), and `TurnManager` treated the post-despawn empty character list as "everybody else died"
+and handed every survivor a false win.
 
-**Resulting behaviour, verified in `hm12`:** host dies → both survivors freeze the match, banner
-shown, migration waited out, three rejoin attempts each proven against the transport, then a clean
-return to the menu inside the 60 s downtime budget. No false win, no rewards granted, no exceptions,
-no frozen client.
+### What the numbers are
 
-**What this means for the release.** Host migration cannot be advertised as working for a crashed
-host on SDK 2.2.4 as wired here. The shipped behaviour is the graceful degradation above. Remaining
-options, in the order worth trying: (a) test the deliberate-quit path, which may migrate correctly
-and is the common case for a player leaving a friendly match; (b) drive the election ourselves once
-we detect the drop locally, rather than waiting on the Lobby timeout, and have the elected client
-re-host from the snapshot we already serialise correctly (the snapshot half is done and self-tested);
-(c) accept the degradation for the first release and revisit after the SDK's next version.
+| Scenario | Host election (`SessionHostChanged`) | Total visible downtime (`SessionMigrated`) |
+|---|---|---|
+| Host quits gracefully | **0.3 s** | **3.6 s** on the new host, 5.9 s on the other client |
+| Host process crashes | **99–108 s** | 111–114 s |
+
+The crash figure is the Lobby's own host-inactivity timeout and there is nothing client-side to do
+about it: electing a host means updating the lobby, which only the (dead) host has authority to do.
+`hostMigrationWaitSeconds` is therefore 140 s and the downtime budget 180 s — a shorter wait would
+abandon a match that is about to come back on its own.
+
+### What passes now
+
+A migrated match resumes on the new host with the snapshot's turn, remaining turn time, health and
+positions; the other client rejoins and reclaims its own character by UGS PlayerId; play continues
+(turns 4-6 observed after the migration). If migration genuinely fails, the survivors freeze behind
+the status banner, retry against the transport, and return to the menu with no trophy change and no
+false win.
+
+Still to test on real devices: HM-09 (in-flight projectile), HM-10 with actual craters, HM-17 at
+mobile latency, and the 4+ player cases.
