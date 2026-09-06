@@ -20,8 +20,19 @@ names into the other 6 languages.
    below. The code is ready and waiting.
 2. Two-device end-to-end test of the friend/invite flow (send/accept request, presence, invite →
    private match → match end). Verified one-sided; the two-sided flow has never been tested.
-3. First real Android device build test — the new sign-in flow, real store IAP behavior,
-   performance. So far the project has only run in the Editor + Device Simulator.
+3. First real Android device build test — **DONE 2026-09-06** on a Huawei POT-LX1 (Android 10,
+   3 GB). Signed APK and AAB build from `Tools ▸ Android` (`com.yilkgames.cosmicrumble`, IL2CPP,
+   ARM64, target API 36); app installs, launches, reaches the menu and plays a Training match.
+   Three real problems came out of it and are fixed: the Kotlin stdlib duplicate-class gradle
+   failure, `Social` resolving to `CosmicRumble.Social` under GPGS_INSTALLED, and — the important
+   one — **no touch movement at all** (see item 3d). Still untested on device: Play Games sign-in
+   (needs the Console app, item 1), real IAP (needs the closed track), performance/thermals, and
+   the two-device social flow.
+3d. **Mobile touch controls** (added 2026-09-06) — aiming/firing already worked on touch, but
+   walking and jumping were keyboard-only, so the character could not move on a phone.
+   `Assets/Scripts/UI/TouchControlsUI.cs` adds hold-to-walk ◀ ▶ and a jump button, mobile-only,
+   verified on the device. Open nits: the weapon tray still draws keyboard number hints (1-0) on
+   touch, and the tray sits right at the bottom edge on a 19.5:9 screen.
 3b. **Host migration** — **DONE and live-tested (2026-09-06).** A host drop no longer kills the
    match. Two root causes had blocked it: only the host passed `WithHostMigration` (the SDK refuses
    to re-host a client whose own `HostMigrationHandler` is null), and a leaving host evicted the
@@ -38,8 +49,12 @@ names into the other 6 languages.
 
 ### 2. Mandatory before release — store/account work (not code, long lead time, start in parallel)
 4. Google Play Console: app registration, the **12 test users × 14 days closed-testing requirement**
-   (for new individual accounts — this determines the release schedule), Data Safety form, content
-   rating, store artwork/description, AAB signing.
+   (this determines the release schedule), Data Safety form, content rating, store artwork, AAB
+   upload. **Prepared 2026-09-06, not yet done in the Console** (the browser session asked to
+   re-authenticate, and signing in is the account owner's to do): signed AAB at
+   `Builds/Android/CosmicRumble-1.0-1.aab`, upload keystore in the private pictures repo, and three
+   new docs — `docs/store/play-console-setup.md` (order of operations), `docs/store/data-safety.md`
+   (form answers derived from the code), `docs/store/store-listing.md` (EN/TR copy).
 5. Real IAP SKUs: `gem_pack_100..6000` in the Console with exactly the same IDs. **Pricing drafted
    2026-09-06** in `docs/store/iap-pricing.md` ($0.99 / $4.99 / $9.99 / $19.99 / $39.99, gems per
    dollar rising at every step) — awaiting the account owner's confirmation, then Console entry.
@@ -57,7 +72,12 @@ names into the other 6 languages.
    (via `Application.OpenURL` through `Assets/Scripts/Utilities/LegalLinks.cs`). **Remaining**: the
    texts must pass legal review and be hosted at a real URL, then the placeholder URLs in
    `LegalLinks.cs` must be replaced with the real address; once the age rating is set in the Console,
-   clause 5 (children's privacy) must be filled in.
+   clause 5 (children's privacy) must be filled in. **Update 2026-09-06:** the studio already
+   publishes one shared policy for every game, so the work is smaller than this item assumed — the
+   `yilkgames_web` repo's privacy and account-deletion pages were updated to describe what
+   CosmicRumble actually collects (UGS instead of Firebase, friends/presence, relayed sessions, no
+   ads, no chat) and pushed. **The site does not deploy on push**: someone still has to run
+   `npx wrangler pages deploy . --project-name=yilkgames-web` from that repo.
 8. iOS track (after Android): Apple Developer account, Mac/build pipeline, filling in the
    `AppleGameCenterAuthProvider` stub (Apple.GameKit +
    `SignInWithAppleGameCenterAsync`), App Privacy label, TestFlight. Right now there is nothing for iOS.
