@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Services.Authentication;
@@ -53,6 +53,13 @@ namespace CosmicRumble.Networking
                  "değil (bkz. docs/TEST_PLAN.md HM-20), Photon'daki muadili ~10 saniye. Süre " +
                  "dolarsa kendi elle yeniden katılma döngümüze düşeriz.")]
         public float hostMigrationWaitSeconds = 30f;
+        [Tooltip("Lobby uyeligi geri alindiktan sonra NGO tasima katmaninin gercekten baglanmasi " +
+                 "icin beklenecek sure (saniye). Dolmasi 'bu deneme basarisiz' demektir — bkz. " +
+                 "WaitForTransportAsync.")]
+        public float transportWaitSeconds = 10f;
+        [Tooltip("Kopustan sonra oyuncunun donmus bir maca bakmasina izin verilen azami toplam sure " +
+                 "(saniye). Dolarsa migration/rejoin denemeleri birakilir ve menuye donulur.")]
+        public float maxDowntimeSeconds = 60f;
 
         private ISession _session;
         private bool _wasClient;          // JoinSessionAsync ile bağlandık mı (host değil)
@@ -85,6 +92,29 @@ namespace CosmicRumble.Networking
             Instance = this;
             DontDestroyOnLoad(gameObject);
             BuildStatusUI();
+            ApplyCommandLineOverrides();
+        }
+
+        /// <summary>
+        /// Otomatik testlerin (bkz. AutoTestBot) migration bekleme suresini sahneyi degistirmeden
+        /// ayarlayabilmesi icin: <c>-hmwait 120</c>. HM-20 (host koptuktan sonra Lobby'nin yeni host
+        /// secme gecikmesi) olculmemis bir sayi oldugu icin sureyi kosudan kosuya degistirebilmek
+        /// gerekiyor. Argüman verilmezse sahnedeki deger aynen kalir.
+        /// </summary>
+        void ApplyCommandLineOverrides()
+        {
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] != "-hmwait") continue;
+                if (float.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                                   System.Globalization.CultureInfo.InvariantCulture, out float v) && v > 0f)
+                {
+                    hostMigrationWaitSeconds = v;
+                    Debug.Log($"[HM] hostMigrationWaitSeconds overridden from command line: {v}s");
+                }
+                break;
+            }
         }
 
         async Task EnsureUgsReadyAsync()
@@ -112,6 +142,7 @@ namespace CosmicRumble.Networking
                 await EnsureUgsReadyAsync();
 
                 int totalPlayers = GameModeCatalog.ResolveTotalPlayers(LobbyData.SelectedMode, LobbyData.FfaPlayerCount);
+                Debug.Log($"[NET] HostSessionAsync: mode={LobbyData.SelectedMode} ffaCount={LobbyData.FfaPlayerCount} totalPlayers={totalPlayers}");
                 var options = new SessionOptions { MaxPlayers = totalPlayers, IsPrivate = true }.WithRelayNetwork();
 
                 // Host migration yalnızca 3+ oyunculu modlarda anlamlı: 1v1'de host çıkınca geriye
@@ -129,16 +160,12 @@ namespace CosmicRumble.Networking
                 LastJoinCode = session.Code;
                 _wasClient = false;
                 IsRankedMatch = false; // arkadaş daveti = dostluk maçı
-#if UNITY_EDITOR
                 Debug.Log($"[NET] Hosted session, code={LastJoinCode}, IsHost={NetworkManager.Singleton.IsHost}");
-#endif
                 return LastJoinCode;
             }
             catch (Exception e)
             {
-#if UNITY_EDITOR
                 Debug.LogError($"[NET] HostSessionAsync failed: {e}");
-#endif
                 return null;
             }
             finally
@@ -182,16 +209,12 @@ namespace CosmicRumble.Networking
                     NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
                 }
 
-#if UNITY_EDITOR
                 Debug.Log($"[NET] QuickMatch succeeded, becameHost={becameHost}, code={LastJoinCode}");
-#endif
                 return true;
             }
             catch (Exception e)
             {
-#if UNITY_EDITOR
                 Debug.LogError($"[NET] QuickMatchAsync failed: {e}");
-#endif
                 return false;
             }
             finally
@@ -217,9 +240,9 @@ namespace CosmicRumble.Networking
                 _wasClient = true;
                 _intentionalLeave = false;
                 IsRankedMatch = false; // kodla katılma = dostluk maçı (reconnect bunu geri yükler, aşağıya bak)
-#if UNITY_EDITOR
-                Debug.Log($"[NET] Joined session code={code}, IsClient={NetworkManager.Singleton.IsClient}");
-#endif
+                Debug.Log($"[NET] Joined session code={code}, maxPlayers={session.MaxPlayers} " +
+                    $"playerCount={session.PlayerCount} IsClient={NetworkManager.Singleton.IsClient} " +
+                    $"IsConnectedClient={NetworkManager.Singleton.IsConnectedClient}");
 
                 NetworkManager.Singleton.OnClientDisconnectCallback -= OnUnexpectedDisconnect;
                 NetworkManager.Singleton.OnClientDisconnectCallback += OnUnexpectedDisconnect;
@@ -227,9 +250,7 @@ namespace CosmicRumble.Networking
             }
             catch (Exception e)
             {
-#if UNITY_EDITOR
                 Debug.LogError($"[NET] JoinSessionAsync failed: {e}");
-#endif
                 return false;
             }
             finally
@@ -245,6 +266,21 @@ namespace CosmicRumble.Networking
         public async Task LeaveSessionAsync()
         {
             _intentionalLeave = true;
+
+            // Dereceli forfeit (HM-15): oyuncu maç DOĞAL SONUÇLANMADAN kendi isteğiyle
+            // ayrılıyorsa (ör. host çıkıyor ya da dereceli 1v1'de client çıkıyor) bunun kupa
+            // karşılığı olmalı — aksi halde maçtan giderek erken çıkan biri hiç ceza görmez, geriye
+            // kalanlar da (varsa) hiç ödül alamaz. Yalnızca AYRILAN taraf ceza görür (kural: kalan
+            // oyuncular cezalandırılmaz); onlar için normal maç-sonu RPC yolu zaten kendi
+            // sonucunu üretir (örn. rakip zaman aşımıyla düşerse hükmen galibiyet). Doğal maç sonu
+            // sırasında (gameOver=true) burası tetiklenmez — o zaten AnnounceMatchResultClientRpc'den
+            // geçmiştir, ikinci bir kupa değişimi burada olmaz.
+            if (IsRankedMatch && TurnManager.Instance != null && TurnManager.Instance.IsMatchInProgress)
+            {
+                Debug.Log("[NET] Deliberate leave mid-ranked-match — reporting forfeit loss.");
+                CosmicRumble.Cloud.LeaderboardManager.Instance?.ReportOnlineMatchResult(false);
+            }
+
             try
             {
                 if (_session != null)
@@ -255,9 +291,7 @@ namespace CosmicRumble.Networking
             }
             catch (Exception e)
             {
-#if UNITY_EDITOR
                 Debug.LogWarning($"[NET] LeaveSessionAsync: session leave failed (continuing shutdown anyway): {e}");
-#endif
             }
             finally
             {
@@ -308,17 +342,13 @@ namespace CosmicRumble.Networking
                     if (p.Id == myId) continue;
                     if (!string.IsNullOrEmpty(playerId) && p.Id != playerId) continue;
                     await host.RemovePlayerAsync(p.Id);
-#if UNITY_EDITOR
                     Debug.Log($"[NET] RemoveDisconnectedPeerAsync: removed stale session player {p.Id}");
-#endif
                     return;
                 }
             }
             catch (Exception e)
             {
-#if UNITY_EDITOR
                 Debug.LogWarning($"[NET] RemoveDisconnectedPeerAsync failed: {e}");
-#endif
             }
         }
 
@@ -399,6 +429,12 @@ namespace CosmicRumble.Networking
 
             Debug.LogWarning($"[HM] Host migration did not complete within {hostMigrationWaitSeconds}s " +
                              $"(hostChanged={_tHostChangedUtc.HasValue}) — falling back to manual rejoin.");
+            // Migration'ı beklemeyi bıraktık — durum artık "taşıma sürüyor" değil, ondan sonraki
+            // elle rejoin döngüsü kendi banner'ını basar. Bayrağı burada bırakmak (kural 5: hiçbir
+            // zaman frozen client bırakma) hiçbir yerin gözlemlemediği kalıcı yanlış bir durum
+            // olurdu; ranked maçlar zaten hiç migration'lı kurulmuyor (bkz. HostSessionAsync/
+            // QuickMatchAsync), yani bu yol hiçbir zaman bir kupa RPC'siyle çakışmaz.
+            _migrationInProgress = false;
             return false;
         }
 
@@ -429,41 +465,99 @@ namespace CosmicRumble.Networking
             bool wasRanked = IsRankedMatch; // JoinSessionAsync bayrağı sıfırlar; rejoin sonrası geri yüklenir
             if (string.IsNullOrEmpty(codeToRetry))
             {
-#if UNITY_EDITOR
                 Debug.LogWarning("[NET] Unexpected disconnect but no LastJoinCode to retry with.");
-#endif
                 return;
             }
 
             for (int attempt = 1; attempt <= reconnectAttempts; attempt++)
             {
+                // Toplam donma butcesi: migration beklemesi + rejoin denemeleri birlikte bu sureyi
+                // asamaz. Asarsa oyuncuyu bir daha asla gelmeyecek bir host'u beklerken birakmak
+                // yerine menuye dondururuz (bkz. TEST_PLAN HM-13).
+                if (_tLocalDisconnectUtc.HasValue &&
+                    (DateTime.UtcNow - _tLocalDisconnectUtc.Value).TotalSeconds > maxDowntimeSeconds)
+                {
+                    Debug.LogWarning($"[NET] Downtime budget of {maxDowntimeSeconds}s exceeded — " +
+                                     "abandoning the match and returning to the menu.");
+                    break;
+                }
+
                 ShowStatus(string.Format(Loc.T("Connection lost, reconnecting... (attempt {0}/{1})"), attempt, reconnectAttempts));
-#if UNITY_EDITOR
                 Debug.Log($"[NET] Reconnect attempt {attempt}/{reconnectAttempts} with code={codeToRetry}");
-#endif
                 await Task.Delay(TimeSpan.FromSeconds(reconnectDelaySeconds));
 
                 if (_intentionalLeave) return; // bu sırada kullanıcı kendi çıktıysa vazgeç
 
-                bool ok = await JoinSessionAsync(codeToRetry);
+                bool ok = await ReconnectOrRejoinAsync(codeToRetry);
                 if (ok)
                 {
                     IsRankedMatch = wasRanked; // dereceli maça rejoin, dereceli kalır
-#if UNITY_EDITOR
                     Debug.Log("[NET] Reconnect succeeded.");
-#endif
                     HideStatus();
                     return;
                 }
             }
 
-#if UNITY_EDITOR
-            Debug.LogWarning("[NET] Reconnect failed after all attempts, giving up.");
-#endif
+            Debug.LogWarning("[NET] Reconnect failed, giving up and returning to the menu.");
             ShowStatus(Loc.T("Connection lost completely."));
             await Task.Delay(TimeSpan.FromSeconds(2f));
             HideStatus();
             UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.Menu);
+        }
+
+        /// <summary>
+        /// Elle rejoin döngüsünün tek adımı. Biz host'tuk ve koptuk demek: karşı taraf bizi
+        /// Lobby'den hiç ATMADI (RemoveDisconnectedPeerAsync yalnızca host'un normalde çağırdığı
+        /// bir şey — burada host biziz, biz de koptuk, kimse temizlik yapmadı). Bu yüzden taze
+        /// JoinSessionByCodeAsync "SessionConflict: player is already a member of the lobby" ile
+        /// reddedilir (canlı testte ölçüldü — bkz. host migration test notları). Önce MEVCUT
+        /// üyelikle ReconnectAsync denenir; yalnızca üyelik gerçekten kalmamışsa (host bizi ayrı
+        /// bir yoldan temizlemişse) taze JoinSessionAsync'e düşülür.
+        /// </summary>
+        async Task<bool> ReconnectOrRejoinAsync(string code)
+        {
+            if (_session != null)
+            {
+                try
+                {
+                    await _session.ReconnectAsync();
+                    Debug.Log("[NET] ReconnectAsync succeeded on existing session membership.");
+                    return await WaitForTransportAsync();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[NET] ReconnectAsync failed, falling back to fresh join: {e.Message}");
+                }
+            }
+
+            if (!await JoinSessionAsync(code)) return false;
+            return await WaitForTransportAsync();
+        }
+
+        /// <summary>
+        /// Lobby uyeligini geri almak TEK BASINA yeterli degil: host'un process'i olduyse Lobby
+        /// bizi uye olarak kabul etse bile bagalanacak bir NGO host'u yoktur. ReconnectAsync
+        /// "basarili" doner, oyuncu ise sonsuza kadar donmus bir mac ekraninda kalir. Bu yuzden
+        /// gercek olcut tasima katmani: NetworkManager yeniden baglandi mi.
+        /// Baglanmadiysa cagiran taraf bunu basarisiz deneme sayar; tum denemeler bitince
+        /// OnUnexpectedDisconnect MenuScene'e doner (kural: asla donmus client birakma).
+        /// </summary>
+        async Task<bool> WaitForTransportAsync()
+        {
+            var nm = NetworkManager.Singleton;
+            if (nm == null) return false;
+
+            var deadline = Time.realtimeSinceStartupAsDouble + transportWaitSeconds;
+            while (Time.realtimeSinceStartupAsDouble < deadline)
+            {
+                if (_intentionalLeave) return false;
+                if (nm.IsConnectedClient || nm.IsHost) return true;
+                await Task.Delay(250);
+            }
+
+            Debug.LogWarning($"[NET] Session membership restored but the transport never reconnected " +
+                             $"within {transportWaitSeconds}s (no live host) — treating as a failed attempt.");
+            return false;
         }
 
         // ════════════════════════════════════════════════════════════════════
