@@ -76,3 +76,6 @@ docs/store-assets-originals/
 
 # AutoTestBot / host migration run logs (see Assets/Scripts/Networking/AutoTestBot.cs)
 /*.log
+
+# Android upload keystore - private, mirrored to Eren-Ozcan/pictures/CosmicRumble/
+/android-keystore/
