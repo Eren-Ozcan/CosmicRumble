@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -105,6 +106,22 @@ public class PartyLobbyPanelUI : MonoBehaviour
     /// (eski FriendLobbyPanelUI.ShowAsHost ile birebir aynı davranış).</summary>
     public async void ShowAsHost(string friendId, string friendName)
     {
+        if (_panelRoot == null || _modeSelectRoot == null || _rosterRoot == null ||
+            _inviteListRoot == null || _inviteBtn == null || _rosterStatusText == null)
+        {
+            // Kök nedeni henüz bilinmiyor — bu instance BuildUI'dan geçmiş olmalı (Awake'te
+            // koşulsuz çağrılıyor), ama bir noktada bu alanlardan biri Unity tarafında yok
+            // edilmiş/hiç atanmamış görünüyor. Sessizce çökmek yerine teşhis için logla ve
+            // davetin sessizce "gönderilmiş gibi" görünmesini engelle.
+            Debug.LogWarning($"[PartyLobbyPanelUI] ShowAsHost aborted: UI refs missing " +
+                $"(panelRoot={_panelRoot != null}, modeSelect={_modeSelectRoot != null}, " +
+                $"roster={_rosterRoot != null}, inviteList={_inviteListRoot != null}, " +
+                $"inviteBtn={_inviteBtn != null}, statusText={_rosterStatusText != null}), " +
+                $"instanceId={GetInstanceID()}, isInstanceSelf={ReferenceEquals(Instance, this)}, " +
+                $"scene={gameObject.scene.name}");
+            return;
+        }
+
         _isHost = true;
         _pendingMode = GameModeType.Duel1v1;
         LobbyData.SelectedMode = GameModeType.Duel1v1;
@@ -127,6 +144,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
         _sessionActive = true;
         LobbyData.FriendOpponentId = friendId; // KOZMIK_EKIP — maç tamamlandığında TurnManager okur
         SetSlotFilled(0, PlayerIdentity.Get());
+        await SetupRosterSyncAsHostAsync();
 
         var (sent, error) = await FriendsManager.Instance.SendMatchInviteAsync(friendId, code);
         _rosterStatusText.text = sent
@@ -151,7 +169,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
     }
 
     /// <summary>Misafir: davet kabul edildikten sonra host'un başlatmasını bekler.</summary>
-    public void ShowAsClient(string hostName, string hostId)
+    public async void ShowAsClient(string hostName, string hostId)
     {
         _isHost = false;
         _sessionActive = true;
@@ -162,10 +180,14 @@ public class PartyLobbyPanelUI : MonoBehaviour
         _inviteListRoot.SetActive(false);
         _inviteBtn.SetActive(false);
         _startBtn.SetActive(false);
-        BuildRosterSlots(1, isTeamMode: false, teamCount: 0); // gerçek sayı bilinmiyor, sade sayaç gösterilecek
+        // Gerçek slot sayısı/isimleri PartyRosterSync üzerinden gelecek (bkz. aşağı) — burada
+        // yalnızca kendi görünen adımızı geçici olarak yazıyoruz, roster senkronu gelince
+        // RefreshRosterFromSync tüm slotları gerçek verilerle yeniden çizecek.
+        BuildRosterSlots(1, isTeamMode: false, teamCount: 0);
         SetSlotFilled(0, PlayerIdentity.Get());
         _rosterStatusText.text = string.Format(Loc.T("Waiting for {0} to start..."), hostName);
         SubscribeNetwork();
+        await ReportSelfToRosterSyncAsync();
     }
 
     public void Hide() => _panelRoot.SetActive(false);
@@ -218,7 +240,10 @@ public class PartyLobbyPanelUI : MonoBehaviour
         _rosterRoot.SetActive(true);
         _inviteListRoot.SetActive(false);
         BuildRosterSlots(_requiredPlayers, def.IsTeamMode, def.TeamCount);
-        _inviteBtn.SetActive(true);
+        // Oturum kurulana (ve NetworkBootstrap.LastJoinCode gerçek koda dönene) kadar davet
+        // butonu KAPALI kalmalı — açıksa hızlı tıklayan biri BuildInviteRow'da hâlâ eski/boş
+        // LastJoinCode ile davet gönderir, karşı tarafa geçersiz kod düşer ("davet düşmüyor").
+        _inviteBtn.SetActive(false);
         _rosterStatusText.text = Loc.T("Setting up party...");
 
         string code = await NetworkBootstrap.Instance.HostSessionAsync();
@@ -230,8 +255,10 @@ public class PartyLobbyPanelUI : MonoBehaviour
         _sessionActive = true;
         SetSlotFilled(0, PlayerIdentity.Get());
         _rosterStatusText.text = Loc.T("Invite friends, then start once everyone's in.");
+        await SetupRosterSyncAsHostAsync();
 
         SubscribeNetwork();
+        _inviteBtn.SetActive(true);
         _startBtn.SetActive(true);
         SetStartInteractable(false);
     }
@@ -283,12 +310,91 @@ public class PartyLobbyPanelUI : MonoBehaviour
         if (NetworkManager.Singleton == null) return;
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnectedInLobby;
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnClientDisconnectedInLobby;
     }
 
     void UnsubscribeNetwork()
     {
         if (NetworkManager.Singleton != null)
+        {
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnClientDisconnectedInLobby;
+        }
+        UnsubscribeRosterSync();
+    }
+
+    /// <summary>Maç başlamadan (lobi aşamasında) biri kopar/ayrılırsa server roster'dan siler —
+    /// aksi halde ayrılan kişi "Joined" olarak asılı kalır.</summary>
+    void OnClientDisconnectedInLobby(ulong clientId)
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            PartyRosterSync.Instance?.ServerRemove(clientId);
+    }
+
+    // ── Roster senkronu (PartyRosterSync) ──────────────────────────────
+
+    /// <summary>Host: oturum kurulduktan sonra kendi girdisini roster'a ekler. In-scene
+    /// NetworkObject olan PartyRosterSync, host başlar başlamaz spawn olur — yine de küçük bir
+    /// güvenlik payı için hazır olmasını bekler.</summary>
+    async Task SetupRosterSyncAsHostAsync()
+    {
+        var sync = await WaitForRosterSyncAsync();
+        if (sync == null) return;
+        sync.ServerClear(); // önceki oturumdan kalma girdi olmasın
+        sync.ServerAddSelf(PlayerIdentity.Get());
+        SubscribeRosterSync();
+    }
+
+    /// <summary>Client: bağlandıktan sonra adını sunucuya bildirir. JoinSessionAsync'in dönmesi
+    /// Netcode bağlantısının/sahne senkronunun tamamlandığı anlamına gelmeyebilir (bkz. "Failed to
+    /// connect to server" teşhisi) — bu yüzden PartyRosterSync.Instance hazır olana kadar beklenir.</summary>
+    async Task ReportSelfToRosterSyncAsync()
+    {
+        var sync = await WaitForRosterSyncAsync();
+        if (sync == null) return;
+        SubscribeRosterSync();
+        sync.ReportNameServerRpc(PlayerIdentity.Get());
+    }
+
+    async Task<PartyRosterSync> WaitForRosterSyncAsync()
+    {
+        float deadline = Time.realtimeSinceStartup + 5f;
+        while (PartyRosterSync.Instance == null && Time.realtimeSinceStartup < deadline)
+            await Task.Yield();
+        return PartyRosterSync.Instance;
+    }
+
+    void SubscribeRosterSync()
+    {
+        if (PartyRosterSync.Instance == null) return;
+        PartyRosterSync.Instance.OnRosterChanged -= RefreshRosterFromSync;
+        PartyRosterSync.Instance.OnRosterChanged += RefreshRosterFromSync;
+        RefreshRosterFromSync(); // mevcut durumu hemen yansıt
+    }
+
+    void UnsubscribeRosterSync()
+    {
+        if (PartyRosterSync.Instance != null)
+            PartyRosterSync.Instance.OnRosterChanged -= RefreshRosterFromSync;
+    }
+
+    /// <summary>PartyRosterSync.Entries değiştiğinde tüm slotları gerçek isimlerle yeniden çizer.
+    /// Host tarafında slot sayısı zaten doğru (BuildRosterSlots mod'a göre kuruldu), sadece isimler
+    /// yazılır. Client tarafında gerçek mod/takım bilgisi yok (bkz. ShowAsClient yorumu) — en
+    /// azından katılımcı sayısı kadar slot açılır ve her birine index bazlı bir önizleme rengi
+    /// verilir (gerçek takım rengiyle birebir olmayabilir, ama artık herkes tek bir mavi yerine
+    /// ayırt edilebilir ve gerçek adlarla görünür).</summary>
+    void RefreshRosterFromSync()
+    {
+        var sync = PartyRosterSync.Instance;
+        if (sync == null) return;
+
+        if (!_isHost)
+            BuildRosterSlots(Mathf.Max(sync.Entries.Count, 1), isTeamMode: false, teamCount: 0);
+
+        for (int i = 0; i < sync.Entries.Count && i < _slotTexts.Count; i++)
+            SetSlotFilled(i, sync.Entries[i].Name.ToString());
     }
 
     void OnClientConnected(ulong clientId)
@@ -297,12 +403,8 @@ public class PartyLobbyPanelUI : MonoBehaviour
 
         if (_isHost)
         {
-            // Katılım sırasına göre doldur — kimin gerçekte hangi arkadaş olduğu bilinmiyor
-            // (clientId↔PlayerId eşlemesi yok), yalnızca "N. kişi katıldı" gösterilir.
-            for (int i = 1; i < _slotTexts.Count && i < connected; i++)
-                if (_slotTexts[i].text == Loc.T("Empty"))
-                    SetSlotFilled(i, Loc.T("Joined"));
-
+            // İsimler artık PartyRosterSync üzerinden gelir (bkz. RefreshRosterFromSync) — burada
+            // yalnızca "hazır mısın" durumunu güncelliyoruz.
             bool ready = connected >= _requiredPlayers;
             _rosterStatusText.text = ready
                 ? Loc.T("Everyone's in — you can start!")
@@ -319,6 +421,14 @@ public class PartyLobbyPanelUI : MonoBehaviour
 
     void SetStartInteractable(bool on)
     {
+        if (_startBtn == null)
+        {
+            // Host migration sonrası yeni sunucu olan client'ta bu panel hiç kurulmamış olabilir
+            // (bkz. ShowAsHost'taki aynı teşhis notu) — çökmek yerine no-op.
+            Debug.LogWarning($"[PartyLobbyPanelUI] SetStartInteractable skipped: _startBtn null " +
+                $"(instanceId={GetInstanceID()}, isInstanceSelf={ReferenceEquals(Instance, this)})");
+            return;
+        }
         var btn = _startBtn.GetComponent<Button>();
         btn.interactable = on;
         _startBtn.GetComponent<Image>().color = on ? AccGold : new Color(0.35f, 0.32f, 0.18f, 1f);
