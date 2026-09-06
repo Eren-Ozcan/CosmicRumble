@@ -22,21 +22,27 @@ names into the other 6 languages.
    private match → match end). Verified one-sided; the two-sided flow has never been tested.
 3. First real Android device build test — the new sign-in flow, real store IAP behavior,
    performance. So far the project has only run in the Editor + Device Simulator.
-3b. **Host migration** (added 2026-09-04) — a host drop currently kills the match for all 3-8 players.
-   The transport half is already provided by `com.unity.services.multiplayer` 2.2.4
-   (`SessionOptions.WithHostMigration`, automatic relay reallocation and client rejoin); what we owe is an
-   `IMigrationDataHandler` that snapshots and restores the match. Plan: `docs/HOST_MIGRATION_PLAN.md`.
+3b. **Host migration** — **DONE and live-tested (2026-09-06).** A host drop no longer kills the
+   match. Two root causes had blocked it: only the host passed `WithHostMigration` (the SDK refuses
+   to re-host a client whose own `HostMigrationHandler` is null), and a leaving host evicted the
+   remaining players from the lobby. Measured: new host elected 0.3 s after a graceful quit and
+   99-108 s after a host *crash* (the Lobby's own inactivity timeout — there is no client-side
+   shortcut), match resumed with the snapshot's turn, timer, health and positions. Full numbers and
+   the failure-path behaviour: `docs/HOST_MIGRATION_PLAN.md` section 7. Remaining for this feature:
+   HM-09 (in-flight projectile), HM-10 with real craters, HM-17 on devices, 4+ players.
+
 3c. **Release test plan** (added 2026-09-04) — `docs/TEST_PLAN.md`: 15 suites, ~110 cases, 5 test levels,
-   5 network-condition profiles, a smoke suite and a wave-ordered execution schedule. Wave 0 requires
-   installing `com.unity.multiplayer.playmode` and `com.unity.multiplayer.tools`, neither of which is in
-   `Packages/manifest.json` yet.
+   5 network-condition profiles, a smoke suite and a wave-ordered execution schedule. Wave 0's two
+   packages are **already installed** (`com.unity.multiplayer.playmode` 1.6.3 and
+   `com.unity.multiplayer.tools` 2.2.4 are in `Packages/manifest.json` — that note is stale).
 
 ### 2. Mandatory before release — store/account work (not code, long lead time, start in parallel)
 4. Google Play Console: app registration, the **12 test users × 14 days closed-testing requirement**
    (for new individual accounts — this determines the release schedule), Data Safety form, content
    rating, store artwork/description, AAB signing.
-5. Real IAP SKUs: `gem_pack_100..6000` in the Console with exactly the same IDs; prices/tiers are
-   placeholders — pricing has not been decided as a business decision.
+5. Real IAP SKUs: `gem_pack_100..6000` in the Console with exactly the same IDs. **Pricing drafted
+   2026-09-06** in `docs/store/iap-pricing.md` ($0.99 / $4.99 / $9.99 / $19.99 / $39.99, gems per
+   dollar rising at every step) — awaiting the account owner's confirmation, then Console entry.
 6. Achievement ID mapping: **code side done (2026-07-11)** — `AchievementDefinition` now carries
    `steamId`/`googlePlayId`/`gameCenterId` fields (falls back to `achievementId` when empty), and
    `AchievementManager.ResolvePlatformId()` picks the right ID for the active provider and sends that
