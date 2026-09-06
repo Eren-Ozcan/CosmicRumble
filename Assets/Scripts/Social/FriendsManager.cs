@@ -272,6 +272,10 @@ namespace CosmicRumble.Social
 
         static string FriendlyError(Exception e)
         {
+            // UNITY_EDITOR dışında (standalone -logFile) da görünsün diye şartsız log —
+            // "Action failed: {0}" mesajı tek başına gerçek UGS hata kodunu göstermiyor.
+            Debug.LogWarning($"[FriendsManager] Action failed: {e.GetType().Name}: {e.Message}" +
+                              (e.InnerException != null ? $" | inner={e.InnerException.GetType().Name}: {e.InnerException.Message}" : ""));
             string m = e.Message ?? "";
             if (m.Contains("not found") || m.Contains("NotFound"))
                 return Loc.T("No player found with this ID.");

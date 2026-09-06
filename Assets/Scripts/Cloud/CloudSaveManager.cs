@@ -102,6 +102,9 @@ namespace CosmicRumble.Cloud
                     if (UnityServices.State == ServicesInitializationState.Uninitialized)
                         await UnityServices.InitializeAsync();
 
+                    // DevClient çoklu-instance profile ayrımı artık AuthManager'da, ilk sign-in
+                    // çağrısından önce yapılıyor (bkz. AuthManager.EnsureDevClientProfile) —
+                    // buraya gelindiğinde zaten uygulanmış olur.
                     if (!AuthenticationService.Instance.IsSignedIn)
                         await AuthenticationService.Instance.SignInAnonymouslyAsync();
 
