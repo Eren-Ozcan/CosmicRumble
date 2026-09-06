@@ -105,12 +105,24 @@ public class LoginScreenUI : MonoBehaviour
         LoginPanelUI.Instance?.Show(dismissable: true);
     }
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || CR_DEV_CLIENT
     async void OnGuestClicked()
     {
         if (_busy || AuthManager.Instance == null) return;
         _busy = true;
         SetButtonsInteractable(false);
+        await AuthManager.Instance.LoginAsGuest();
+        Hide();
+        _waitTcs?.TrySetResult(true);
+    }
+#endif
+
+#if CR_AUTOTEST
+    /// <summary>Headless bot hook (AutoTestBot) — OnGuestClicked ile aynı akış, tıklama yok.</summary>
+    public async void AutoContinueAsGuest()
+    {
+        if (_busy || AuthManager.Instance == null || !_root.activeSelf) return;
+        _busy = true;
         await AuthManager.Instance.LoginAsGuest();
         Hide();
         _waitTcs?.TrySetResult(true);
@@ -202,7 +214,7 @@ public class LoginScreenUI : MonoBehaviour
             new Vector2(0.5f, y), PlateDark, Color.white, OnCosmicIdClicked);
         y -= 0.10f;
 
-#if UNITY_EDITOR
+#if UNITY_EDITOR || CR_DEV_CLIENT
         MakeBigButton(_root, "btn_guest_test", Loc.T("CONTINUE AS GUEST (TEST)"),
             new Vector2(0.5f, y), new Color(0.10f, 0.10f, 0.16f, 1f), TextDim, OnGuestClicked, 22);
         y -= 0.10f;
