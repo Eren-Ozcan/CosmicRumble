@@ -17,7 +17,12 @@ names into the other 6 languages.
 
 ### 1. Continuation of open work (up next)
 1. Google sign-in Console/Dashboard setup — the 7 steps in the "Google Play Games SIGN-IN" section
-   below. The code is ready and waiting.
+   below. The code is ready and waiting. **Blocked on a sign-in the account owner has to do
+   (2026-09-07):** the browser still holds a Google session for `yilkgamesstudio@gmail.com` (Google
+   Cloud Console opens straight into it at `authuser=5`), but Play Console specifically demands a
+   fresh identity check ("Kimliğinizi doğrulayın") and offers the *personal* account as the identity
+   to confirm — so the developer-account picker, which does list "Yilk Games", cannot be passed
+   without the owner re-authenticating. Same blocker for the achievement IDs in item 6.
 2. Two-device end-to-end test of the friend/invite flow (send/accept request, presence, invite →
    private match → match end). Verified one-sided; the two-sided flow has never been tested.
 3. First real Android device build test — **DONE 2026-09-06** on a Huawei POT-LX1 (Android 10,
@@ -63,7 +68,9 @@ names into the other 6 languages.
    `AchievementManager.ResolvePlatformId()` picks the right ID for the active provider and sends that
    to it. **Remaining: data entry only** — the 50 achievements must be created in the relevant
    Consoles and the opaque IDs they generate (`CgkI...` etc.) typed one by one into those three fields
-   from the Inspector; no code change will be needed.
+   from the Inspector; no code change will be needed. **Still blocked (2026-09-07)** by the same Play
+   Console re-authentication described in item 1 — the achievements cannot be created until the app
+   and Play Games Services exist in the Console.
 7. Legal: **draft text + code infrastructure done (2026-07-11)** — `legal/PRIVACY_POLICY.md` and
    `legal/TERMS_OF_SERVICE.md` (written based on the UGS systems actually active in the code) were
    added, and **must not be published without passing legal review** (the KVKK/GDPR clauses and the
@@ -78,6 +85,13 @@ names into the other 6 languages.
    CosmicRumble actually collects (UGS instead of Firebase, friends/presence, relayed sessions, no
    ads, no chat) and pushed. **The site does not deploy on push**: someone still has to run
    `npx wrangler pages deploy . --project-name=yilkgames-web` from that repo.
+   **Closed 2026-09-07:** the site was deployed with that command (Cloudflare account
+   `erenozcaan@hotmail.com`) and `https://yilkgames.com/privacy-policy/` now serves the CosmicRumble
+   text live, so `LegalLinks.PrivacyPolicyUrl` points at it instead of the placeholder. The terms link
+   was removed from the settings panel rather than pointed anywhere: no studio game publishes terms,
+   Play only requires a privacy policy, and `legal/TERMS_OF_SERVICE.md` still carries the unresolved
+   `{{...}}` placeholders that need legal review. Left on this item: the age-rating-dependent
+   children's-privacy clause, which needs the Console content rating first.
 8. iOS track (after Android): Apple Developer account, Mac/build pipeline, filling in the
    `AppleGameCenterAuthProvider` stub (Apple.GameKit +
    `SignInWithAppleGameCenterAsync`), App Privacy label, TestFlight. Right now there is nothing for iOS.
@@ -164,7 +178,13 @@ names into the other 6 languages.
     item 7, which does NOT exist yet) goes live; it's fine for Editor/internal testing. Play-tested:
     it was verified in the Editor with a guest login that the `AnalyticsManager` singleton is created,
     that `AnalyticsService.Instance` returns a real user/session ID, and that the
-    `RecordMatchCompleted` call runs without errors.
+    `RecordMatchCompleted` call runs without errors. **Dashboard schema done 2026-09-07** — the Event
+    Manager (production environment) already showed an "Events failed to import: match_completed failed
+    because the event schema was not found" banner, i.e. real events had arrived and were being dropped.
+    The custom event `match_completed` was created there with both parameters typed as BOOLEAN (`won`,
+    `ranked`) and the event was enabled; the parameters live at the environment level, so if a second
+    environment is ever used they must be recreated in it. Nothing left on this item except confirming
+    that the next match's event lands as valid rather than invalid.
 20. **Done (2026-07-10), except device testing** — Push notifications. NOT real server-triggered UGS
     Push Notifications — this game's economy is client-authoritative and the only data the reminders
     need (login streak, daily chest allowance) is already on the device, so a server trigger isn't
