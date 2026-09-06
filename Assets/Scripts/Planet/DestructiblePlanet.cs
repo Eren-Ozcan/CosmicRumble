@@ -155,6 +155,16 @@ public class DestructiblePlanet : MonoBehaviour
     /// <summary>Deliği ve patlama kuvvetini bu makinede gerçekten uygular — offline'da doğrudan,
     /// online'da TurnManager.PlanetExplosionClientRpc tarafından çağrılır.</summary>
     public void ApplyExplosionNow(Vector2 worldPos, float radiusWorld, float forceStrength)
+        => ApplyExplosionNow(worldPos, radiusWorld, forceStrength, isReplay: false);
+
+    /// <param name="isReplay">Host migration/reconnect sonrası TurnManager.ReplayExplosionHistory*
+    /// tarafından geçmişi bu makinede yeniden kurmak için mi çağrılıyor (bkz.
+    /// docs/HOST_MIGRATION_PLAN.md Faz 4 — "quest/achievement double-fire önleme"). true ise bu
+    /// patlama YENİ bir olay değildir, sadece daha önce (bu oyuncu için de) gerçekleşmiş bir
+    /// durumun tekrar çizilmesidir: başarım/ses tetiklenmez. Aksi halde migration sonrası bakir
+    /// yeniden yüklenen bir gezegen, oyuncu daha önce zaten kazanmış olduğu "gezegen yok edildi"
+    /// başarımını ikinci kez tetikler.</param>
+    public void ApplyExplosionNow(Vector2 worldPos, float radiusWorld, float forceStrength, bool isReplay)
     {
         if (radiusWorld <= 0f) return;
         if (runtimeTex == null) return; // Start() henüz çalışmadıysa (savunma)
@@ -163,7 +173,7 @@ public class DestructiblePlanet : MonoBehaviour
         ApplyExplosionForce(worldPos, radiusWorld, forceStrength);
 
         // 2) Görseli parçala ve collider’i güncelle
-        ExplodeVisual(worldPos, radiusWorld);
+        ExplodeVisual(worldPos, radiusWorld, isReplay);
     }
 
     // ── Makineler arası stabil kimlik ────────────────────────────────────────
@@ -195,7 +205,7 @@ public class DestructiblePlanet : MonoBehaviour
         return list;
     }
 
-    private void ExplodeVisual(Vector2 worldPos, float radiusWorld)
+    private void ExplodeVisual(Vector2 worldPos, float radiusWorld, bool isReplay = false)
     {
         // World -> Local koordinata dönüştür
         Vector2 local = transform.InverseTransformPoint(worldPos);
@@ -248,8 +258,11 @@ public class DestructiblePlanet : MonoBehaviour
         if (!destroyedFired && nonCorePixelsRemaining <= 0)
         {
             destroyedFired = true;
-            AchievementEvents.FirePlanetDestroyed();
-            AudioManager.Instance?.PlaySfx("planet_destroyed");
+            if (!isReplay)
+            {
+                AchievementEvents.FirePlanetDestroyed();
+                AudioManager.Instance?.PlaySfx("planet_destroyed");
+            }
         }
 
         // Not: sr.sprite BURADA yeniden oluşturulmuyor — runtimeTex.Apply() zaten aynı Sprite'ın

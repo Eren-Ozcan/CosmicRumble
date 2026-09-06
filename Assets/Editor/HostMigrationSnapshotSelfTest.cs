@@ -109,6 +109,16 @@ namespace CosmicRumble.EditorTools
                 if (restored.TurnOrder[i] != a.UgsPlayerId) return $"[{i}] TurnOrder out of step";
             }
 
+            if (restored.Explosions.Count != original.Explosions.Count) return "explosion count differs";
+            for (int i = 0; i < original.Explosions.Count; i++)
+            {
+                var a = original.Explosions[i];
+                var b = restored.Explosions[i];
+                if (b.PlanetIndex != a.PlanetIndex) return $"[explosion {i}] PlanetIndex differs";
+                if (b.Pos         != a.Pos)         return $"[explosion {i}] Pos differs";
+                if (!Mathf.Approximately(b.Radius, a.Radius)) return $"[explosion {i}] Radius differs";
+            }
+
             return null;
         }
 
@@ -176,6 +186,16 @@ namespace CosmicRumble.EditorTools
 
                 snapshot.Players.Add(p);
                 snapshot.TurnOrder.Add(p.UgsPlayerId);
+            }
+
+            // Maç başına makul bir patlama sayısı simüle edilir (oyuncu başına ~3 tur) —
+            // 8-player bütçe testi bunu da hesaba katsın diye gerçekçi bırakılır.
+            for (int i = 0; i < playerCount * 3; i++)
+            {
+                snapshot.Explosions.Add(new PlanetExplosionRecord(
+                    planetIndex: i % 2,
+                    pos: new Vector2(i * 0.3f, -i * 0.2f),
+                    radius: 1.5f + (i % 4) * 0.25f));
             }
 
             return snapshot;

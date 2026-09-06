@@ -59,9 +59,16 @@ namespace CosmicRumble.Networking
         /// <summary>Oyuncu durumları; sıra <see cref="TurnOrder"/> ile birebir aynıdır.</summary>
         public List<HostMigrationPlayerState> Players = new List<HostMigrationPlayerState>();
 
+        /// <summary>FAZ 3: maç boyunca olmuş tüm gezegen patlamaları — yeni host'ta (ve
+        /// sahnesini yeniden yükleyen her reconnect'te) sırayla force=0 ile tekrar oynatılıp
+        /// bakir gezegenler sunucuyla aynı krater durumuna getirilir. Delik açma birleşim
+        /// (union) işlemi olduğundan sıra önemsizdir.</summary>
+        public List<PlanetExplosionRecord> Explosions = new List<PlanetExplosionRecord>();
+
         public override string ToString() =>
             $"mode={Mode} ffa={FfaPlayerCount} ranked={IsRanked} players={Players.Count} " +
-            $"active={ActiveTurnIndex} turn={TurnNumber} remaining={RemainingTurnTime:F1}s";
+            $"active={ActiveTurnIndex} turn={TurnNumber} remaining={RemainingTurnTime:F1}s " +
+            $"explosions={Explosions.Count}";
     }
 
     /// <summary>
@@ -79,8 +86,9 @@ namespace CosmicRumble.Networking
     {
         /// <summary>Serileştirme sürümü — ileride alan eklenirse eski snapshot'ı sessizce
         /// yanlış okumak yerine reddedebilmek için. v1: yalnız maç yapılandırması + sıra düzeni.
-        /// v2: tur durumu + oyuncu başına can/kalkan/konum/hız/cephane.</summary>
-        const byte k_Version = 2;
+        /// v2: tur durumu + oyuncu başına can/kalkan/konum/hız/cephane. v3: gezegen patlama
+        /// geçmişi (FAZ 3).</summary>
+        const byte k_Version = 3;
 
         /// <summary>Yeni host'ta Apply() ile bırakılan, henüz uygulanmamış snapshot.
         /// Tüketen taraf işi bitince <see cref="ConsumePending"/> çağırmalı.</summary>
@@ -144,6 +152,14 @@ namespace CosmicRumble.Networking
                     writer.Write(p.Ammo.grenades);
                     writer.Write(p.Ammo.shields);
                     writer.Write(p.HasUsedSkillThisTurn);
+                }
+
+                writer.Write(snapshot.Explosions.Count);
+                foreach (var ev in snapshot.Explosions)
+                {
+                    writer.Write(ev.PlanetIndex);
+                    writer.Write(ev.Pos.x); writer.Write(ev.Pos.y);
+                    writer.Write(ev.Radius);
                 }
 
                 writer.Flush();
@@ -234,6 +250,15 @@ namespace CosmicRumble.Networking
                     snapshot.TurnOrder.Add(p.UgsPlayerId);
                 }
 
+                int explosionCount = reader.ReadInt32();
+                for (int i = 0; i < explosionCount; i++)
+                {
+                    int planetIndex = reader.ReadInt32();
+                    var pos          = new Vector2(reader.ReadSingle(), reader.ReadSingle());
+                    float radius     = reader.ReadSingle();
+                    snapshot.Explosions.Add(new PlanetExplosionRecord(planetIndex, pos, radius));
+                }
+
                 return snapshot;
             }
         }
@@ -293,6 +318,7 @@ namespace CosmicRumble.Networking
                                                     Mathf.Max(0, snapshot.Players.Count - 1));
             snapshot.RemainingTurnTime = turnManager.RemainingTurnTime;
             snapshot.TurnNumber        = turnManager.TurnNumber;
+            snapshot.Explosions        = turnManager.ExplosionHistorySnapshot();
             return snapshot;
         }
     }

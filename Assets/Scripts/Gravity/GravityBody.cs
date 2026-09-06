@@ -126,7 +126,18 @@ public class GravityBody : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         isActive.OnValueChanged += (oldValue, newValue) =>
+        {
             Debug.Log($"[TURN] {name} isActive {oldValue}->{newValue} IsOwner={IsOwner} frame={Time.frameCount}");
+            // TurnManager sunucu-yetkili (IsSpawned && !IsServer → Start() erken döner), yani
+            // ActivateCharacter() ve oradaki CameraController çağrısı client'ta HİÇ çalışmıyordu —
+            // client'ın kamerası sıra kendine gelse bile hep ilk konumunda (harita ortasında)
+            // kalıyordu. NetworkVariable değişimi ise her peer'da tetiklendiği için (bkz. yukarıdaki
+            // log, host ve client'ta aynı anda görülüyor) burası her makinede kamerayı doğru
+            // karaktere yönlendirmek için güvenilir tek nokta. Host'ta zaten ActivateCharacter
+            // aynı çağrıyı yapmış olur — tekrar çağırmak zararsız (idempotent).
+            if (newValue)
+                CameraController.Instance?.SetActiveCharacter(transform);
+        };
 
         // Geç katılan/spectator client'lar teamId'nin senkron değerini spawn sonrası alır —
         // renk o an uygulanmalı. Host/server tarafında teamId zaten spawn öncesi set edildiği

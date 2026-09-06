@@ -215,6 +215,13 @@ namespace CosmicRumble.Networking
             }
 
             RebuildFromMigrationSnapshot(nm, snapshot);
+
+            // FAZ 3: bu makinenin gezegenleri de bakir yeniden başladı (Start()) — snapshot'taki
+            // patlama geçmişini önce yerel sayaca (sonraki Generate() çağrıları için) sonra da
+            // o an bağlı tüm makinelere (yeni host dahil, kendi ClientRpc'si üstünden) uygular.
+            TurnManager.Instance.SeedExplosionHistory(snapshot.Explosions);
+            TurnManager.ReplayExplosionHistoryToAll();
+
             HostMigrationDataHandler.ConsumePending();
             _matchStarted = true;
         }
@@ -370,6 +377,10 @@ namespace CosmicRumble.Networking
 
             orphanObj.ChangeOwnership(clientId);
             _playerObjects[clientId] = orphanObj;
+
+            // Bu client sahnesini az önce baştan yükledi — gezegenleri bakir. O ana kadarki tüm
+            // patlamaları yalnız ona hedefli tekrar oynat (genel yayını kaçırmış olabilir).
+            TurnManager.ReplayExplosionHistoryTo(clientId);
 
             Debug.Log($"[NET] Reconnect: clientId={clientId} {orphanObj.name} karakterini geri kazandı (eski clientId={orphanKey}, kimlik doğrulandı).");
             NetworkBootstrap.Instance?.HideStatus();
