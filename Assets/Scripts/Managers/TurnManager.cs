@@ -26,9 +26,24 @@ public class TurnManager : NetworkBehaviour
     [Tooltip("Her karakterin tur süresi (saniye cinsinden)")]
     public float turnDuration = 15f;
 
+    [Tooltip("Host migration sonrası, tur zamanlayıcısı geri sayıma başlamadan önce bırakılan " +
+             "ek pay (saniye). Snapshot'taki kalan süre zaten migration boyunca donmuş sayılır " +
+             "(bkz. ResumeMatchAfterMigration) — bu pay üstüne, oyuncu yeni host'a bağlanıp " +
+             "sahneyi/UI'ı toparlarken bir anlık de-facto dondurmadır (bkz. docs/HOST_MIGRATION_PLAN.md " +
+             "madde 3, 'Freeze stays on through migration, plus a grace period after SessionMigrated').")]
+    public float migrationGraceSeconds = 3f;
+    private float _migrationGraceUntil = 0f;
+
     private int currentIndex = 0;
     private float turnTimer = 0f;
     private bool gameOver = false;
+
+    // Bu TurnManager bir kez bile ag uzerinde spawn oldu mu? Host migration sirasinda NGO
+    // client tarafinda ag'i tamamen kapatir ve IsSpawned false'a duser; bu bayrak olmadan
+    // Update() asagida "offline hotseat" dalina girip, kuculmus yerel characters listesi
+    // uzerinde CheckGameOver() calistirir ve client kendini yanlislikla kazanan ilan eder.
+    // Bir kez true olduktan sonra asla geri alinmaz: "online baslamis mac" kalici bir gercektir.
+    private bool _wasOnline = false;
 
     // Tur zamanlayıcısının client'lara yansıması: Update'teki tur mantığı yalnız server'da
     // çalıştığı için TurnTimerUI client makinede hiç güncellenmiyordu (donuk sayaç).
@@ -63,6 +78,15 @@ public class TurnManager : NetworkBehaviour
 
     /// <summary>Aktif turun kalan süresi (saniye) — migration snapshot'ı için.</summary>
     public float RemainingTurnTime => turnTimer;
+
+    /// <summary>Maç hâlâ sürüyor mu — ranked forfeit kararı için: oyuncu maç SONUÇLANMADAN
+    /// (TriggerGameOver / AnnounceMatchResultClientRpc henüz gelmeden, yani gameOver hâlâ false
+    /// iken) bilinçli ayrılırsa forfeit sayılır; ayrılış zaten doğal maç sonuysa sayılmaz — kupa
+    /// değişimi normal RPC yolundan zaten yürüdü/yürüyecek. gameOver alanı host'ta server
+    /// mantığıyla, client'larda AnnounceMatchResultClientRpc ile yazıldığı için her iki tarafta
+    /// da yerel olarak doğru okunur. Bkz. NetworkBootstrap.LeaveSessionAsync, HM-15.</summary>
+    public bool IsMatchInProgress => IsSpawned && !gameOver &&
+                                      characters != null && characters.Count >= 2;
 
     private int _turnNumber = 0;
 
@@ -180,6 +204,8 @@ public class TurnManager : NetworkBehaviour
     {
         base.OnNetworkSpawn();
 
+        _wasOnline = true;
+
         // Reconnect kimlik doğrulaması: her client (ilk bağlantı + rejoin) game sahnesine
         // senkronize olunca kendi UGS PlayerId'sini server'a bildirir. NetworkPlayerSpawner,
         // kopan oyuncunun sahipsiz karakterini yalnızca aynı kimlikle dönen bağlantıya devreder
@@ -267,7 +293,10 @@ public class TurnManager : NetworkBehaviour
 
         _turnNumber = Mathf.Max(turnNumber, _turnNumber);
 
-        Debug.Log($"[HM] Match resumed: activeIndex={currentIndex} remaining={turnTimer:F1}s turn={_turnNumber}");
+        // Zamanlayıcı bir süre daha donmuş kalır (bkz. yukarıdaki tooltip) — HM-22.
+        _migrationGraceUntil = Time.time + Mathf.Max(0f, migrationGraceSeconds);
+
+        Debug.Log($"[HM] Match resumed: activeIndex={currentIndex} remaining={turnTimer:F1}s turn={_turnNumber} grace={migrationGraceSeconds:F1}s");
     }
 
     private void Update()
@@ -285,6 +314,17 @@ public class TurnManager : NetworkBehaviour
             return;
         }
         if (gameOver) return;
+
+        // Ag coktu (host migration / reconnect): IsSpawned false ama mac online baslamisti.
+        // Bu durumda hotseat mantigini CALISTIRMA — asagidaki RemoveAll + CheckGameOver,
+        // despawn yuzunden bosalan yerel listeyi "digerleri oldu" sanip sahte galibiyet
+        // tetikliyordu. NetworkBootstrap ya yeniden baglanir (IsSpawned tekrar true olur)
+        // ya da pes edip MenuScene'e doner; o ana kadar mac donmus kalir.
+        if (!IsSpawned && _wasOnline)
+        {
+            TurnTimerUI.Instance?.UpdateTimerDisplay(turnTimer, Mathf.Max(0.01f, turnDuration));
+            return;
+        }
 
         // Yok edilmiş karakterleri her frame temizle (aynı tur içi ölümleri yakala)
         characters.RemoveAll(_isNull);
@@ -308,8 +348,8 @@ public class TurnManager : NetworkBehaviour
             if (allowed) EndTurnEarly();
         }
 
-        // ── Otomatik zamanlayıcı (mermi uçuşu sırasında dondurulur) ──────────
-        if (!ProjectileInFlight && turnTimer > 0f)
+        // ── Otomatik zamanlayıcı (mermi uçuşu sırasında ve migration grace penceresinde dondurulur) ──
+        if (!ProjectileInFlight && turnTimer > 0f && Time.time >= _migrationGraceUntil)
         {
             turnTimer -= Time.deltaTime;
             if (IsSpawned) netTurnTimer.Value = turnTimer;
@@ -466,6 +506,11 @@ public class TurnManager : NetworkBehaviour
     {
         if (isTrainingMode) return false; // botlar characters'a hiç eklenmez, tek karakterle bitmesin
 
+        // Ag coktu (host migration) — Update() disindaki cagrilar icin de ayni koruma:
+        // despawn sonrasi bosalan yerel liste "tek takim kaldi" gibi gorunur ve sahte
+        // galibiyet uretir. Mac online basladiysa ve su an spawn degilse hic karar verme.
+        if (!IsSpawned && _wasOnline) return false;
+
         var survivingTeams = new HashSet<int>();
         foreach (var gb in characters)
             if (gb != null) survivingTeams.Add(gb.teamId.Value);
@@ -592,11 +637,17 @@ public class TurnManager : NetworkBehaviour
     // yapılır: server ExplodeWithForce parametrelerini stabil gezegen indeksiyle tüm makinelere
     // iletir, delik her makinede birebir aynı açılır (bkz. DestructiblePlanet.ExplodeWithForce).
 
+    // Host migration FAZ 3 + genel reconnect: sahnesini yeniden yükleyen her makine (yeni host
+    // dahil) DestructiblePlanet'i bakir başlatır — o ana kadarki tüm patlamalar burada tutulup
+    // (yalnız server'da anlamlı), ihtiyaç duyan her makineye tek seferde tekrar oynatılır.
+    private readonly List<PlanetExplosionRecord> _explosionHistory = new List<PlanetExplosionRecord>();
+
     public static void BroadcastPlanetExplosion(DestructiblePlanet planet, Vector2 pos, float radius, float force)
     {
         if (Instance == null || !Instance.IsSpawned || !Instance.IsServer) return;
         int index = planet != null ? planet.StableIndex : -1;
         if (index < 0) return;
+        Instance._explosionHistory.Add(new PlanetExplosionRecord(index, pos, radius));
         Instance.PlanetExplosionClientRpc(index, pos, radius, force);
     }
 
@@ -606,6 +657,45 @@ public class TurnManager : NetworkBehaviour
         // ClientRpc host'ta da çalışır — server'ın kendi uygulaması da bu yoldan gelir,
         // böylece delik her makinede tam olarak bir kez açılır.
         DestructiblePlanet.FindByStableIndex(planetIndex)?.ApplyExplosionNow(pos, radius, force);
+    }
+
+    /// <summary>Host migration snapshot'ının taşıdığı geçmişi yeni host'ta yeniden kurar —
+    /// snapshot'tan önceki patlamalar da hesapta kalsın diye Generate() bu listeyi kullanır.</summary>
+    public void SeedExplosionHistory(List<PlanetExplosionRecord> events)
+    {
+        _explosionHistory.Clear();
+        if (events != null) _explosionHistory.AddRange(events);
+    }
+
+    public List<PlanetExplosionRecord> ExplosionHistorySnapshot() => new List<PlanetExplosionRecord>(_explosionHistory);
+
+    /// <summary>Tüm bağlı makinelere (yeni host dahil) o ana kadarki tüm patlamaları force=0 ile
+    /// tekrar oynatır — migration/reconnect sonrası herkesin gezegeni sunucuyla eşleşsin.</summary>
+    public static void ReplayExplosionHistoryToAll()
+    {
+        if (Instance == null || !Instance.IsSpawned || !Instance.IsServer) return;
+        if (Instance._explosionHistory.Count == 0) return;
+        Instance.ReplayExplosionHistoryClientRpc(Instance._explosionHistory.ToArray());
+    }
+
+    /// <summary>Aynı geçmişi TEK bir yeniden bağlanan client'a hedefli gönderir — o an bağlı
+    /// olmayan bir client, ReplayExplosionHistoryToAll'un genel yayınını kaçırmış olabilir.</summary>
+    public static void ReplayExplosionHistoryTo(ulong clientId)
+    {
+        if (Instance == null || !Instance.IsSpawned || !Instance.IsServer) return;
+        if (Instance._explosionHistory.Count == 0) return;
+        var rpcParams = new ClientRpcParams
+        {
+            Send = new ClientRpcSendParams { TargetClientIds = new[] { clientId } }
+        };
+        Instance.ReplayExplosionHistoryClientRpc(Instance._explosionHistory.ToArray(), rpcParams);
+    }
+
+    [ClientRpc]
+    private void ReplayExplosionHistoryClientRpc(PlanetExplosionRecord[] events, ClientRpcParams rpcParams = default)
+    {
+        foreach (var e in events)
+            DestructiblePlanet.FindByStableIndex(e.PlanetIndex)?.ApplyExplosionNow(e.Pos, e.Radius, 0f, isReplay: true);
     }
 
     /// <summary>
@@ -629,5 +719,22 @@ public class TurnManager : NetworkBehaviour
             var gb = go.GetComponent<GravityBody>();
             if (gb != null) characters.Add(gb);
         }
+    }
+}
+
+/// <summary>Tek bir gezegen patlamasının kaydı — host migration snapshot'ında ve
+/// TurnManager.ReplayExplosionHistory*'de kullanılır. Tamamen blittable (int/Vector2/float) alanlar,
+/// NGO'nun RPC serileştirmesi ekstra kod gerektirmeden diziyi taşır.</summary>
+public struct PlanetExplosionRecord : Unity.Netcode.INetworkSerializeByMemcpy
+{
+    public int PlanetIndex;
+    public Vector2 Pos;
+    public float Radius;
+
+    public PlanetExplosionRecord(int planetIndex, Vector2 pos, float radius)
+    {
+        PlanetIndex = planetIndex;
+        Pos = pos;
+        Radius = radius;
     }
 }
