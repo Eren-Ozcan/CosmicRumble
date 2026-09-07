@@ -29,6 +29,14 @@ public class GravityBody : NetworkBehaviour
     public NetworkVariable<FixedString64Bytes> playerName =
         new NetworkVariable<FixedString64Bytes>(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
+    /// <summary>
+    /// Offline hot-seat'te BotSpawner'in ürettiği karakterler için true (GameInitializer
+    /// set eder). Bot da yerel oyuncu tarafından oynanır, bu yüzden girişi kısıtlamaz —
+    /// yalnızca UI'ın "YOUR TURN" yerine "TURN" gösterebilmesi için bir işarettir.
+    /// Online yolda hiç kullanılmaz; sahiplik NetworkObject.IsOwner'dan okunur.
+    /// </summary>
+    [HideInInspector] public bool isBot = false;
+
     /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
     [HideInInspector] public bool movementLocked = false;
 

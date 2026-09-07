@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -290,8 +290,10 @@ public class MatchHudUI : MonoBehaviour
     static bool IsLocalPlayer(GravityBody shooter)
     {
         var netObj = shooter.GetComponent<Unity.Netcode.NetworkObject>();
-        // Offline hotseat'te ağ nesnesi spawn edilmez — sıra her zaman "senin".
-        if (netObj == null || !netObj.IsSpawned) return true;
+        // Offline hotseat'te ağ nesnesi spawn edilmez: sıra insan karakterinde "senin",
+        // bot slotlarında değil. Bot da aynı klavyeyle oynanır ama band "YOUR TURN /
+        // Bot_1" derse hangi karakterin sırası olduğu okunmuyordu.
+        if (netObj == null || !netObj.IsSpawned) return !shooter.isBot;
         return netObj.IsOwner;
     }
 

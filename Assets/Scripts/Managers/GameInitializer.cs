@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 using CosmicRumble.Data;
@@ -114,7 +114,9 @@ public class GameInitializer : MonoBehaviour
                 AddHealthBar(botGO);
                 if (LobbyData.IsTraining) continue; // pasif hedef — sıra rotasyonuna girmesin
                 var gb = botGO.GetComponent<GravityBody>();
-                if (gb != null) allPlayers.Add(gb);
+                if (gb == null) continue;
+                gb.isBot = true;
+                allPlayers.Add(gb);
             }
         }
 
