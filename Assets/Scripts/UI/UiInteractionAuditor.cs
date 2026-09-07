@@ -46,13 +46,24 @@ public class UiInteractionAuditor : MonoBehaviour
     public static int AuditedButtons;
     public static bool Finished;
 
-    /// <summary>Menü ekranlarını sırayla açıp hepsini denetler.</summary>
-    public static IEnumerator AuditMenuScreens()
+    /// <summary>Bulguların önüne yazılan etiket — hangi çözünürlükte bulunduğunu gösterir.</summary>
+    public static string ResolutionLabel = "";
+
+    /// <summary>
+    /// Menü ekranlarını sırayla açıp hepsini denetler.
+    /// <paramref name="reset"/> false ise önceki turun bulguları korunur (çözünürlük süpürmesi),
+    /// <paramref name="includeGameScene"/> true ise maç sahnesi + duraklat menüsü de denetlenir
+    /// (menü sahnesinden çıkıldığı için yalnızca son turda anlamlı).
+    /// </summary>
+    public static IEnumerator AuditMenuScreens(bool reset = true, bool includeGameScene = true)
     {
-        Findings.Clear();
-        s_seen.Clear();
-        AuditedButtons = 0;
-        Finished       = false;
+        if (reset)
+        {
+            Findings.Clear();
+            s_seen.Clear();
+            AuditedButtons = 0;
+        }
+        Finished = false;
 
         // Ana menü kendi kendini kurar; paneller MainMenuUI tarafından oluşturulur.
         yield return new WaitForSecondsRealtime(1.5f);
@@ -84,7 +95,7 @@ public class UiInteractionAuditor : MonoBehaviour
         yield return AuditScreen("AvatarPicker",
             () => AvatarPickerUI.Instance?.Show(),     () => AvatarPickerUI.Instance?.Hide());
 
-        yield return AuditGameScene();
+        if (includeGameScene) yield return AuditGameScene();
 
         Finished = true;
     }
