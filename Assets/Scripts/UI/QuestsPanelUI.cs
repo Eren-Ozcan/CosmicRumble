@@ -114,8 +114,10 @@ public class QuestsPanelUI : MonoBehaviour
         UiKit.Stroke(card, StrokeCol);
         UiKit.Pop(card);
 
+        // Başlık sekme sırasının hemen üstünde durur; 0.925'te 72 px yüksekliğindeki
+        // sekmelerle çakışıp yarısı örtülüyordu.
         var title = MakeTxt(card, "Title", Loc.T("QUESTS"), 30, CompletedGr,
-            new Vector2(0.5f, 0.925f), new Vector2(680, 46));
+            new Vector2(0.5f, 0.945f), new Vector2(680, 46));
         title.fontStyle = FontStyles.Bold;
 
         UiKit.CloseButton(card, Hide);
@@ -123,7 +125,7 @@ public class QuestsPanelUI : MonoBehaviour
         BuildTabs(card);
 
         _resetText = MakeTxt(card, "ResetInfo", "", 13, TextSec,
-            new Vector2(0.5f, 0.765f), new Vector2(680, 20));
+            new Vector2(0.5f, 0.745f), new Vector2(680, 20));
 
         BuildScrollView(card);
 
@@ -133,7 +135,7 @@ public class QuestsPanelUI : MonoBehaviour
 
     void BuildTabs(GameObject parent)
     {
-        float y = 0.845f;
+        float y = 0.830f;
         _tabDailyBtn   = MakeTabBtn(parent, "tab_daily",   Loc.T("DAILY"),   new Vector2(0.29f, y), () => SwitchTab(Tab.Daily));
         _tabWeeklyBtn  = MakeTabBtn(parent, "tab_weekly",  Loc.T("WEEKLY"), new Vector2(0.50f, y), () => SwitchTab(Tab.Weekly));
         _tabMonthlyBtn = MakeTabBtn(parent, "tab_monthly", Loc.T("MONTHLY"),    new Vector2(0.71f, y), () => SwitchTab(Tab.Monthly));
