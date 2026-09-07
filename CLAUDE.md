@@ -47,6 +47,15 @@ Marketing assets such as store listings, feature graphics, icons and screenshots
 2. Private backup repo: `C:\Projects\pictures\CosmicRumble\` (local clone of the private
    `Eren-Ozcan/pictures` repo) — copy them there and commit+push in that repo.
 
+## UI Design Kit
+
+All menu/panel/HUD visuals follow the CosmicRumble UI Kit design file. Colours, type
+scale and tap sizes live in `Assets/Scripts/UI/UiTheme.cs` — **never** hard-code a
+colour in a panel. Every button must pass the play-mode audit
+(`Tools > UI > Run Button Audit`), which checks listeners, raycast reachability and the
+minimum tap size on the same code path a mouse and a finger use. Details and the design
+file's location: `docs/UI_DESIGN_KIT.md`.
+
 ## Studio-wide Information
 
 For studio-wide questions (not specific to this game) such as the Google account, the
