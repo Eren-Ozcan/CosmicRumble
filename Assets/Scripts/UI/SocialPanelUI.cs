@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,6 +33,7 @@ public class SocialPanelUI : MonoBehaviour
     static readonly Color OfflineDot = UiTheme.StatusOffline;
 
     GameObject      _panelRoot;
+    GameObject      _card;
     TextMeshProUGUI _ownCodeText;
     TextMeshProUGUI _copyToast;
     TextMeshProUGUI _addStatusText;
@@ -355,25 +356,43 @@ public class SocialPanelUI : MonoBehaviour
         _panelRoot = new GameObject("SocialRoot");
         _panelRoot.transform.SetParent(canvasGO.transform, false);
         var overlay = _panelRoot.AddComponent<Image>();
-        overlay.color = BgColor;
+        overlay.color = UiTheme.Backdrop;
         var overlayRt = overlay.rectTransform;
         overlayRt.anchorMin = Vector2.zero;
         overlayRt.anchorMax = Vector2.one;
         overlayRt.offsetMin = overlayRt.offsetMax = Vector2.zero;
 
-        var title = MakeText(_panelRoot, "Title", Loc.T("SOCIAL"), 34,
-            new Vector2(0.5f, 0.94f), new Vector2(400, 48), AccGold);
+        // Panel govdesi: diger paneller gibi ortada bir kart. Onceden icerik dogrudan
+        // karartma perdesinin uzerinde duruyordu; basligi ana menunun basligiyla,
+        // alttaki GERI butonu da hizli eslesme seridiyle cakisiyordu.
+        _card = new GameObject("Card");
+        _card.transform.SetParent(_panelRoot.transform, false);
+        var cardImg = _card.AddComponent<Image>();
+        cardImg.color = UiTheme.Card;
+        var cardRt = cardImg.rectTransform;
+        cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+        cardRt.sizeDelta = new Vector2(1000, 780);
+        cardRt.anchoredPosition = Vector2.zero;
+        UiKit.Round(cardImg);
+        UiKit.Shadow(_card, 8f, 0.55f);
+        UiKit.Stroke(_card, UiTheme.Stroke);
+        UiKit.Pop(_card);
+
+        var title = MakeText(_card, "Title", Loc.T("SOCIAL"), 30,
+            new Vector2(0.5f, 0.945f), new Vector2(400, 46), AccGold);
         UiKit.BrawlText(title);
+
+        UiKit.CloseButton(_card, Hide);
 
         // ── Üst şerit: kendi ID + kopyala ────────────────────────────────
         var idPlate = new GameObject("IdPlate");
-        idPlate.transform.SetParent(_panelRoot.transform, false);
+        idPlate.transform.SetParent(_card.transform, false);
         var idImg = idPlate.AddComponent<Image>();
         idImg.color = PlateDark;
         UiKit.Round(idImg, 1.2f);
         var idRt = idImg.rectTransform;
         idRt.anchorMin = idRt.anchorMax = new Vector2(0.5f, 0.845f);
-        idRt.sizeDelta = new Vector2(700, 76);
+        idRt.sizeDelta = new Vector2(880, 76);
         idRt.anchoredPosition = Vector2.zero;
 
         _ownCodeText = MakeText(idPlate, "OwnCode", Loc.T("YOUR ID: ..."), 19,
@@ -383,7 +402,7 @@ public class SocialPanelUI : MonoBehaviour
 
         MakeRowButton(idPlate, "btn_copy", Loc.T("COPY"), AccBlue, new Vector2(-80, 0), 140, OnCopyClicked);
 
-        _copyToast = MakeText(_panelRoot, "CopyToast", "", 15,
+        _copyToast = MakeText(_card, "CopyToast", "", 15,
             new Vector2(0.5f, 0.795f), new Vector2(300, 24), AccGreen);
 
         // ── Sekmeler ─────────────────────────────────────────────────────
@@ -409,29 +428,29 @@ public class SocialPanelUI : MonoBehaviour
 
         // ── ID ile ekle satırı (sadece ARKADAŞLAR sekmesinde) ────────────
         _addRow = new GameObject("AddRow");
-        _addRow.transform.SetParent(_panelRoot.transform, false);
+        _addRow.transform.SetParent(_card.transform, false);
         var addRt = _addRow.AddComponent<RectTransform>();
         addRt.anchorMin = addRt.anchorMax = new Vector2(0.5f, 0.665f);
-        addRt.sizeDelta = new Vector2(700, 76);
+        addRt.sizeDelta = new Vector2(880, 76);
         addRt.anchoredPosition = Vector2.zero;
 
         _addInput = MakeInputField(_addRow, "addInput", Loc.T("Friend's ID (Name#1234)"),
             new Vector2(0.32f, 0.5f), new Vector2(420, 72));
         MakeRowButton(_addRow, "btn_add", Loc.T("ADD"), AccGreen, new Vector2(-40, 0), 150, OnAddClicked);
 
-        _addStatusText = MakeText(_panelRoot, "AddStatus", "", 14,
+        _addStatusText = MakeText(_card, "AddStatus", "", 14,
             new Vector2(0.5f, 0.615f), new Vector2(700, 22), TextSec);
 
         // ── Liste (ScrollRect) ───────────────────────────────────────────
         var scrollGO = new GameObject("Scroll");
-        scrollGO.transform.SetParent(_panelRoot.transform, false);
+        scrollGO.transform.SetParent(_card.transform, false);
         var scrollImg = scrollGO.AddComponent<Image>();
         scrollImg.color = new Color(0f, 0f, 0f, 0.25f);
         UiKit.Round(scrollImg, 1.2f);
         var scrollRt = scrollImg.rectTransform;
-        scrollRt.anchorMin = new Vector2(0.5f, 0.10f);
+        scrollRt.anchorMin = new Vector2(0.5f, 0.06f);
         scrollRt.anchorMax = new Vector2(0.5f, 0.585f);
-        scrollRt.sizeDelta = new Vector2(860, 0);
+        scrollRt.sizeDelta = new Vector2(900, 0);
         scrollRt.anchoredPosition = Vector2.zero;
 
         var scroll = scrollGO.AddComponent<ScrollRect>();
@@ -456,16 +475,9 @@ public class SocialPanelUI : MonoBehaviour
 
         scroll.content = _listContent;
 
-        _emptyText = MakeText(_panelRoot, "Empty", "", 18,
+        _emptyText = MakeText(_card, "Empty", "", 18,
             new Vector2(0.5f, 0.35f), new Vector2(600, 60), TextSec);
         _emptyText.gameObject.SetActive(false);
-
-        // ── GERİ ─────────────────────────────────────────────────────────
-        var backBtn = MakeRowButton(_panelRoot, "btn_back", Loc.T("BACK"),
-            new Color(0.30f, 0.30f, 0.45f, 1f), new Vector2(0, 0), 200, Hide);
-        var backRt = backBtn.GetComponent<RectTransform>();
-        backRt.anchorMin = backRt.anchorMax = new Vector2(0.5f, 0.05f);
-        backRt.anchoredPosition = Vector2.zero;
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
     }
@@ -473,7 +485,7 @@ public class SocialPanelUI : MonoBehaviour
     Image MakeTabButton(string name, string label, Vector2 anchor, UnityEngine.Events.UnityAction cb)
     {
         var go = new GameObject(name);
-        go.transform.SetParent(_panelRoot.transform, false);
+        go.transform.SetParent(_card.transform, false);
         var img = go.AddComponent<Image>();
         img.color = TabIdle;
         UiKit.Round(img, 1.2f);
