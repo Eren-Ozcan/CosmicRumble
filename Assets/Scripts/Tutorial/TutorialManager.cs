@@ -132,7 +132,7 @@ namespace CosmicRumble.Tutorial
             UiKit.Hover(skipGO);
             var skipRt = skipImg.rectTransform;
             skipRt.anchorMin = skipRt.anchorMax = new Vector2(0.92f, 0.5f);
-            skipRt.sizeDelta = new Vector2(56, 56);
+            skipRt.sizeDelta = new Vector2(76, 76);
             skipRt.anchoredPosition = Vector2.zero;
 
             var skipLbl = new GameObject("Lbl").AddComponent<TextMeshProUGUI>();

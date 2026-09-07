@@ -57,9 +57,9 @@ public class InGameMenu : MonoBehaviour
     // ── Renkler ───────────────────────────────────────────────────
     readonly Color _overlayColor  = new Color(0f, 0f, 0f, 0.65f);
     readonly Color _panelColor    = new Color(0.06f, 0.06f, 0.15f, 0.97f);
-    readonly Color _btnColor      = new Color(0.15f, 0.35f, 0.7f, 1f);
-    readonly Color _btnDanger     = new Color(0.6f, 0.1f, 0.1f, 1f);
-    readonly Color _btnResume     = new Color(0.1f, 0.55f, 0.15f, 1f);
+    readonly Color _btnColor      = UiTheme.Blue;
+    readonly Color _btnDanger     = UiTheme.Danger;
+    readonly Color _btnResume     = UiTheme.Green;
 
     // ═════════════════════════════════════════════════════════════
     //  AWAKE — UI inşa et, kapalı başla
@@ -124,6 +124,13 @@ public class InGameMenu : MonoBehaviour
     // ═════════════════════════════════════════════════════════════
     //  PANEL AÇMA / KAPAMA
     // ═════════════════════════════════════════════════════════════
+
+    /// <summary>Menüyü açıp kapatır. Escape tuşu olmayan mobilde HUD'daki duraklat butonu
+    /// (MatchHudUI) bu yolu kullanır — yoksa telefonda menüyü açmanın hiçbir yolu yok.</summary>
+    public void ToggleMenu() => SetOpen(!_isOpen);
+
+    /// <summary>Menü şu an açık mı (HUD butonunun ikonunu/erişimini ayarlamak için).</summary>
+    public bool IsOpen => _isOpen;
 
     void SetOpen(bool open)
     {
@@ -213,8 +220,8 @@ public class InGameMenu : MonoBehaviour
 
         MakeTitle(_mainPanel, Loc.T("GAME MENU"));
         MakeBtn(_mainPanel, Loc.T("Resume"),             0,    OnResume,     _btnResume);
-        MakeBtn(_mainPanel, Loc.T("Settings"),         -70,  ShowSettings, _btnColor);
-        MakeBtn(_mainPanel, Loc.T("Return to Main Menu"), -140, OnQuitToMenu, _btnDanger);
+        MakeBtn(_mainPanel, Loc.T("Settings"),         -88,  ShowSettings, _btnColor);
+        MakeBtn(_mainPanel, Loc.T("Return to Main Menu"), -176, OnQuitToMenu, _btnDanger);
 
         // ── Settings Panel ───────────────────────────────────────
         _settingsPanel = MakeCenteredPanel("SettingsPanel", 420, 560);
@@ -397,7 +404,7 @@ public class InGameMenu : MonoBehaviour
         UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(260, 48);
+        rt.sizeDelta = new Vector2(280, 76);
         rt.anchoredPosition = new Vector2(0, yOff);
 
         var tGO = new GameObject("Label"); tGO.transform.SetParent(go.transform, false);

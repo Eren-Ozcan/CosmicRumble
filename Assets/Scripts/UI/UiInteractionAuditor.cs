@@ -84,7 +84,35 @@ public class UiInteractionAuditor : MonoBehaviour
         yield return AuditScreen("AvatarPicker",
             () => AvatarPickerUI.Instance?.Show(),     () => AvatarPickerUI.Instance?.Hide());
 
+        yield return AuditGameScene();
+
         Finished = true;
+    }
+
+    /// <summary>
+    /// Maç sahnesinin HUD'ını denetler: silah tepsisi, tur sayacı/SKIP, tepsi toggle'ı,
+    /// duraklat butonu ve oyun içi menü. Sahne doğrudan yüklenir (maç kurulmaz) — HUD öğeleri
+    /// sahnenin kendisinde olduğu için tıklanabilirlik böyle de doğrulanabilir.
+    /// </summary>
+    static IEnumerator AuditGameScene()
+    {
+        HideAllPanels();
+        UnityEngine.SceneManagement.SceneManager.LoadScene(SceneNames.Game);
+        yield return new WaitForSecondsRealtime(3f);
+
+        AuditActiveButtons("GameHud");
+
+        var menu = FindFirstObjectByType<InGameMenu>(FindObjectsInactive.Include);
+        if (menu == null)
+        {
+            Add("PauseMenu", "(scene)", "InGameMenu sahnede yok — maç içinde menü açılamaz");
+            yield break;
+        }
+
+        menu.ToggleMenu();
+        yield return new WaitForSecondsRealtime(1f);
+        AuditActiveButtons("PauseMenu");
+        if (menu.IsOpen) menu.ToggleMenu();
     }
 
     /// <summary>Giriş ekranı açıksa test misafir butonuna basıp menünün kurulmasını bekler.</summary>

@@ -86,6 +86,66 @@ public class MatchHudUI : MonoBehaviour
 
         BuildTurnBanner(safeRt);
         BuildAimReadout(safeRt);
+        BuildPauseButton();
+    }
+
+    /// <summary>
+    /// Tasarımdaki sağ üst duraklat butonu. Kendi canvas'ında durur çünkü bilgilendirme
+    /// katmanı bilerek raycast almıyor. Mobilde Escape tuşu yok — bu buton olmadan oyuncunun
+    /// maç içinde menüyü açmasının (ve menüye dönmesinin) hiçbir yolu yok.
+    /// </summary>
+    void BuildPauseButton()
+    {
+        var canvasGO = new GameObject("MatchHudButtonsCanvas");
+        canvasGO.transform.SetParent(transform, false);
+        var canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 45;
+        var scaler = canvasGO.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight  = 0.5f;
+        canvasGO.AddComponent<GraphicRaycaster>();
+
+        var safe = new GameObject("SafeArea", typeof(RectTransform));
+        safe.transform.SetParent(canvasGO.transform, false);
+        var safeRt = (RectTransform)safe.transform;
+        safeRt.anchorMin = Vector2.zero;
+        safeRt.anchorMax = Vector2.one;
+        safeRt.offsetMin = safeRt.offsetMax = Vector2.zero;
+        safe.AddComponent<SafeArea>();
+
+        var go = new GameObject("btn_pause");
+        go.transform.SetParent(safe.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = UiTheme.Plate;
+        UiKit.Round(img, UiTheme.CornerPlate);
+        UiKit.Shadow(go, 4f, 0.45f);
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.colors = UiKit.ButtonColors(UiTheme.Plate);
+        btn.onClick.AddListener(OnPauseClicked);
+        UiKit.Press(go);
+        UiKit.Hover(go);
+
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(1f, 1f);
+        rt.anchoredPosition = new Vector2(-24f, -24f);
+        rt.sizeDelta = new Vector2(88f, 88f);
+
+        var lbl = MakeText(go, "Lbl", "II", 34f, UiTheme.TextPrimary,
+                           TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f),
+                           Vector2.zero, new Vector2(88f, 88f));
+        UiKit.BrawlText(lbl);
+    }
+
+    void OnPauseClicked()
+    {
+        AudioManager.Instance?.PlayClick();
+        var menu = FindFirstObjectByType<InGameMenu>(FindObjectsInactive.Include);
+        if (menu != null) menu.ToggleMenu();
     }
 
     void BuildTurnBanner(RectTransform parent)
