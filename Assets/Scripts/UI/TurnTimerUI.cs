@@ -25,7 +25,31 @@ public class TurnTimerUI : MonoBehaviour
 
     private void Start()
     {
+        BuildTrackRing();
         BuildSkipButton();
+    }
+
+    /// <summary>
+    /// Sayacin arkasindaki sabit halka. Radyal dolgu tek basina ciziliyordu, sure azalinca
+    /// ekranin tepesinde havada duran ince bir dilim gibi gorunuyordu; tasarim 16'da dolgunun
+    /// arkasinda hep duran koyu bir halka var.
+    /// </summary>
+    private void BuildTrackRing()
+    {
+        if (radialImage == null || radialImage.transform.Find("Track") != null) return;
+
+        var go = new GameObject("Track");
+        go.transform.SetParent(radialImage.transform, false);
+        go.transform.SetAsFirstSibling();
+        var img = go.AddComponent<Image>();
+        img.sprite = radialImage.sprite;
+        img.type   = Image.Type.Simple;
+        img.color  = UiTheme.Slot;
+        img.raycastTarget = false;
+        var rt = img.rectTransform;
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = rt.offsetMax = Vector2.zero;
     }
 
     // Dokunmatik/fare için tur pas butonu — Tab kısayolunun mobilde karşılığı yoktu ve online

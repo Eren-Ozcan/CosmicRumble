@@ -145,8 +145,9 @@ public class LobbyPanelUI : MonoBehaviour
             new Vector2(0.75f, 0.53f), new Vector2(72, 72), OnBotPlus);
 
         // Preview
+        // 0.43 -> 0.36: iki satirlik onizleme yazisi -/+ dugmelerinin uzerine biniyordu.
         _botPreviewText = MakeText(card, "bot_preview", GetBotPreviewText(), 12,
-            new Vector2(0.5f, 0.43f), new Vector2(280, 24), TextSecondary);
+            new Vector2(0.5f, 0.36f), new Vector2(340, 44), TextSecondary);
     }
 
     void BuildRightColumn()

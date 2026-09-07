@@ -40,6 +40,7 @@ namespace CosmicRumble.Localization
             ["SHOP"]             = new[] { "MARKET", "商店", "TIENDA", "ショップ", "상점", "SHOP" },
             ["SOCIAL"]           = new[] { "SOSYAL", "社交", "SOCIAL", "ソーシャル", "소셜", "SOZIAL" },
             ["QUESTS"]           = new[] { "GÖREVLER", "任务", "MISIONES", "クエスト", "퀘스트", "QUESTS" },
+            ["MENU"]             = new[] { "MENÜ", "菜单", "MENÚ", "メニュー", "메뉴", "MENÜ" },
             ["SETTINGS"]         = new[] { "AYARLAR", "设置", "AJUSTES", "設定", "설정", "EINSTELLUNGEN" },
             ["LEADERBOARD"]      = new[] { "SIRALAMA", "排行榜", "CLASIFICACIÓN", "ランキング", "리더보드", "RANGLISTE" },
             ["ACHIEVEMENTS"]     = new[] { "BAŞARIMLAR", "成就", "LOGROS", "実績", "업적", "ERFOLGE" },

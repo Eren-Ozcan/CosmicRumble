@@ -916,14 +916,33 @@ public class MainMenuUI : MonoBehaviour
         dimBtn.transition = Selectable.Transition.None;
         dimBtn.onClick.AddListener(() => SetDrawer(false));
 
-        // Sağ kolon
+        // Sag kolon — tasarim 05'te cekmece bir kart: "MENU" basligi, kose X'i ve altta
+        // surum satiri. Onceden basliksiz/kartsiz serbest bir plaka kolonuydu ve kolon
+        // yuksekligi ogeleri tasidigi icin en alttaki satirlar PLAY kumesinin uzerine
+        // biniyordu.
         var colGO = new GameObject("Column");
         colGO.transform.SetParent(_drawerRoot.transform, false);
-        _drawerCol = colGO.AddComponent<RectTransform>();
+        var colImg = colGO.AddComponent<Image>();
+        colImg.color = BgCard;
+        UiKit.Round(colImg);
+        UiKit.Shadow(colGO, 8f, 0.55f);
+        UiKit.Stroke(colGO, UiTheme.Stroke);
+        _drawerCol = colImg.rectTransform;
         _drawerCol.anchorMin = _drawerCol.anchorMax = new Vector2(1f, 0.5f);
         _drawerCol.pivot = new Vector2(1f, 0.5f);
-        _drawerCol.sizeDelta = new Vector2(300, 4 * 82 + 16);
-        _drawerCol.anchoredPosition = new Vector2(0, 40);
+        _drawerCol.sizeDelta = new Vector2(340, 4 * 82 + 16);
+        _drawerCol.anchoredPosition = new Vector2(-16, 0);
+
+        var drawerTitle = MakeTxt(colGO, "Title", Loc.T("MENU"), 26, FontStyles.Normal, AccGold,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(240, 34), new Vector2(0, -34));
+        UiKit.BrawlText(drawerTitle);
+        drawerTitle.raycastTarget = false;
+
+        UiKit.CloseButton(colGO, () => SetDrawer(false), 60f);
+
+        MakeTxt(colGO, "Version", $"{VERSION}  •  © 2025 CosmicRumble", 14, FontStyles.Normal,
+            UiTheme.TextFaint, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0f), new Vector2(300, 20), new Vector2(0, 22));
 
         var size = new Vector2(280, 70);
         int itemCount = 0;
@@ -931,7 +950,7 @@ public class MainMenuUI : MonoBehaviour
         {
             int i = itemCount++;
             MakeBrawlBtn(colGO, nm, label, new Vector2(1f, 1f), new Vector2(1f, 1f),
-                new Vector2(-10, -8 - i * 82), size, 17, PlateDark, PlateEdge, icon, letter,
+                new Vector2(-30, -70 - i * 82), size, 17, PlateDark, PlateEdge, icon, letter,
                 () => { Click(); SetDrawer(false); act(); });
         }
         Item("dw_settings",     Loc.T("SETTINGS"),     new Color(0.55f, 0.58f, 0.66f, 1f), "S",
@@ -951,7 +970,8 @@ public class MainMenuUI : MonoBehaviour
         // build'lerde de test yapılabilsin diye Editor kısıtı kaldırıldı.
         Item("dw_botmatch",     Loc.T("BOT MATCH (DEV)"), AccBlue, "B",
             () => LobbyPanelUI.Instance?.Show());
-        _drawerCol.sizeDelta = new Vector2(300, itemCount * 82 + 16);
+        // baslik (70) + ogeler + surum satiri (48)
+        _drawerCol.sizeDelta = new Vector2(340, 70 + itemCount * 82 + 48);
 
         _drawerRoot.SetActive(false);
     }

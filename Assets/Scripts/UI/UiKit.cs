@@ -186,7 +186,7 @@ public static class UiKit
     /// son satirin ortasindan kesiliyordu ve "asagida devami var" hissi hic verilmiyordu;
     /// bu serit kesigi yumusatir ve kaydirilabilirligi gorunur kilar.
     /// </summary>
-    public static void ScrollFade(GameObject card, Color cardColor, float height = 48f)
+    public static void ScrollFade(GameObject card, Color cardColor, float height = 70f, float bottom = 30f)
     {
         var go = new GameObject("ScrollFade");
         go.transform.SetParent(card.transform, false);
@@ -198,8 +198,8 @@ public static class UiKit
         rt.anchorMin = new Vector2(0f, 0f);
         rt.anchorMax = new Vector2(1f, 0f);
         rt.pivot     = new Vector2(0.5f, 0f);
-        rt.offsetMin = new Vector2(14f, 14f);
-        rt.offsetMax = new Vector2(-14f, 14f + height);
+        rt.offsetMin = new Vector2(14f, bottom);
+        rt.offsetMax = new Vector2(-14f, bottom + height);
     }
 
     /// <summary>Dokunuşta hafif küçülme mikro-etkileşimi (mobil "canlı" his).</summary>
