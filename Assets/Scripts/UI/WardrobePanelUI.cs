@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
@@ -36,6 +36,7 @@ public class WardrobePanelUI : MonoBehaviour
     GameObject      _panelRoot;
     GameObject      _contentParent;
     TextMeshProUGUI _countText;
+    TextMeshProUGUI _equippedText;
     TextMeshProUGUI _emptyText;
 
     void Awake()
@@ -132,9 +133,15 @@ public class WardrobePanelUI : MonoBehaviour
         title.fontStyle = FontStyles.Bold;
 
         UiKit.CloseButton(card, Hide);
+        UiKit.ScrollFade(card, CardBg);
 
         _countText = MakeTxt(card, "CountInfo", "", 13, TextSec,
-            new Vector2(0.5f, 0.855f), new Vector2(680, 20));
+            new Vector2(0.5f, 0.865f), new Vector2(680, 20));
+
+        // Tasarimda sayacin altinda kusanili kostumun adi yaziyor; panelde hangi kostumun
+        // uzerinde oldugu yalnizca kucuk bir cerceveden anlasiliyordu.
+        _equippedText = MakeTxt(card, "EquippedInfo", "", 14, EquippedGr,
+            new Vector2(0.5f, 0.815f), new Vector2(680, 22));
 
         BuildScrollView(card);
 
@@ -228,6 +235,10 @@ public class WardrobePanelUI : MonoBehaviour
         _countText.text = string.Format(Loc.T("Owned: {0} / {1}"), ownedCount, total);
 
         var equipped = mgr.GetEquipped(CostumeType.Character);
+        if (_equippedText != null)
+            _equippedText.text = equipped != null
+                ? string.Format(Loc.T("Equipped: {0}"), Loc.T(equipped.displayName))
+                : "";
 
         for (int ch = 1; ch <= CharacterCount; ch++)
         {
@@ -371,6 +382,44 @@ public class WardrobePanelUI : MonoBehaviour
             UiKit.BrawlText(lbl);
             lbl.raycastTarget = false;
             StretchFull(lbl.rectTransform);
+        }
+
+        // Kilit rozeti - tasarimda her kilitli kart bir asma kilit tasiyor; burada yalnizca
+        // sart yazisi vardi ve kart "kilitli" gibi okunmuyordu.
+        if (!owned)
+        {
+            var lockGO = new GameObject("Lock");
+            lockGO.transform.SetParent(cell.transform, false);
+            var lockRt = lockGO.AddComponent<RectTransform>();
+            lockRt.anchorMin = lockRt.anchorMax = new Vector2(1f, 1f);
+            lockRt.sizeDelta = new Vector2(28, 28);
+            lockRt.anchoredPosition = new Vector2(-18, -18);
+
+            var body = new GameObject("Body");
+            body.transform.SetParent(lockGO.transform, false);
+            var bodyImg = body.AddComponent<Image>();
+            bodyImg.sprite = UiKit.RoundedSprite;
+            bodyImg.type   = Image.Type.Sliced;
+            bodyImg.pixelsPerUnitMultiplier = 3f;
+            bodyImg.color  = TextSec;
+            bodyImg.raycastTarget = false;
+            var bodyRt = bodyImg.rectTransform;
+            bodyRt.anchorMin = bodyRt.anchorMax = new Vector2(0.5f, 0.5f);
+            bodyRt.sizeDelta = new Vector2(20, 14);
+            bodyRt.anchoredPosition = new Vector2(0, -5);
+
+            var shackle = new GameObject("Shackle");
+            shackle.transform.SetParent(lockGO.transform, false);
+            var shImg = shackle.AddComponent<Image>();
+            shImg.sprite = UiKit.RoundedSprite;
+            shImg.type   = Image.Type.Sliced;
+            shImg.pixelsPerUnitMultiplier = 6f;
+            shImg.color  = TextSec;
+            shImg.raycastTarget = false;
+            var shRt = shImg.rectTransform;
+            shRt.anchorMin = shRt.anchorMax = new Vector2(0.5f, 0.5f);
+            shRt.sizeDelta = new Vector2(12, 12);
+            shRt.anchoredPosition = new Vector2(0, 6);
         }
 
         var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 13,

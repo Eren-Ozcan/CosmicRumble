@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -121,6 +121,7 @@ public class QuestsPanelUI : MonoBehaviour
         title.fontStyle = FontStyles.Bold;
 
         UiKit.CloseButton(card, Hide);
+        UiKit.ScrollFade(card, CardBg);
 
         BuildTabs(card);
 

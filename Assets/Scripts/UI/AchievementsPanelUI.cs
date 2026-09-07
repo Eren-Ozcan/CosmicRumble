@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Achievements;
@@ -96,6 +96,7 @@ public class AchievementsPanelUI : MonoBehaviour
         title.color     = UnlockedGold;
 
         UiKit.CloseButton(card, Hide);
+        UiKit.ScrollFade(card, CardBg);
 
         // İstatistik
         _statsText = MakeTxt(card, "Stats", "", 14, TextSec,

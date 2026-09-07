@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Economy;
@@ -89,6 +89,7 @@ public class AvatarPickerUI : MonoBehaviour
         title.fontStyle = FontStyles.Bold;
 
         UiKit.CloseButton(card, Hide);
+        UiKit.ScrollFade(card, CardBg);
 
         BuildScrollView(card);
 

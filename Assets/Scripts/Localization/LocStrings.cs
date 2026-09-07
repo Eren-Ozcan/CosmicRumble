@@ -92,6 +92,7 @@ namespace CosmicRumble.Localization
             ["LINK"]             = new[] { "BAĞLA", "绑定", "VINCULAR", "連携", "연결", "VERKNÜPFEN" },
 
             // ── Wardrobe ─────────────────────────────────────────────────────
+            ["Equipped: {0}"] = new[] { "Kuşanılı: {0}", "已装备：{0}", "Equipado: {0}", "装備中: {0}", "장착됨: {0}", "Ausgerüstet: {0}" },
             ["CHARACTER"]        = new[] { "KARAKTER", "角色", "PERSONAJE", "キャラクター", "캐릭터", "CHARAKTER" },
             ["WEAPON"]           = new[] { "SİLAH", "武器", "ARMA", "武器", "무기", "WAFFE" },
             ["Wardrobe is currently unavailable."] = new[] { "Gardırop şu anda kullanılamıyor.", "衣橱当前不可用。", "El armario no está disponible en este momento.", "現在ワードローブは利用できません。", "현재 옷장을 사용할 수 없습니다.", "Die Garderobe ist derzeit nicht verfügbar." },

@@ -1,4 +1,4 @@
-// Assets/Scripts/UI/UiKit.cs
+﻿// Assets/Scripts/UI/UiKit.cs
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -179,6 +179,27 @@ public static class UiKit
         g.top = top;
         g.bottom = bottom;
         graphic.SetVerticesDirty();
+    }
+
+    /// <summary>
+    /// Kaydirilabilir listenin alt kenarina soluklasan bir seritt koyar. Kartlarda liste
+    /// son satirin ortasindan kesiliyordu ve "asagida devami var" hissi hic verilmiyordu;
+    /// bu serit kesigi yumusatir ve kaydirilabilirligi gorunur kilar.
+    /// </summary>
+    public static void ScrollFade(GameObject card, Color cardColor, float height = 48f)
+    {
+        var go = new GameObject("ScrollFade");
+        go.transform.SetParent(card.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = Color.white;
+        img.raycastTarget = false;
+        Gradient(img, new Color(cardColor.r, cardColor.g, cardColor.b, 0f), cardColor);
+        var rt = img.rectTransform;
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot     = new Vector2(0.5f, 0f);
+        rt.offsetMin = new Vector2(14f, 14f);
+        rt.offsetMax = new Vector2(-14f, 14f + height);
     }
 
     /// <summary>Dokunuşta hafif küçülme mikro-etkileşimi (mobil "canlı" his).</summary>
