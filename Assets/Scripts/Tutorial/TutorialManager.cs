@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -25,12 +25,25 @@ namespace CosmicRumble.Tutorial
         static readonly Color AccGold = new Color(1.00f, 0.80f, 0.20f, 1f);
         static readonly Color TextSec = new Color(0.533f, 0.533f, 0.667f, 1f);
 
-        static readonly string[] TipKeys =
+        // Dokunmatik cihazda klavye/fare ipuclari yaniltici oluyordu ("aim with the mouse"
+        // telefonda gorunuyordu); ayni adimlar ekrandaki kontrollere gore anlatilir.
+        static readonly string[] TipKeysKeyboard =
         {
             "Move with A/D",
             "Jump with SPACE",
             "Pick a weapon, aim with the mouse, then fire",
         };
+
+        static readonly string[] TipKeysTouch =
+        {
+            "Move with the arrows",
+            "Tap the jump button",
+            "Pick a weapon, drag to aim, release to fire",
+        };
+
+        static string[] TipKeys =>
+            Application.isMobilePlatform || UnityEngine.InputSystem.Touchscreen.current != null
+                ? TipKeysTouch : TipKeysKeyboard;
 
         GameObject      _root;
         TextMeshProUGUI _tipText;

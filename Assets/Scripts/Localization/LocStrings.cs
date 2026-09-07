@@ -22,6 +22,9 @@ namespace CosmicRumble.Localization
             // ── Tutorial / onboarding ───────────────────────────────────────
             ["Move with A/D"] = new[] { "A/D ile hareket et", "使用A/D移动", "Muévete con A/D", "A/Dで移動", "A/D로 이동", "Bewege dich mit A/D" },
             ["Jump with SPACE"] = new[] { "SPACE ile zıpla", "按空格键跳跃", "Salta con ESPACIO", "SPACEでジャンプ", "SPACE로 점프", "Springe mit LEERTASTE" },
+            ["Move with the arrows"] = new[] { "Oklarla hareket et", "使用方向键移动", "Muévete con las flechas", "矢印で移動", "화살표로 이동", "Bewege dich mit den Pfeilen" },
+            ["Tap the jump button"] = new[] { "Zıplama butonuna dokun", "点击跳跃按钮", "Toca el botón de salto", "ジャンプボタンをタップ", "점프 버튼을 누르세요", "Tippe auf die Sprungtaste" },
+            ["Pick a weapon, drag to aim, release to fire"] = new[] { "Bir silah seç, sürükleyerek nişan al, bırak ve ateşle", "选择武器，拖动瞄准，松开开火", "Elige un arma, arrastra para apuntar y suelta para disparar", "武器を選び、ドラッグで狙い、離して発射", "무기를 선택하고 드래그해 조준한 뒤 놓아 발사", "Wähle eine Waffe, ziehe zum Zielen und lass zum Feuern los" },
             ["Pick a weapon, aim with the mouse, then fire"] = new[] { "Bir silah seç, fareyle nişan al, ateş et", "选择武器，用鼠标瞄准后开火", "Elige un arma, apunta con el ratón y dispara", "武器を選び、マウスで狙って撃つ", "무기를 선택하고 마우스로 조준한 뒤 발사", "Wähle eine Waffe, ziele mit der Maus und feuere" },
 
             // ── Local notifications ─────────────────────────────────────────

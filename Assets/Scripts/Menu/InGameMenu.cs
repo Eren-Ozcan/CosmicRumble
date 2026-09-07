@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using CosmicRumble.Localization;
@@ -215,13 +215,13 @@ public class InGameMenu : MonoBehaviour
         StretchFull(overlayImg.rectTransform);
 
         // ── Ana Menü Paneli ──────────────────────────────────────
-        _mainPanel = MakeCenteredPanel("MainPanel", 320, 340);
+        _mainPanel = MakeCenteredPanel("MainPanel", 420, 430);
         _mainPanel.transform.SetParent(_root.transform, false);
 
         MakeTitle(_mainPanel, Loc.T("GAME MENU"));
-        MakeBtn(_mainPanel, Loc.T("Resume"),             0,    OnResume,     _btnResume);
-        MakeBtn(_mainPanel, Loc.T("Settings"),         -88,  ShowSettings, _btnColor);
-        MakeBtn(_mainPanel, Loc.T("Return to Main Menu"), -176, OnQuitToMenu, _btnDanger);
+        MakeBtn(_mainPanel, Loc.T("Resume"),            -20,   OnResume,     _btnResume);
+        MakeBtn(_mainPanel, Loc.T("Settings"),         -108,  ShowSettings, _btnColor);
+        MakeBtn(_mainPanel, Loc.T("Return to Main Menu"), -196, OnQuitToMenu, _btnDanger);
 
         // ── Settings Panel ───────────────────────────────────────
         _settingsPanel = MakeCenteredPanel("SettingsPanel", 420, 560);
@@ -367,6 +367,10 @@ public class InGameMenu : MonoBehaviour
         var go  = new GameObject(name);
         var img = go.AddComponent<Image>();
         img.color = _panelColor;
+        // Kit karti: yuvarlak kose + golge + ince kontur. Onceden duz keskin bir kutuydu.
+        UiKit.Round(img);
+        UiKit.Shadow(go, 8f, 0.55f);
+        UiKit.Stroke(go, UiTheme.Stroke);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
         rt.sizeDelta = new Vector2(w, h);
@@ -398,9 +402,13 @@ public class InGameMenu : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = color;
+        UiKit.Round(img, 1.4f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(color), 6f, 1.4f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
+        btn.colors = UiKit.ButtonColors(color);
         btn.onClick.AddListener(cb);
+        UiKit.Press(go, 0.96f);
         UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -412,6 +420,7 @@ public class InGameMenu : MonoBehaviour
         txt.text = label; txt.fontSize = 19;
         txt.alignment = TextAlignmentOptions.Center;
         txt.color = Color.white;
+        UiKit.BrawlText(txt);
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
