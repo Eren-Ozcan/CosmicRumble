@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -44,6 +44,25 @@ public class MainMenuUI : MonoBehaviour
     static readonly Color BrawlYellow  = UiTheme.Gold;       // OYNA/DÜKKAN sarısı
     static readonly Color YellowEdge   = UiTheme.GoldEdge;
     static readonly Color NameBlue     = UiTheme.NameBlue;   // oyuncu adı mavisi
+
+    // Tasarim dosyasi (UI Kit Landscape) 960x540 mantiksal artboard uzerinde cizildi;
+    // canvas referansi 1920x1080 oldugu icin her olcu ikiyle carpilarak tasindi.
+    const float TopBarInset = 88f;   // tasarim: left/right 44
+    const float TopBarTop   = 44f;   // tasarim: top 22
+    const float RailInset   = 88f;   // sol menu kolonu
+    const float RailTop     = 220f;  // tasarim: top 110
+    const float RailW       = 236f;  // tasarim: 118
+    const float RailH       = 118f;
+    const float RailGap     = 20f;
+    const float PlayW       = 600f;  // tasarim: 300x106, sag-alt
+    const float PlayH       = 212f;
+    const float PlayInset   = 104f;  // tasarim: right 52
+    const float PlayBottom  = 72f;   // tasarim: bottom 36
+
+    static readonly Color PlateInk   = UiTheme.Ink;
+    static readonly Color XpTrack    = UiTheme.Slot;
+    static readonly Color XpFillTop  = UiTheme.Blue;
+    static readonly Color XpFillBot  = UiTheme.IceBlue;
 
     const string VERSION = "v0.8.2";
     const int    BTN_W   = 290;
@@ -287,9 +306,6 @@ public class MainMenuUI : MonoBehaviour
         BuildNebulaGlow(canvasGO);
         BuildPattern(canvasGO, 34);
 
-        // ── Title ────────────────────────────────────────────────────────────
-        BuildTitle(canvasGO);
-
         // ── Panels ───────────────────────────────────────────────────────────
         _mainPanel     = MakePanel(canvasGO, "MainPanel");
         _settingsPanel = MakePanel(canvasGO, "SettingsPanel");
@@ -302,66 +318,6 @@ public class MainMenuUI : MonoBehaviour
     // ────────────────────────────────────────────────────────────────────────
     //  TITLE BLOCK
     // ────────────────────────────────────────────────────────────────────────
-
-    void BuildTitle(GameObject parent)
-    {
-        // Glow backdrop behind title
-        var glowGO  = new GameObject("TitleGlow");
-        glowGO.transform.SetParent(parent.transform, false);
-        var glowImg = glowGO.AddComponent<Image>();
-        glowImg.color = new Color(0.18f, 0.25f, 0.60f, 0.18f);
-        UiKit.Round(glowImg);
-        var glowRt  = glowImg.rectTransform;
-        glowRt.anchorMin        = new Vector2(0.5f, 1f);
-        glowRt.anchorMax        = new Vector2(0.5f, 1f);
-        glowRt.pivot            = new Vector2(0.5f, 1f);
-        glowRt.sizeDelta        = new Vector2(470, 88);
-        glowRt.anchoredPosition = new Vector2(0, -12);
-
-        // Main title — kompakt banner (BS üst-orta gibi), beyaz konturlu altın yazı
-        var titleGO  = new GameObject("Title");
-        titleGO.transform.SetParent(parent.transform, false);
-        var title    = titleGO.AddComponent<TextMeshProUGUI>();
-        title.text      = "COSMIC RUMBLE";
-        title.fontSize  = 40;
-        title.alignment = TextAlignmentOptions.Center;
-        title.color     = AccGold;
-        UiKit.BrawlText(title);
-        var titleRt = title.rectTransform;
-        titleRt.anchorMin        = new Vector2(0.5f, 1f);
-        titleRt.anchorMax        = new Vector2(0.5f, 1f);
-        titleRt.pivot            = new Vector2(0.5f, 1f);
-        titleRt.sizeDelta        = new Vector2(600, 52);
-        titleRt.anchoredPosition = new Vector2(0, -20);
-
-        // Separator line
-        var lineGO  = new GameObject("TitleLine");
-        lineGO.transform.SetParent(parent.transform, false);
-        var lineImg = lineGO.AddComponent<Image>();
-        lineImg.color = AccGold;
-        var lineRt  = lineImg.rectTransform;
-        lineRt.anchorMin        = new Vector2(0.5f, 1f);
-        lineRt.anchorMax        = new Vector2(0.5f, 1f);
-        lineRt.pivot            = new Vector2(0.5f, 1f);
-        lineRt.sizeDelta        = new Vector2(340, 2);
-        lineRt.anchoredPosition = new Vector2(0, -88);
-
-        // Subtitle
-        var subGO  = new GameObject("Subtitle");
-        subGO.transform.SetParent(parent.transform, false);
-        var sub    = subGO.AddComponent<TextMeshProUGUI>();
-        sub.text      = Loc.T("Turn-based planetary warfare");
-        sub.fontSize  = 16;
-        sub.fontStyle = FontStyles.Italic;
-        sub.alignment = TextAlignmentOptions.Center;
-        sub.color     = TextDim;
-        var subRt = sub.rectTransform;
-        subRt.anchorMin        = new Vector2(0.5f, 1f);
-        subRt.anchorMax        = new Vector2(0.5f, 1f);
-        subRt.pivot            = new Vector2(0.5f, 1f);
-        subRt.sizeDelta        = new Vector2(500, 26);
-        subRt.anchoredPosition = new Vector2(0, -94);
-    }
 
     // ────────────────────────────────────────────────────────────────────────
     //  MAIN PANEL
@@ -421,7 +377,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Profil plakası (sol-üst) → Sıralama açılır ───────────────────
         var profile = MakePlate(_mainPanel, "ProfilePlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
-            new Vector2(16, -14), new Vector2(252, 76),
+            new Vector2(TopBarInset, -TopBarTop), new Vector2(420, 124),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
         var avatarGO = new GameObject("Avatar");
@@ -430,11 +386,11 @@ public class MainMenuUI : MonoBehaviour
         _avatarImg.raycastTarget = false;
         var avatarRt = _avatarImg.rectTransform;
         avatarRt.anchorMin = avatarRt.anchorMax = new Vector2(0f, 0.5f);
-        avatarRt.sizeDelta = new Vector2(48, 48);
-        avatarRt.anchoredPosition = new Vector2(32, 0);
+        avatarRt.sizeDelta = new Vector2(92, 92);
+        avatarRt.anchoredPosition = new Vector2(62, 0);
         _avatarInitialTxt = MakeTxt(avatarGO, "Initial", "",
-            24, FontStyles.Normal, Color.white,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(48, 48), Vector2.zero);
+            40, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(92, 92), Vector2.zero);
         UiKit.BrawlText(_avatarInitialTxt);
         _avatarInitialTxt.raycastTarget = false;
         ApplyAvatarVisuals(AvatarManager.Instance?.GetSelected(), playerName);
@@ -479,31 +435,36 @@ public class MainMenuUI : MonoBehaviour
         editBadgeLbl.rectTransform.anchorMax = Vector2.one;
         editBadgeLbl.rectTransform.offsetMin = editBadgeLbl.rectTransform.offsetMax = Vector2.zero;
 
-        var nameTxt = MakeTxt(profile, "Name", playerName, 19, FontStyles.Normal, NameBlue,
-            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(180, 30), new Vector2(42, 0));
+        var nameTxt = MakeTxt(profile, "Name", playerName, 30, FontStyles.Normal, NameBlue,
+            TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(250, 36), new Vector2(250, 18));
         UiKit.BrawlText(nameTxt);
         nameTxt.overflowMode = TextOverflowModes.Ellipsis;
 
+        BuildLevelRow(profile);
+
         // ── Kupa kutusu (profilin sağında) → Sıralama açılır ─────────────
         var trophyPlate = MakePlate(_mainPanel, "TrophyPlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
-            new Vector2(292, -14), new Vector2(226, 76),
+            new Vector2(TopBarInset + 440, -TopBarTop), new Vector2(430, 88),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
-        MakeIconCircle(trophyPlate, AccGold, Loc.T("T"), new Vector2(30, 8));
+        MakeTrophyGlyph(trophyPlate, new Vector2(38, 0), 44f);
 
         int trophies = CosmicRumble.Cloud.LeaderboardManager.Instance != null
             ? CosmicRumble.Cloud.LeaderboardManager.Instance.Trophies : 0;
-        var trophyNum = MakeTxt(trophyPlate, "Count", trophies.ToString(), 22, FontStyles.Normal, AccGold,
-            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(150, 30), new Vector2(42, 8));
+        var trophyNum = MakeTxt(trophyPlate, "Count", trophies.ToString(), 30, FontStyles.Normal, AccGold,
+            TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(90, 36), new Vector2(115, 0));
         UiKit.BrawlText(trophyNum);
+        // Lig adı sayının SAĞINDA, aynı satırda (tasarım: "🏆 830 Gold League").
         _trophyText = MakeTxt(trophyPlate, "League",
-            CosmicRumble.Cloud.LeaderboardManager.GetLeagueName(trophies), 11, FontStyles.Normal,
+            CosmicRumble.Cloud.LeaderboardManager.GetLeagueName(trophies), 22, FontStyles.Normal,
             TextDim, TextAlignmentOptions.Left,
-            new Vector2(0.5f, 0.5f), new Vector2(190, 16), new Vector2(14, -20));
+            new Vector2(0f, 0.5f), new Vector2(230, 28), new Vector2(195, 0));
+        _trophyText.enableWordWrapping = false;
+        _trophyText.overflowMode       = TextOverflowModes.Ellipsis;
 
         // ── Sağ-üst: ☰ menü (Ayarlar) + para plakaları ───────────────────
         var menuBtn = MakePlate(_mainPanel, "MenuBtn", new Vector2(1f, 1f), new Vector2(1f, 1f),
-            new Vector2(-16, -14), new Vector2(76, 76),
+            new Vector2(-TopBarInset, -TopBarTop), new Vector2(92, 92),
             () => { Click(); SetDrawer(true); });
         for (int i = 0; i < 3; i++)
         {
@@ -517,12 +478,12 @@ public class MainMenuUI : MonoBehaviour
             barImg.raycastTarget = false;
             var barRt = barImg.rectTransform;
             barRt.anchorMin = barRt.anchorMax = new Vector2(0.5f, 0.5f);
-            barRt.sizeDelta = new Vector2(34, 6);
-            barRt.anchoredPosition = new Vector2(0, 11 - i * 11);
+            barRt.sizeDelta = new Vector2(40, 6);
+            barRt.anchoredPosition = new Vector2(0, 14 - i * 14);
         }
 
-        _gemText  = BuildCurrencyChip("GemChip",  new Vector2(-100, -14), GemChipColor);
-        _goldText = BuildCurrencyChip("GoldChip", new Vector2(-262, -14), GoldChipColor);
+        _gemText  = BuildCurrencyChip("GemChip",  new Vector2(-(TopBarInset + 108), -TopBarTop), GemChipColor, AccBlue);
+        _goldText = BuildCurrencyChip("GoldChip", new Vector2(-(TopBarInset + 334), -TopBarTop), GoldChipColor, AccGold);
         RefreshCurrencyChips();
         if (CurrencyManager.Instance != null)
             CurrencyManager.Instance.OnCurrencyChanged += OnCurrencyChangedForTopBar;
@@ -582,18 +543,104 @@ public class MainMenuUI : MonoBehaviour
     static readonly Color GemChipColor  = UiTheme.GemChip;
     TextMeshProUGUI _goldText, _gemText, _trophyText;
 
-    TextMeshProUGUI BuildCurrencyChip(string name, Vector2 pos, Color accent)
+    TextMeshProUGUI BuildCurrencyChip(string name, Vector2 pos, Color accent, Color plusColor)
     {
         var chip = MakePlate(_mainPanel, name, new Vector2(1f, 1f), new Vector2(1f, 1f),
-            pos, new Vector2(160, 72),
+            pos, new Vector2(210, 72),
             () => { Click(); ShopPanelUI.Instance?.Show(); });
 
-        MakeIconCircle(chip, accent, "", new Vector2(24, 0), 28f);
+        MakeIconCircle(chip, accent, "", new Vector2(30, 0), 34f);
 
-        var txt = MakeTxt(chip, "Value", "0", 19, FontStyles.Normal, TextPrimary,
-            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(100, 30), new Vector2(24, 0));
+        var txt = MakeTxt(chip, "Value", "0", 26, FontStyles.Normal, TextPrimary,
+            TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(96, 32), new Vector2(104, 0));
         UiKit.BrawlText(txt);
+
+        // Tasarımdaki kare "+" rozeti: çipin tamamı zaten Market'i açıyor, bu yalnızca
+        // "buradan para eklenir" işareti — kendi butonu yok, aksi halde aynı eylemi iki
+        // ayrı dokunma hedefi açardı ve buton denetimi de iki kez sayardı.
+        var plusGO = new GameObject("Plus");
+        plusGO.transform.SetParent(chip.transform, false);
+        var plusImg = plusGO.AddComponent<Image>();
+        plusImg.color = plusColor;
+        UiKit.Round(plusImg, 2.4f);
+        plusImg.raycastTarget = false;
+        var plusRt = plusImg.rectTransform;
+        plusRt.anchorMin = plusRt.anchorMax = new Vector2(1f, 0.5f);
+        plusRt.sizeDelta = new Vector2(44, 44);
+        plusRt.anchoredPosition = new Vector2(-30, 0);
+        var plusLbl = MakeTxt(plusGO, "Lbl", "+", 26, FontStyles.Bold,
+            plusColor == AccGold ? PlateInk : Color.white,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(44, 44), Vector2.zero);
+        plusLbl.raycastTarget = false;
         return txt;
+    }
+
+    /// <summary>Kupa kadehi — ikon art'ı yok, üç ilkelden çiziliyor (kâse + sap + taban).</summary>
+    void MakeTrophyGlyph(GameObject parent, Vector2 pos, float size)
+    {
+        var root = new GameObject("TrophyGlyph");
+        root.transform.SetParent(parent.transform, false);
+        var rootRt = root.AddComponent<RectTransform>();
+        rootRt.anchorMin = rootRt.anchorMax = new Vector2(0f, 0.5f);
+        rootRt.sizeDelta = new Vector2(size, size);
+        rootRt.anchoredPosition = pos;
+
+        AddShape(root, "Cup",  UiKit.CircleSprite,  AccGold, new Vector2(size * 0.72f, size * 0.46f), new Vector2(0, size * 0.18f));
+        AddShape(root, "Stem", UiKit.RoundedSprite, AccGold, new Vector2(size * 0.14f, size * 0.20f), new Vector2(0, -size * 0.12f));
+        AddShape(root, "Base", UiKit.RoundedSprite, AccGold, new Vector2(size * 0.48f, size * 0.12f), new Vector2(0, -size * 0.28f));
+    }
+
+    /// <summary>Tek parça ilkel şekil — glyph'ler (kupa, tişört, sepet ...) bundan kuruluyor.</summary>
+    Image AddShape(GameObject parent, string name, Sprite sprite, Color color, Vector2 size, Vector2 pos)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent.transform, false);
+        var img = go.AddComponent<Image>();
+        img.sprite = sprite;
+        if (sprite == UiKit.RoundedSprite) { img.type = Image.Type.Sliced; img.pixelsPerUnitMultiplier = 3f; }
+        img.color = color;
+        img.raycastTarget = false;
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = pos;
+        return img;
+    }
+
+    /// <summary>Profil plakasındaki "LV n" + deneyim çubuğu satırı (tasarım 04).</summary>
+    void BuildLevelRow(GameObject profile)
+    {
+        var progress = PlayerLevelManager.Instance != null
+            ? PlayerLevelManager.Instance.GetProgress()
+            : new PlayerProgressData { currentLevel = 1, levelProgress = 0f };
+
+        var lvl = MakeTxt(profile, "Level", "LV " + progress.currentLevel, 18, FontStyles.Normal,
+            TextDim, TextAlignmentOptions.Left, new Vector2(0f, 0.5f), new Vector2(70, 22), new Vector2(165, -18));
+        lvl.raycastTarget = false;
+
+        var trackGO = new GameObject("XPTrack");
+        trackGO.transform.SetParent(profile.transform, false);
+        var trackImg = trackGO.AddComponent<Image>();
+        trackImg.color = XpTrack;
+        UiKit.Round(trackImg, 3f);
+        trackImg.raycastTarget = false;
+        var trackRt = trackImg.rectTransform;
+        trackRt.anchorMin = trackRt.anchorMax = new Vector2(0f, 0.5f);
+        trackRt.pivot     = new Vector2(0f, 0.5f);
+        trackRt.sizeDelta = new Vector2(190, 14);
+        trackRt.anchoredPosition = new Vector2(210, -18);
+
+        var fillGO = new GameObject("XPFill");
+        fillGO.transform.SetParent(trackGO.transform, false);
+        var fillImg = fillGO.AddComponent<Image>();
+        fillImg.color = Color.white;
+        UiKit.Round(fillImg, 3f);
+        UiKit.Gradient(fillImg, XpFillTop, XpFillBot);
+        fillImg.raycastTarget = false;
+        var fillRt = fillImg.rectTransform;
+        fillRt.anchorMin = new Vector2(0f, 0f);
+        fillRt.anchorMax = new Vector2(Mathf.Clamp01(progress.levelProgress), 1f);
+        fillRt.offsetMin = fillRt.offsetMax = Vector2.zero;
     }
 
     void RefreshCurrencyChips()
@@ -626,10 +673,13 @@ public class MainMenuUI : MonoBehaviour
     {
         if (_avatarImg == null || _avatarInitialTxt == null) return;
 
-        bool hasIcon = def != null && def.icon != null;
+        // Avatar ikonu yoksa kusanili kostumun onizlemesi kullanilir: tasarim 04'te profil
+        // plakasinda gercek bir portre var, harf rozeti oranin en zayif noktasiydi.
+        var sprite = def != null && def.icon != null ? def.icon : EquippedCostumeSprite();
+        bool hasIcon = sprite != null;
         if (hasIcon)
         {
-            _avatarImg.sprite = def.icon;
+            _avatarImg.sprite = sprite;
             _avatarImg.type   = Image.Type.Simple;
             _avatarImg.preserveAspect = true;
             _avatarImg.color  = Color.white;
@@ -648,6 +698,24 @@ public class MainMenuUI : MonoBehaviour
         _avatarInitialTxt.text = hasIcon ? "" : letter;
     }
 
+    /// <summary>Kusanili karakter kostumunun onizleme sprite'i (yoksa null).</summary>
+    Sprite EquippedCostumeSprite()
+    {
+        var cm = CostumeManager.Instance;
+        if (cm == null) return null;
+        var equipped = cm.GetEquipped(CostumeType.Character);
+        if (equipped != null && equipped.previewSprite != null) return equipped.previewSprite;
+
+        // Hic kostum kusanilmadiysa sahip olunan ilki gosterilir - profil plakasi
+        // varsayilan olarak da bir portre tasisin.
+        var db = Resources.Load<CostumeDatabase>("Economy/CostumeDatabase");
+        if (db == null) return null;
+        foreach (var def in db.allCostumes)
+            if (def != null && def.previewSprite != null && cm.IsOwned(def.costumeId))
+                return def.previewSprite;
+        return null;
+    }
+
     /// <summary>
     /// Brawl Stars ray düzeni (ekran görüntülerinden birebir):
     /// - Sol kolon (koleksiyon tarafı): MARKET (sarı, DÜKKAN karşılığı) + BAŞARIMLAR (koyu).
@@ -658,25 +726,162 @@ public class MainMenuUI : MonoBehaviour
     /// </summary>
     void BuildLeftRail()
     {
-        var size = new Vector2(238, 76);
+        var size = new Vector2(RailW, RailH);
 
-        // Sol kolon
-        MakeBrawlBtn(_mainPanel, "btn_wardrobe", Loc.T("WARDROBE"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(16, 204), size, 17, PlateDark, PlateEdge, AccPurple, "W",
-            () => { Click(); WardrobePanelUI.Instance?.Show(); });
-        MakeBrawlBtn(_mainPanel, "btn_shop", Loc.T("SHOP"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(16, 118), size, 19, BrawlYellow, YellowEdge, AccGold, "$",
-            () => { Click(); ShopPanelUI.Instance?.Show(); });
-        MakeBrawlBtn(_mainPanel, "btn_social", Loc.T("SOCIAL"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-            new Vector2(16, 32), size, 17, PlateDark, PlateEdge, AccCyan, "S",
-            () => { Click(); SocialPanelUI.Instance?.Show(); });
+        MakeRailTile("btn_wardrobe", Loc.T("WARDROBE"), 0, size, PlateDark, PlateEdge, AccPurple,
+            RailGlyph.Wardrobe, () => { Click(); WardrobePanelUI.Instance?.Show(); });
+        MakeRailTile("btn_shop", Loc.T("SHOP"), 1, size, BrawlYellow, YellowEdge, PlateInk,
+            RailGlyph.Shop, () => { Click(); ShopPanelUI.Instance?.Show(); });
+        MakeRailTile("btn_social", Loc.T("SOCIAL"), 2, size, PlateDark, PlateEdge, AccCyan,
+            RailGlyph.Social, () => { Click(); SocialPanelUI.Instance?.Show(); });
+        _questsTile = MakeRailTile("btn_quests", Loc.T("QUESTS"), 3, size, PlateDark, PlateEdge, AccGreen,
+            RailGlyph.Quests, () => { Click(); QuestsPanelUI.Instance?.Show(); });
 
-        // Alt-sol: GÖREVLER
-        MakeBrawlBtn(_mainPanel, "btn_quests", Loc.T("QUESTS"), new Vector2(0f, 0f), new Vector2(0f, 0f),
-            new Vector2(16, 22), new Vector2(238, 76), 18, PlateDark, PlateEdge, AccGreen, "Q",
-            () => { Click(); QuestsPanelUI.Instance?.Show(); });
+        RefreshQuestBadge();
 
-        // Sağ tarafta kalıcı buton yok — ikincil her şey ☰ çekmecesinde (BS kalıbı).
+        // Sag tarafta kalici buton yok - ikincil her sey menu cekmecesinde.
+    }
+
+    enum RailGlyph { Wardrobe, Shop, Social, Quests }
+
+    GameObject _questsTile;
+
+    /// <summary>
+    /// Tasarim 04'teki sol kolon kutusu: ust yarida ikon, alt yarida etiket. Onceki hali
+    /// genis yatik pill + solda harf rozetiydi, tasarimda kare kutu ve gercek ikon var.
+    /// </summary>
+    GameObject MakeRailTile(string name, string label, int index, Vector2 size,
+                            Color plateColor, Color edgeColor, Color glyphColor,
+                            RailGlyph glyph, UnityEngine.Events.UnityAction callback)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(_mainPanel.transform, false);
+        var edgeImg = go.AddComponent<Image>();
+        edgeImg.color = edgeColor;
+        UiKit.Round(edgeImg, 1.2f);
+        UiKit.Shadow(go, 5f, 0.45f);
+        var rt = edgeImg.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.sizeDelta = size;
+        rt.anchoredPosition = new Vector2(RailInset, -(RailTop + index * (size.y + RailGap)));
+
+        var faceGO = new GameObject("Face");
+        faceGO.transform.SetParent(go.transform, false);
+        var faceImg = faceGO.AddComponent<Image>();
+        faceImg.color = plateColor;
+        UiKit.Round(faceImg, 1.2f);
+        var frt = faceImg.rectTransform;
+        frt.anchorMin = Vector2.zero;
+        frt.anchorMax = Vector2.one;
+        frt.offsetMin = new Vector2(0, 12);   // tasarim: 6px alt kenar
+        frt.offsetMax = Vector2.zero;
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = faceImg;
+        btn.colors = UiKit.ButtonColors(plateColor);
+        btn.onClick.AddListener(callback);
+        UiKit.Press(go);
+        UiKit.Hover(go);
+
+        MakeRailGlyph(faceGO, glyph, glyphColor, new Vector2(0, 22), 44f);
+
+        var txt = MakeTxt(faceGO, "Label", label, 26, FontStyles.Normal,
+            plateColor == BrawlYellow ? PlateInk : TextPrimary,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(size.x - 12, 30),
+            new Vector2(0, -28));
+        UiKit.BrawlText(txt);
+        txt.overflowMode  = TextOverflowModes.Ellipsis;
+        txt.raycastTarget = false;
+        return go;
+    }
+
+    /// <summary>Menu ikonlari - ikon art'i yok, her biri birkac yuvarlak dikdortgen/daireden.</summary>
+    void MakeRailGlyph(GameObject parent, RailGlyph glyph, Color color, Vector2 pos, float size)
+    {
+        var root = new GameObject("Glyph");
+        root.transform.SetParent(parent.transform, false);
+        var rootRt = root.AddComponent<RectTransform>();
+        rootRt.anchorMin = rootRt.anchorMax = new Vector2(0.5f, 0.5f);
+        rootRt.sizeDelta = new Vector2(size, size);
+        rootRt.anchoredPosition = pos;
+
+        switch (glyph)
+        {
+            case RailGlyph.Wardrobe:  // tisort: govde + iki kol
+                AddShape(root, "Body",    UiKit.RoundedSprite, color, new Vector2(size * 0.46f, size * 0.60f), new Vector2(0, -size * 0.08f));
+                AddShape(root, "SleeveL", UiKit.RoundedSprite, color, new Vector2(size * 0.20f, size * 0.30f), new Vector2(-size * 0.30f, size * 0.14f));
+                AddShape(root, "SleeveR", UiKit.RoundedSprite, color, new Vector2(size * 0.20f, size * 0.30f), new Vector2( size * 0.30f, size * 0.14f));
+                break;
+            case RailGlyph.Shop:      // sepet: govde + sap + iki teker
+                AddShape(root, "Basket", UiKit.RoundedSprite, color, new Vector2(size * 0.62f, size * 0.34f), new Vector2(size * 0.04f, 0f));
+                AddShape(root, "Handle", UiKit.RoundedSprite, color, new Vector2(size * 0.26f, size * 0.08f), new Vector2(-size * 0.30f, size * 0.24f));
+                AddShape(root, "WheelL", UiKit.CircleSprite,  color, new Vector2(size * 0.14f, size * 0.14f), new Vector2(-size * 0.14f, -size * 0.28f));
+                AddShape(root, "WheelR", UiKit.CircleSprite,  color, new Vector2(size * 0.14f, size * 0.14f), new Vector2( size * 0.20f, -size * 0.28f));
+                break;
+            case RailGlyph.Social:    // iki kisi: iki bas + iki omuz
+                AddShape(root, "HeadL", UiKit.CircleSprite,  color, new Vector2(size * 0.26f, size * 0.26f), new Vector2(-size * 0.18f, size * 0.20f));
+                AddShape(root, "HeadR", UiKit.CircleSprite,  color, new Vector2(size * 0.26f, size * 0.26f), new Vector2( size * 0.18f, size * 0.20f));
+                AddShape(root, "BodyL", UiKit.RoundedSprite, color, new Vector2(size * 0.36f, size * 0.24f), new Vector2(-size * 0.18f, -size * 0.16f));
+                AddShape(root, "BodyR", UiKit.RoundedSprite, color, new Vector2(size * 0.36f, size * 0.24f), new Vector2( size * 0.18f, -size * 0.16f));
+                break;
+            case RailGlyph.Quests:    // pano: kagit + uc satir
+                AddShape(root, "Sheet", UiKit.RoundedSprite, color,     new Vector2(size * 0.56f, size * 0.70f), Vector2.zero);
+                AddShape(root, "Line1", UiKit.RoundedSprite, PlateDark, new Vector2(size * 0.32f, size * 0.07f), new Vector2(0,  size * 0.16f));
+                AddShape(root, "Line2", UiKit.RoundedSprite, PlateDark, new Vector2(size * 0.32f, size * 0.07f), Vector2.zero);
+                AddShape(root, "Line3", UiKit.RoundedSprite, PlateDark, new Vector2(size * 0.32f, size * 0.07f), new Vector2(0, -size * 0.16f));
+                break;
+        }
+    }
+
+    /// <summary>Acik (henuz tamamlanmamis) gunluk+haftalik+aylik gorev sayisi.</summary>
+    int CountOpenQuests()
+    {
+        var qm = QuestManager.Instance;
+        if (qm == null) return 0;
+
+        int open = 0;
+        foreach (var q in qm.GetActiveDailyQuests())  if (q != null && !qm.IsCompleted(q.questId)) open++;
+        foreach (var q in qm.GetActiveWeeklyQuests()) if (q != null && !qm.IsCompleted(q.questId)) open++;
+        var monthly = qm.GetActiveMonthlyQuest();
+        if (monthly != null && !qm.IsCompleted(monthly.questId)) open++;
+        return open;
+    }
+
+    /// <summary>Tasarimdaki yesil sayac rozeti - acik gorev yoksa hic olusturulmaz.</summary>
+    void RefreshQuestBadge()
+    {
+        if (_questsTile == null) return;
+
+        int open = CountOpenQuests();
+        var existing  = _questsTile.transform.Find("Badge");
+        if (open <= 0)
+        {
+            if (existing != null) Destroy(existing.gameObject);
+            return;
+        }
+
+        GameObject badge;
+        if (existing != null) badge = existing.gameObject;
+        else
+        {
+            badge = new GameObject("Badge");
+            badge.transform.SetParent(_questsTile.transform, false);
+            var img = badge.AddComponent<Image>();
+            img.sprite        = UiKit.CircleSprite;
+            img.color         = AccGreen;
+            img.raycastTarget = false;
+            var brt = img.rectTransform;
+            brt.anchorMin = brt.anchorMax = new Vector2(1f, 1f);
+            brt.sizeDelta = new Vector2(48, 48);
+            brt.anchoredPosition = new Vector2(-6, 8);
+            var lbl = MakeTxt(badge, "Lbl", "", 24, FontStyles.Normal, Color.white,
+                TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(48, 48), Vector2.zero);
+            UiKit.BrawlText(lbl);
+            lbl.raycastTarget = false;
+        }
+        var text = badge.GetComponentInChildren<TextMeshProUGUI>();
+        if (text != null) text.text = open.ToString();
     }
 
     // ── ☰ Çekmece (Brawl Stars'ın sağdan açılan menüsü) ──────────────────────
@@ -806,17 +1011,18 @@ public class MainMenuUI : MonoBehaviour
     /// </summary>
     void BuildPlayCluster()
     {
-        // ── Alt-orta: mod plakası (BS'nin "SAVAŞ AŞÇISI / Kuantum Mutfak" kutusu) ──
-        var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(0, 22), new Vector2(430, 76),
+        // ── Mod cipi: PLAY'in hemen ustunde, onunla ayni sag kenara hizali (tasarim 04).
+        // Onceden alt-ortadaydi; orada acilan panellerin alt buton satiriyla cakisiyordu.
+        var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(1f, 0f), new Vector2(1f, 0f),
+            new Vector2(-PlayInset, PlayBottom + PlayH + 24), new Vector2(380, 96),
             () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
-        var modeTitle = MakeTxt(mode, "Title", Loc.T("QUICK MATCH"), 19, FontStyles.Normal, Color.white,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 26), new Vector2(0, 11));
+        var modeTitle = MakeTxt(mode, "Title", Loc.T("QUICK MATCH"), 28, FontStyles.Normal, AccGold,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(360, 34), new Vector2(0, 16));
         UiKit.BrawlText(modeTitle);
         modeTitle.raycastTarget = false;
-        var modeSub = MakeTxt(mode, "Sub", Loc.T("Ranked  •  Win +30 Trophies"), 12, FontStyles.Normal,
-            AccGold, TextAlignmentOptions.Center,
-            new Vector2(0.5f, 0.5f), new Vector2(400, 18), new Vector2(0, -16));
+        var modeSub = MakeTxt(mode, "Sub", Loc.T("Ranked  •  Win +30 Trophies"), 20, FontStyles.Normal,
+            TextDim, TextAlignmentOptions.Center,
+            new Vector2(0.5f, 0.5f), new Vector2(360, 24), new Vector2(0, -20));
         modeSub.raycastTarget = false;
 
         // ── Alt-sağ: BÜYÜK SARI OYNA ─────────────────────────────────────
@@ -830,8 +1036,8 @@ public class MainMenuUI : MonoBehaviour
         var rt = edgeImg.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0f);
         rt.pivot = new Vector2(1f, 0f);
-        rt.sizeDelta = new Vector2(420, 128);
-        rt.anchoredPosition = new Vector2(-24, 22);
+        rt.sizeDelta = new Vector2(PlayW, PlayH);
+        rt.anchoredPosition = new Vector2(-PlayInset, PlayBottom);
 
         var faceGO = new GameObject("Face");
         faceGO.transform.SetParent(go.transform, false);
@@ -843,7 +1049,7 @@ public class MainMenuUI : MonoBehaviour
         var frt = faceImg.rectTransform;
         frt.anchorMin = Vector2.zero;
         frt.anchorMax = Vector2.one;
-        frt.offsetMin = new Vector2(0, 7);
+        frt.offsetMin = new Vector2(0, 22);   // tasarim: 11px alt kenar
         frt.offsetMax = Vector2.zero;
 
         var btn = go.AddComponent<Button>();
@@ -856,13 +1062,15 @@ public class MainMenuUI : MonoBehaviour
         UiKit.Pulse(go); // tek birincil eylem: sürekli çok hafif nefes (Press ile çakışmasın diye Press yok)
         UiKit.Hover(go);
 
-        var mainLbl = MakeTxt(faceGO, "Label", Loc.T("PLAY"), 50, FontStyles.Normal, Color.white,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 60), new Vector2(0, 10));
+        // Tasarimda etiket sari zemin uzerinde KOYU yaziyor (beyaz konturlu beyaz yazi
+        // sari plakada okunmuyordu).
+        var mainLbl = MakeTxt(faceGO, "Label", Loc.T("PLAY"), 84, FontStyles.Normal, PlateInk,
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(560, 96), new Vector2(0, 16));
         UiKit.BrawlText(mainLbl);
         mainLbl.raycastTarget = false;
-        var subLbl = MakeTxt(faceGO, "Sub", Loc.T("Quick Match  •  Ranked"), 14, FontStyles.Normal,
-            new Color(0.42f, 0.27f, 0.02f, 1f),
-            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(380, 20), new Vector2(0, -34));
+        var subLbl = MakeTxt(faceGO, "Sub", Loc.T("Quick Match  •  Ranked"), 22, FontStyles.Bold,
+            new Color(PlateInk.r, PlateInk.g, PlateInk.b, 0.75f),
+            TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(560, 28), new Vector2(0, -52));
         subLbl.raycastTarget = false;
     }
 

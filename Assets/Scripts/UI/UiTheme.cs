@@ -1,4 +1,4 @@
-// Assets/Scripts/UI/UiTheme.cs
+﻿// Assets/Scripts/UI/UiTheme.cs
 using UnityEngine;
 
 /// <summary>
@@ -64,6 +64,8 @@ public static class UiTheme
     public static readonly Color Pink   = Hex(0xE7539E);
 
     // ── Metin ────────────────────────────────────────────────────────────────
+    /// <summary>Sari/acik zemin uzerindeki koyu yazi (tasarim: PLAY etiketi, "+" rozeti).</summary>
+    public static readonly Color Ink         = Hex(0x26243A);
     public static readonly Color TextPrimary = Hex(0xEDEBF6);
     public static readonly Color TextDim     = Hex(0xA6B3D1);
     public static readonly Color TextMuted   = Hex(0x8A8FB0);
