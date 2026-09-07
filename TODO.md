@@ -16,9 +16,23 @@ is now fully done (2026-07-10) — including the CJK font; all that remains is t
 names into the other 6 languages.
 
 ### 1. Continuation of open work (up next)
-1. Google sign-in Console/Dashboard setup — the 7 steps in the "Google Play Games SIGN-IN" section
-   below. The code is ready and waiting. **Blocked on a sign-in the account owner has to do
-   (2026-09-07):** the browser still holds a Google session for `yilkgamesstudio@gmail.com` (Google
+1. Google sign-in Console/Dashboard setup — **DONE on the Console/Dashboard side 2026-09-07**, only
+   the device test is left. The app now exists in Play Console (Cosmic Rumble, app id
+   `4973718903854899364`), Play Games Services runs on a new Google Cloud project `cosmic-rumble-yilk`
+   (project number / PGS application id `4377355611`), the OAuth consent screen is External with
+   `yilkgamesstudio@gmail.com` as support and contact, and two credentials are attached: an Android
+   one bound to `com.yilkgames.cosmicrumble` + the upload key's SHA-1, and a game-server one bound to
+   the "Cosmic Rumble game server" web client. That web client's ID and secret are entered in the
+   Unity Dashboard (Player Authentication → Identity Providers → Google Play Games, enabled), and the
+   Unity project now carries the real IDs — `Tools ▸ Android ▸ Run Play Games setup` regenerated
+   GameInfo.cs and the manifest resource. Credentials and the client secret are in the private
+   pictures repo (`CosmicRumble/play-games-services.md`), never here.
+   **Left on this item:** (a) the device test — a signed build should now silently sign in and show
+   "GOOGLE — Connected" under Settings ▸ Account; (b) after the first AAB upload, add a *second*
+   Android credential with the Play App Signing SHA-1, since Google re-signs the app and sign-in fails
+   silently on a fingerprint mismatch; (c) publishing the PGS project itself, which is only needed
+   when the game leaves testing.
+   ~~**Blocked on a sign-in the account owner has to do (2026-09-07):**~~ (resolved the same day) the browser still holds a Google session for `yilkgamesstudio@gmail.com` (Google
    Cloud Console opens straight into it at `authuser=5`), but Play Console specifically demands a
    fresh identity check ("Kimliğinizi doğrulayın") and offers the *personal* account as the identity
    to confirm — so the developer-account picker, which does list "Yilk Games", cannot be passed
@@ -68,9 +82,23 @@ names into the other 6 languages.
    `AchievementManager.ResolvePlatformId()` picks the right ID for the active provider and sends that
    to it. **Remaining: data entry only** — the 50 achievements must be created in the relevant
    Consoles and the opaque IDs they generate (`CgkI...` etc.) typed one by one into those three fields
-   from the Inspector; no code change will be needed. **Still blocked (2026-09-07)** by the same Play
-   Console re-authentication described in item 1 — the achievements cannot be created until the app
-   and Play Games Services exist in the Console.
+   from the Inspector; no code change will be needed. **DONE 2026-09-07 for Google Play.** All 50
+   achievements were created at once through Play Games Services' bulk ZIP import, and every
+   `AchievementDefinition` now carries its `CggI…` id in `googlePlayId`.
+   What the import needs, since none of it is in Google's own docs: the ZIP holds
+   `AchievementsMetadata.csv` (Name, Description, Incremental, Steps, State, Points, ListOrder),
+   `AchievementsIconsMappings.csv` (Name, icon filename) and one icon per achievement — **and the CSVs
+   must have no header row**, because the Console reads the first line as data. Points must be
+   multiples of 5 in the 5-200 range and sum to at most 2000 across all achievements; the split used
+   is common 20 / rare 25 / epic 50 / legendary 100 = 1900. Everything is imported as
+   non-incremental, which matches how `GooglePlayAchievementProvider` reports progress
+   (`Social.ReportProgress` with a percentage, where only 100 unlocks). The two secret achievements
+   are `Hidden`, the rest `Revealed`.
+   **The icons are placeholders** — 512×512 rarity-coloured discs with the achievement's initials,
+   generated to get past the Console's "icon required" rule and stored in the private pictures repo
+   (`CosmicRumble/achievement-icons/`, together with the exact ZIP that was imported). They should be
+   replaced with real art in the Console; the ids do not change when an icon does.
+   Steam and Game Center ids are still empty, as those stores have no app yet.
 7. Legal: **draft text + code infrastructure done (2026-07-11)** — `legal/PRIVACY_POLICY.md` and
    `legal/TERMS_OF_SERVICE.md` (written based on the UGS systems actually active in the code) were
    added, and **must not be published without passing legal review** (the KVKK/GDPR clauses and the
