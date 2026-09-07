@@ -1,4 +1,4 @@
-// Assets/Scripts/UI/LeaderboardPanelUI.cs
+﻿// Assets/Scripts/UI/LeaderboardPanelUI.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -98,12 +98,15 @@ public class LeaderboardPanelUI : MonoBehaviour
 
         UiKit.CloseButton(card, Hide);
 
+        // Yenile dugmesi kartin sol ust kosesine sifirlanmisti ve kart kenarina yapisiyordu;
+        // tasarimda baslik satirinin sagindaki kucuk bir plaka.
         MakeBtn(card, "btn_refresh", Loc.T("REFRESH"),
-            new Vector2(0.11f, 0.925f), new Vector2(150, 72),
+            new Vector2(0.855f, 0.925f), new Vector2(150, 64),
             PrimaryBtn, PrimaryHover, () => { if (!_loading) _ = PopulateAsync(); });
 
-        _statusText = MakeTxt(card, "Status", "", 13, TextSec,
-            new Vector2(0.5f, 0.83f), new Vector2(600, 22));
+        // "Senin siran" satiri tasarimda listenin altinda sabit durur (basligin altinda degil).
+        _statusText = MakeTxt(card, "Status", "", 15, TextSec,
+            new Vector2(0.5f, 0.075f), new Vector2(760, 26));
 
         BuildScrollView(card);
 

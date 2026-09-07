@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -32,6 +32,7 @@ public class ShopPanelUI : MonoBehaviour
 
     GameObject _panelRoot;
     TextMeshProUGUI[] _priceTexts;
+    Button[] _buyButtons;
     Button _rareChestBtn, _epicChestBtn;
 
     void Awake()
@@ -83,8 +84,15 @@ public class ShopPanelUI : MonoBehaviour
         {
             string price = IAPManager.Instance != null
                 ? IAPManager.Instance.GetLocalizedPrice(packs[i].productId)
-                : "--";
-            _priceTexts[i].text = string.IsNullOrEmpty(price) ? "--" : price;
+                : null;
+
+            // Magaza baglanmadan once fiyat "--" olarak duruyordu ve buton yine de basilabiliyordu;
+            // cihazda bes paketin hepsi bozuk gorunuyordu. Fiyat yoksa durum yaziliyor ve
+            // satin alma butonu kapatiliyor.
+            bool ready = !string.IsNullOrEmpty(price) && price != "--";
+            _priceTexts[i].text = ready ? price : Loc.T("Unavailable");
+            if (i < _buyButtons.Length && _buyButtons[i] != null)
+                _buyButtons[i].interactable = ready;
         }
     }
 
@@ -112,6 +120,7 @@ public class ShopPanelUI : MonoBehaviour
 
         var packs = IAPManager.GemPacks;
         _priceTexts = new TextMeshProUGUI[packs.Length];
+        _buyButtons = new Button[packs.Length];
 
         // Kart: 5 paket yan yana rahat sığsın (yatay telefon ekranı)
         var card = new GameObject("Card");
@@ -149,6 +158,10 @@ public class ShopPanelUI : MonoBehaviour
         }
 
         BuildChestStrip(card);
+
+        // Tasarim 08'in alt notu - odemenin nereden gectigi magaza ekraninda yazili olmali.
+        MakeText(card, "StoreNote", Loc.T("Purchases are charged through Google Play / App Store."), 13,
+            new Vector2(0.5f, 0.035f), new Vector2(760, 22), TextSec);
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
         _panelRoot.SetActive(false);
@@ -310,6 +323,8 @@ public class ShopPanelUI : MonoBehaviour
         buyBtn.colors = UiKit.ButtonColors(BuyGreen);
         string productId = pack.productId;
         buyBtn.onClick.AddListener(() => IAPManager.Instance?.BuyGemPack(productId));
+        buyBtn.interactable = false;   // fiyat gelene kadar kapali
+        _buyButtons[index] = buyBtn;
         UiKit.Press(buyGO);
         UiKit.Hover(buyGO);
         var buyRt = buyImg.rectTransform;
@@ -317,7 +332,7 @@ public class ShopPanelUI : MonoBehaviour
         buyRt.sizeDelta = new Vector2(size.x - 28f, 76);
         buyRt.anchoredPosition = new Vector2(0, 46);
 
-        _priceTexts[index] = MakeText(buyGO, "Price", "--", 17,
+        _priceTexts[index] = MakeText(buyGO, "Price", Loc.T("Unavailable"), 17,
             new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
         _priceTexts[index].fontStyle = FontStyles.Bold;
         StretchFull(_priceTexts[index].rectTransform);

@@ -134,6 +134,8 @@ namespace CosmicRumble.Localization
             ["Locked"]           = new[] { "Kilitli", "未解锁", "Bloqueado", "未解除", "잠김", "Gesperrt" },
 
             // ── Shop ─────────────────────────────────────────────────────────
+            ["Unavailable"] = new[] { "Kullanılamıyor", "暂不可用", "No disponible", "利用できません", "사용할 수 없음", "Nicht verfügbar" },
+            ["Purchases are charged through Google Play / App Store."] = new[] { "Satın almalar Google Play / App Store üzerinden tahsil edilir.", "购买通过 Google Play / App Store 结算。", "Las compras se cobran a través de Google Play / App Store.", "購入は Google Play / App Store で決済されます。", "구매는 Google Play / App Store를 통해 청구됩니다.", "Käufe werden über Google Play / App Store abgerechnet." },
             ["Gem packs — for costumes and chests"] = new[] { "Gem paketleri — kostüm ve sandıklar için", "宝石礼包 — 用于装扮和宝箱", "Paquetes de gemas — para disfraces y cofres", "ジェムパック — コスチュームやチェストに", "젬 패키지 — 코스튬과 상자를 위해", "Edelstein-Pakete — für Kostüme und Truhen" },
             ["POPULAR"]          = new[] { "POPÜLER", "热门", "POPULAR", "人気", "인기", "BELIEBT" },
             ["BEST VALUE"]       = new[] { "EN İYİ DEĞER", "超值", "MEJOR VALOR", "お得", "최고 가치", "BESTER WERT" },
