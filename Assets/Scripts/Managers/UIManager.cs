@@ -41,11 +41,16 @@ public class UIManager : MonoBehaviour
     public GameObject[] gameplayUIRoots;
 
     [Header("Renk Ayarları")]
-    public Color selectionColor = new Color(1, 1, 0, 0.5f);   // sarı
-    public Color confirmColor = new Color(0, 1, 0, 0.5f);   // yeşil
-    public Color emptyColor = new Color(1, 0, 0, 0.5f);   // kırmızı
-    public Color noneColor = new Color(0, 0, 0, 0f);     // şeffaf
-    public Color lockedColor = new Color(0.12f, 0.12f, 0.16f, 0.85f); // level kilidi (koyu)
+    // Değerler UiTheme'den (UI Kit tasarımı) gelir. Sahneye serialize edilmiş eski renkler
+    // tasarımdan sapmasın diye Awake'te tema değerleri geri yazılır — bkz. ApplyThemeColors().
+    public Color selectionColor = UiTheme.SlotSelected;   // sarı
+    public Color confirmColor   = UiTheme.SlotConfirmed;  // yeşil
+    public Color emptyColor     = UiTheme.SlotEmpty;      // kırmızı
+    public Color noneColor      = UiTheme.SlotNone;       // şeffaf
+    public Color lockedColor    = UiTheme.SlotLocked;     // seviye kilidi
+
+    [Tooltip("Kapatılırsa Inspector'daki renkler kullanılır (tasarım dışı deneme için).")]
+    public bool useThemeColors = true;
 
     private CharacterAbilities currentAb;
     private int selectedIndex = -1;
@@ -64,6 +69,8 @@ public class UIManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else { Destroy(gameObject); return; }
 
+        ApplyThemeColors();
+
         // Skill event handlers
         _onSkillChangedHandler    = OnSkillChanged;
         _onSuperJumpChangedHandler = () => UpdateSlot(4);
@@ -74,6 +81,17 @@ public class UIManager : MonoBehaviour
         _onShieldChangedHandler    = () => UpdateSlot(5);
 
         // End-game buttons are wired via Inspector OnClick — no AddListener needed here.
+    }
+
+    /// <summary>Slot durum renklerini UI Kit paletine sabitler (sahnedeki eski değerleri ezer).</summary>
+    void ApplyThemeColors()
+    {
+        if (!useThemeColors) return;
+        selectionColor = UiTheme.SlotSelected;
+        confirmColor   = UiTheme.SlotConfirmed;
+        emptyColor     = UiTheme.SlotEmpty;
+        noneColor      = UiTheme.SlotNone;
+        lockedColor    = UiTheme.SlotLocked;
     }
 
     public void SetCharacter(CharacterAbilities ab)

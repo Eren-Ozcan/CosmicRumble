@@ -16,34 +16,34 @@ using CosmicRumble.Legal;
 /// </summary>
 public class MainMenuUI : MonoBehaviour
 {
-    // ── Palette ──────────────────────────────────────────────────────────────
-    static readonly Color BgDeep       = new Color(0.04f, 0.03f, 0.10f, 1.00f);
-    static readonly Color BgCard       = new Color(0.08f, 0.07f, 0.18f, 0.92f);
-    static readonly Color BgCardDark   = new Color(0.05f, 0.05f, 0.13f, 0.95f);
-    static readonly Color AccBlue      = new Color(0.22f, 0.45f, 0.95f, 1.00f);
-    static readonly Color AccBlueHov   = new Color(0.32f, 0.58f, 1.00f, 1.00f);
-    static readonly Color AccPurple    = new Color(0.48f, 0.20f, 0.85f, 1.00f);
-    static readonly Color AccPurpleHov = new Color(0.60f, 0.32f, 1.00f, 1.00f);
-    static readonly Color AccGold      = new Color(1.00f, 0.80f, 0.20f, 1.00f);
-    static readonly Color AccGoldHov   = new Color(1.00f, 0.88f, 0.40f, 1.00f);
-    static readonly Color AccGreen     = new Color(0.12f, 0.68f, 0.22f, 1.00f);
-    static readonly Color AccGreenHov  = new Color(0.18f, 0.82f, 0.30f, 1.00f);
-    static readonly Color AccRed       = new Color(0.60f, 0.12f, 0.12f, 1.00f);
-    static readonly Color AccRedHov    = new Color(0.80f, 0.18f, 0.18f, 1.00f);
-    static readonly Color AccCyan      = new Color(0.15f, 0.70f, 0.75f, 1.00f);
-    static readonly Color AccCyanHov   = new Color(0.25f, 0.85f, 0.90f, 1.00f);
-    static readonly Color AccPress     = new Color(0.10f, 0.18f, 0.45f, 1.00f);
-    static readonly Color TextPrimary  = Color.white;
-    static readonly Color TextDim      = new Color(0.65f, 0.70f, 0.82f, 1.00f);
-    static readonly Color BarBg        = new Color(0.12f, 0.12f, 0.22f, 1.00f);
-    static readonly Color Separator    = new Color(0.25f, 0.25f, 0.40f, 0.60f);
+    // ── Palette — tek kaynak: UiTheme (CosmicRumble UI Kit tasarım dosyası) ──
+    static readonly Color BgDeep       = UiTheme.BgDeep;
+    static readonly Color BgCard       = UiTheme.Card;
+    static readonly Color BgCardDark   = UiTheme.CardDeep;
+    static readonly Color AccBlue      = UiTheme.Blue;
+    static readonly Color AccBlueHov   = Color.Lerp(UiTheme.Blue, Color.white, 0.18f);
+    static readonly Color AccPurple    = UiTheme.Purple;
+    static readonly Color AccPurpleHov = Color.Lerp(UiTheme.Purple, Color.white, 0.18f);
+    static readonly Color AccGold      = UiTheme.Gold;
+    static readonly Color AccGoldHov   = Color.Lerp(UiTheme.Gold, Color.white, 0.18f);
+    static readonly Color AccGreen     = UiTheme.Green;
+    static readonly Color AccGreenHov  = Color.Lerp(UiTheme.Green, Color.white, 0.18f);
+    static readonly Color AccRed       = UiTheme.Danger;
+    static readonly Color AccRedHov    = Color.Lerp(UiTheme.Danger, Color.white, 0.18f);
+    static readonly Color AccCyan      = UiTheme.Cyan;
+    static readonly Color AccCyanHov   = Color.Lerp(UiTheme.Cyan, Color.white, 0.18f);
+    static readonly Color AccPress     = UiTheme.BlueEdge;
+    static readonly Color TextPrimary  = UiTheme.TextPrimary;
+    static readonly Color TextDim      = UiTheme.TextDim;
+    static readonly Color BarBg        = UiTheme.Slot;
+    static readonly Color Separator    = UiTheme.Separator;
 
     // ── Brawl Stars plaka paleti ────────────────────────────────────────────
-    static readonly Color PlateDark    = new Color(0.165f, 0.175f, 0.215f, 1f); // koyu füme plaka
-    static readonly Color PlateEdge    = new Color(0.085f, 0.09f,  0.115f, 1f); // plakanın alt kenarı
-    static readonly Color BrawlYellow  = new Color(0.99f,  0.79f,  0.10f,  1f); // OYNA/DÜKKAN sarısı
-    static readonly Color YellowEdge   = new Color(0.72f,  0.50f,  0.02f,  1f);
-    static readonly Color NameBlue     = new Color(0.45f,  0.80f,  1.00f,  1f); // oyuncu adı mavisi
+    static readonly Color PlateDark    = UiTheme.Plate;      // koyu füme plaka
+    static readonly Color PlateEdge    = UiTheme.PlateEdge;  // plakanın alt kenarı
+    static readonly Color BrawlYellow  = UiTheme.Gold;       // OYNA/DÜKKAN sarısı
+    static readonly Color YellowEdge   = UiTheme.GoldEdge;
+    static readonly Color NameBlue     = UiTheme.NameBlue;   // oyuncu adı mavisi
 
     const string VERSION = "v0.8.2";
     const int    BTN_W   = 290;
@@ -282,7 +282,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Background — canlı mor sahne (Brawl Stars lobi zemini gibi) ─────
         var bg = MakeStretch(canvasGO, "Background", Color.white);
-        UiKit.Gradient(bg, new Color(0.17f, 0.10f, 0.40f, 1f), new Color(0.34f, 0.10f, 0.33f, 1f));
+        UiKit.Gradient(bg, UiTheme.MenuGradTop, UiTheme.MenuGradBot);
         BuildStarfield(canvasGO, 90);
         BuildNebulaGlow(canvasGO);
         BuildPattern(canvasGO, 34);
@@ -421,7 +421,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Profil plakası (sol-üst) → Sıralama açılır ───────────────────
         var profile = MakePlate(_mainPanel, "ProfilePlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
-            new Vector2(16, -14), new Vector2(252, 64),
+            new Vector2(16, -14), new Vector2(252, 76),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
         var avatarGO = new GameObject("Avatar");
@@ -458,9 +458,9 @@ public class MainMenuUI : MonoBehaviour
         UiKit.Hover(editBadgeGO);
         var editBadgeRt = editBadgeImg.rectTransform;
         editBadgeRt.anchorMin = editBadgeRt.anchorMax = new Vector2(1f, 0f);
-        editBadgeRt.sizeDelta = new Vector2(20, 20);
-        editBadgeRt.anchoredPosition = new Vector2(-2, 2);
-        var editBadgeLbl = MakeTxt(editBadgeGO, "Lbl", "+", 13, FontStyles.Bold, Color.white,
+        editBadgeRt.sizeDelta = new Vector2(72, 72);
+        editBadgeRt.anchoredPosition = new Vector2(6, -6);
+        var editBadgeLbl = MakeTxt(editBadgeGO, "Lbl", "+", 30, FontStyles.Bold, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         editBadgeLbl.raycastTarget = false;
         editBadgeLbl.rectTransform.anchorMin = Vector2.zero;
@@ -474,7 +474,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Kupa kutusu (profilin sağında) → Sıralama açılır ─────────────
         var trophyPlate = MakePlate(_mainPanel, "TrophyPlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
-            new Vector2(280, -14), new Vector2(226, 64),
+            new Vector2(292, -14), new Vector2(226, 76),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
         MakeIconCircle(trophyPlate, AccGold, Loc.T("T"), new Vector2(30, 8));
@@ -491,7 +491,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Sağ-üst: ☰ menü (Ayarlar) + para plakaları ───────────────────
         var menuBtn = MakePlate(_mainPanel, "MenuBtn", new Vector2(1f, 1f), new Vector2(1f, 1f),
-            new Vector2(-16, -14), new Vector2(72, 64),
+            new Vector2(-16, -14), new Vector2(76, 76),
             () => { Click(); SetDrawer(true); });
         for (int i = 0; i < 3; i++)
         {
@@ -566,14 +566,14 @@ public class MainMenuUI : MonoBehaviour
         lbl.raycastTarget = false;
     }
 
-    static readonly Color GoldChipColor = new Color(1.00f, 0.80f, 0.20f, 1f);
-    static readonly Color GemChipColor  = new Color(0.55f, 0.80f, 1.00f, 1f);
+    static readonly Color GoldChipColor = UiTheme.GoldChip;
+    static readonly Color GemChipColor  = UiTheme.GemChip;
     TextMeshProUGUI _goldText, _gemText, _trophyText;
 
     TextMeshProUGUI BuildCurrencyChip(string name, Vector2 pos, Color accent)
     {
         var chip = MakePlate(_mainPanel, name, new Vector2(1f, 1f), new Vector2(1f, 1f),
-            pos, new Vector2(154, 52),
+            pos, new Vector2(160, 72),
             () => { Click(); ShopPanelUI.Instance?.Show(); });
 
         MakeIconCircle(chip, accent, "", new Vector2(24, 0), 28f);
@@ -646,7 +646,7 @@ public class MainMenuUI : MonoBehaviour
     /// </summary>
     void BuildLeftRail()
     {
-        var size = new Vector2(238, 70);
+        var size = new Vector2(238, 76);
 
         // Sol kolon
         MakeBrawlBtn(_mainPanel, "btn_wardrobe", Loc.T("WARDROBE"), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
@@ -661,7 +661,7 @@ public class MainMenuUI : MonoBehaviour
 
         // Alt-sol: GÖREVLER
         MakeBrawlBtn(_mainPanel, "btn_quests", Loc.T("QUESTS"), new Vector2(0f, 0f), new Vector2(0f, 0f),
-            new Vector2(16, 22), new Vector2(238, 74), 18, PlateDark, PlateEdge, AccGreen, "Q",
+            new Vector2(16, 22), new Vector2(238, 76), 18, PlateDark, PlateEdge, AccGreen, "Q",
             () => { Click(); QuestsPanelUI.Instance?.Show(); });
 
         // Sağ tarafta kalıcı buton yok — ikincil her şey ☰ çekmecesinde (BS kalıbı).
@@ -796,7 +796,7 @@ public class MainMenuUI : MonoBehaviour
     {
         // ── Alt-orta: mod plakası (BS'nin "SAVAŞ AŞÇISI / Kuantum Mutfak" kutusu) ──
         var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(0, 22), new Vector2(430, 66),
+            new Vector2(0, 22), new Vector2(430, 76),
             () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
         var modeTitle = MakeTxt(mode, "Title", Loc.T("QUICK MATCH"), 19, FontStyles.Normal, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), new Vector2(400, 26), new Vector2(0, 11));
@@ -921,8 +921,8 @@ public class MainMenuUI : MonoBehaviour
     // ────────────────────────────────────────────────────────────────────────
 
     // BS ayarlar ekranı paleti (2. referans görüntü): parlak mavi zemin + mavi plakalar
-    static readonly Color SettingsBg   = new Color(0.13f, 0.42f, 0.90f, 1f);
-    static readonly Color SettingsBtn  = new Color(0.16f, 0.32f, 0.72f, 1f);
+    static readonly Color SettingsBg   = UiTheme.Blue;
+    static readonly Color SettingsBtn  = UiTheme.BlueEdge;
 
     void BuildSettingsPanel()
     {
@@ -931,7 +931,7 @@ public class MainMenuUI : MonoBehaviour
         backdropGO.transform.SetParent(_settingsPanel.transform, false);
         var backdropImg = backdropGO.AddComponent<Image>();
         backdropImg.color = Color.white;
-        UiKit.Gradient(backdropImg, SettingsBg, new Color(0.10f, 0.32f, 0.74f, 1f));
+        UiKit.Gradient(backdropImg, SettingsBg, UiTheme.BlueDeep);
         var backdropRt  = backdropImg.rectTransform;
         backdropRt.anchorMin = Vector2.zero;
         backdropRt.anchorMax = Vector2.one;
