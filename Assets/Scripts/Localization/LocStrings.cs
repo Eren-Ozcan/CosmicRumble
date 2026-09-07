@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace CosmicRumble.Localization
 {
@@ -51,6 +51,11 @@ namespace CosmicRumble.Localization
             ["CONTROLS"]         = new[] { "KONTROLLER", "操作", "CONTROLES", "操作設定", "조작", "STEUERUNG" },
             ["BACK"]             = new[] { "GERİ", "返回", "ATRÁS", "戻る", "뒤로", "ZURÜCK" },
             ["SKIP"]             = new[] { "PAS", "跳过", "SALTAR", "スキップ", "건너뛰기", "PASSEN" },
+
+            // ── Maç HUD (tur bandı) ─────────────────────────────────────────
+            ["YOUR TURN"] = new[] { "SIRA SENDE", "轮到你了", "TU TURNO", "あなたのターン", "당신의 차례", "DU BIST DRAN" },
+            ["TURN"]      = new[] { "SIRA", "回合", "TURNO", "ターン", "차례", "ZUG" },
+            ["WAITING"]   = new[] { "BEKLENİYOR", "等待中", "ESPERANDO", "待機中", "대기 중", "WARTEN" },
 
             // ── Maç sonu ─────────────────────────────────────────────────────
             ["{0} Wins!"] = new[] { "{0} Kazandı!", "{0} 获胜！", "¡{0} gana!", "{0}の勝利！", "{0} 승리!", "{0} gewinnt!" },
