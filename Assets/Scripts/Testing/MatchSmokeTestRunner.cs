@@ -144,6 +144,40 @@ public class MatchSmokeTestRunner : MonoBehaviour
             }
         }
 
+        // -- 3. Karakter etiketleri (isim ustte, can bari altta) --------------
+        // Artboard 16: isim ayri bir satir, can bari onun altinda. Ikisi de dunya uzayi
+        // canvas'i; karakter yuzeye gore dondugu icin her ikisi de her karede dik
+        // tutulmali, yoksa donen bar isim yazisinin uzerinden supuruyor.
+        Step("Karakter etiketleri: isim / can bari");
+        var nameCanvas = shooter.transform.Find("NameTagCanvas");
+        var barCanvas  = shooter.transform.Find("HealthBarCanvas");
+        if (nameCanvas == null || barCanvas == null)
+        {
+            Fail("NameTagCanvas veya HealthBarCanvas karakterde yok");
+        }
+        else
+        {
+            Check(Quaternion.Angle(nameCanvas.rotation, Quaternion.identity) < 0.5f,
+                  "isim etiketi dik duruyor");
+            Check(Quaternion.Angle(barCanvas.rotation, Quaternion.identity) < 0.5f,
+                  "can bari dik duruyor");
+
+            var nameLabel = nameCanvas.GetComponentInChildren<TextMeshPro>();
+            if (nameLabel == null)
+            {
+                Fail("isim etiketinde TextMeshPro yok");
+            }
+            else
+            {
+                // Yazinin gercek cizim kutusu; punto kutudan tasarsa burada gorunur.
+                float nameBottom = nameLabel.GetComponent<Renderer>().bounds.min.y;
+                float barTop     = WorldTop(barCanvas as RectTransform);
+                Check(nameBottom > barTop,
+                      "isim yazisi can barinin ustunde kaliyor (isim alti " +
+                      nameBottom.ToString("F2") + " > bar ustu " + barTop.ToString("F2") + ")");
+            }
+        }
+
         // -- 3. Nisan okumasi + gercek atis ---------------------------------
         Step("HUD: POWER % - derece okumasi ve atis");
         var abilities = shooter.GetComponent<CharacterAbilities>();
@@ -221,6 +255,17 @@ public class MatchSmokeTestRunner : MonoBehaviour
     // -- Yardimcilar --------------------------------------------------------
 
     /// <summary>Tek karelik pointer durumu kuyruga atar ve islenmesi icin bir kare bekler.</summary>
+    /// <summary>Dunya uzayi bir RectTransform'un en ust dunya Y'si.</summary>
+    static float WorldTop(RectTransform rt)
+    {
+        if (rt == null) return float.NegativeInfinity;
+        var corners = new Vector3[4];
+        rt.GetWorldCorners(corners);
+        float top = corners[0].y;
+        for (int i = 1; i < 4; i++) top = Mathf.Max(top, corners[i].y);
+        return top;
+    }
+
     static IEnumerator Pointer(Vector2 screenPos, bool pressed)
     {
         var state = new MouseState { position = screenPos };
