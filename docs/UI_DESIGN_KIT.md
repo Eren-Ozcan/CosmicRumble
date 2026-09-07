@@ -76,7 +76,37 @@ It exits 1 when there are findings. Run it at more than one phone aspect
 (1920x1080, 2400x1080, 1600x720) — an element that fits 16:9 can still fall outside a
 20:9 screen, and only the raycast check at that resolution will catch it.
 
-Last full run: 181 buttons across the menu, the match HUD and the pause menu — no findings.
+Last full run: 857 buttons across four phone aspects (menu, match HUD, pause menu) — no
+findings.
+
+## Verifying that the match HUD actually works
+
+The button audit deliberately never clicks, so it proves reachability, not behaviour. The
+three HUD pieces the kit added (turn banner, `POWER % · °` readout, pause button) only
+exist during a real turn, so they have their own run:
+
+```
+Tools > UI > Run Match Smoke Test (Play Mode)
+```
+
+It starts a bot match from the menu the way a player does (guest sign-in → bot lobby →
+START GAME), then in the match scene it:
+
+1. waits for `TurnManager` to hand out the first turn and checks the banner shows the
+   turn owner's name (not `WAITING`),
+2. clicks the pause button and checks `InGameMenu` opens and closes,
+3. selects and confirms the pistol, drags a simulated pointer (`InputSystem`, the same
+   `Pointer.current` path a finger takes), checks the readout appears and matches
+   `POWER n%  ·  n°`, releases to fire and checks a projectile spawns,
+4. waits for the turn to pass and checks the banner follows.
+
+The report is written to `match-smoke-report.txt` (gitignored). Headless / CI:
+
+```
+Unity.exe -batchmode -projectPath <project>   -executeMethod CosmicRumble.EditorTools.MatchSmokeSelfTest.RunBatch
+```
+
+It exits 1 when there are failures.
 
 ## Known gaps against the design
 
