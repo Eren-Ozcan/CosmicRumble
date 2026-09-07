@@ -130,12 +130,23 @@ public class TrajectoryDots : MonoBehaviour
         }
     }
 
+    /// <summary>Nişan alınırken her karede (güç 0..1, açı derece) — HUD okuması dinler.</summary>
+    public static event System.Action<float, float> AimChanged;
+
+    /// <summary>Nişan bittiğinde (ateş/iptal) — HUD okumasını gizler.</summary>
+    public static event System.Action AimEnded;
+
     /// <summary> Drag sırasında çağır: fizik entegrasyonu ile noktaları hesaplayıp gösterir. </summary>
     /// <param name="initialVelocity">Silahın fırlatacağı ilk hız vektörü</param>
     /// <param name="power">0..1 normalize güç (renk için)</param>
     public void Show(Vector2 initialVelocity, float power)
     {
         if (firePoint == null || _dots.Count == 0 || _srs.Count == 0) return;
+
+        // HUD'un "POWER 68% · 42°" okuması bu tek noktadan beslenir; her silah zaten
+        // nişan alırken Show() çağırdığı için ayrıca her ability'ye kanca eklemek gerekmiyor.
+        AimChanged?.Invoke(Mathf.Clamp01(power),
+                           Mathf.Atan2(initialVelocity.y, initialVelocity.x) * Mathf.Rad2Deg);
 
         Color col = EvaluateColor(power);
         Vector2 pos = firePoint.position;
@@ -169,6 +180,7 @@ public class TrajectoryDots : MonoBehaviour
     /// <summary> Tüm noktaları gizle (ateş/iptal). </summary>
     public void Hide()
     {
+        AimEnded?.Invoke();
         for (int i = 0; i < _dots.Count; i++)
         {
             var t = _dots[i];
