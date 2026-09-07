@@ -229,6 +229,8 @@ namespace CosmicRumble.Localization
             ["CANCEL"]           = new[] { "İPTAL", "取消", "CANCELAR", "キャンセル", "취소", "ABBRECHEN" },
 
             // ── Online lobby (Quick Match) ──────────────────────────────────
+            ["LOBBY"] = new[] { "LOBİ", "大厅", "SALA", "ロビー", "로비", "LOBBY" },
+            ["ONLINE"] = new[] { "ÇEVRİMİÇİ", "在线", "EN LÍNEA", "オンライン", "온라인", "ONLINE" },
             ["Searching for opponent..."] = new[] { "Rakip aranıyor...", "正在寻找对手...", "Buscando oponente...", "対戦相手を探しています...", "상대를 찾는 중...", "Suche nach Gegner..." },
             ["Matchmaking failed, try again."] = new[] { "Eşleşme başarısız, tekrar dene.", "匹配失败，请重试。", "Error al emparejar, inténtalo de nuevo.", "マッチングに失敗しました。もう一度お試しください。", "매칭에 실패했습니다. 다시 시도하세요.", "Matchmaking fehlgeschlagen, versuche es erneut." },
             ["Waiting for opponent..."] = new[] { "Rakip bekleniyor...", "等待对手中...", "Esperando oponente...", "対戦相手を待っています...", "상대를 기다리는 중...", "Warte auf Gegner..." },

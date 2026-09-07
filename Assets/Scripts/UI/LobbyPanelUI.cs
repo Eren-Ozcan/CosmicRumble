@@ -1,4 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
+using CosmicRumble.Localization;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -26,6 +27,7 @@ public class LobbyPanelUI : MonoBehaviour
 
     // ── Runtime referanslar ───────────────────────────────────────────────
     GameObject      _root;
+    GameObject      _card;
     // Varsayılan 1: 0 bot ile START'a basılırsa sahnede tek karakter kalır, TurnManager.CheckGameOver
     // ilk frame'de "tek takım hayatta" görüp maçı anında bitirir (bkz. TurnManager.cs CheckGameOver) —
     // test amaçlı bir bot maçının en az bir rakiple açılması gerekiyor.
@@ -89,23 +91,25 @@ public class LobbyPanelUI : MonoBehaviour
         rootRt.anchorMax = Vector2.one;
         rootRt.offsetMin = rootRt.offsetMax = Vector2.zero;
 
-        // ── Title ────────────────────────────────────────────────────────
-        MakeText(_root, "Title", "LOBBY", 42,
-            new Vector2(0.5f, 0.93f), new Vector2(400, 55), Color.white);
+        // Panel govdesi kart: baslik ve alt buton satiri onceden dogrudan perdenin
+        // uzerindeydi ve ana menunun basligi/hizli eslesme seridiyle cakisiyordu.
+        _card = MakeCard(_root, "Card", new Vector2(0.5f, 0.5f), new Vector2(1080, 760));
+        UiKit.Stroke(_card, UiTheme.Stroke);
+        UiKit.Pop(_card);
+
+        MakeText(_card, "Title", Loc.T("LOBBY"), 30,
+            new Vector2(0.5f, 0.93f), new Vector2(400, 46), UiTheme.Gold);
+
+        UiKit.CloseButton(_card, Hide);
 
         // ── Two columns ─────────────────────────────────────────────────────
         BuildLeftColumn();
         BuildRightColumn();
 
-        // ── Bottom buttons ─────────────────────────────────────────────────
-        MakeButton(_root, "btn_back", "← BACK",
-            new Vector2(0.20f, 0.06f), new Vector2(180, 72),
-            new Color(0.2f, 0.2f, 0.35f), new Color(0.3f, 0.3f, 0.5f), OnBackClicked);
-
         _root.AddComponent<EscapeListener>().OnEscape = Hide;
 
-        var startBtnGO = MakeButtonGO(_root, "btn_start",
-            new Vector2(0.65f, 0.06f), new Vector2(260, 72),
+        var startBtnGO = MakeButtonGO(_card, "btn_start",
+            new Vector2(0.5f, 0.09f), new Vector2(300, 76),
             PrimaryBtn, PrimaryHover, OnStartClicked);
         _startBtn      = startBtnGO.GetComponent<Button>();
         _startBtnLabel = startBtnGO.GetComponentInChildren<TextMeshProUGUI>();
@@ -115,7 +119,7 @@ public class LobbyPanelUI : MonoBehaviour
     void BuildLeftColumn()
     {
         // Kart
-        var card = MakeCard(_root, "LeftCard", new Vector2(0.25f, 0.55f), new Vector2(320, 400));
+        var card = MakeCard(_card, "LeftCard", new Vector2(0.27f, 0.56f), new Vector2(420, 460));
 
         MakeText(card, "hdr", "CREATE LOBBY", 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
@@ -147,7 +151,7 @@ public class LobbyPanelUI : MonoBehaviour
 
     void BuildRightColumn()
     {
-        var card = MakeCard(_root, "RightCard", new Vector2(0.72f, 0.55f), new Vector2(320, 400));
+        var card = MakeCard(_card, "RightCard", new Vector2(0.73f, 0.56f), new Vector2(420, 460));
 
         // Map
         MakeText(card, "map_hdr", "SELECT MAP", 18,

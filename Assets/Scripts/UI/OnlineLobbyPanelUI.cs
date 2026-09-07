@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
@@ -24,6 +24,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     static readonly Color CodeColor    = new Color(1.00f,  0.80f,  0.20f,  1f);
 
     GameObject      _panelRoot;
+    GameObject      _card;
     GameObject      _quickMatchCancelBtn;
     TextMeshProUGUI _quickMatchStatusText;
     bool            _waitingForOpponent;
@@ -180,15 +181,19 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         overlay.color = new Color(0, 0, 0, 0.65f);
         StretchFull(overlay.rectTransform);
 
-        MakeText(_panelRoot, "Title", "ONLINE MULTIPLAYER", 32,
-            new Vector2(0.5f, 0.90f), new Vector2(600, 50), Color.white);
+        // Panelin govdesi kart; onceden baslik ve iki kutu dogrudan perdenin uzerindeydi,
+        // baslik ana menu basligiyla, alttaki GERI de hizli eslesme seridiyle cakisiyordu.
+        _card = MakeCard(_panelRoot, "Card", new Vector2(0.5f, 0.5f), new Vector2(900, 700));
+        UiKit.Stroke(_card, UiTheme.Stroke);
+        UiKit.Pop(_card);
+
+        MakeText(_card, "Title", Loc.T("ONLINE"), 30,
+            new Vector2(0.5f, 0.925f), new Vector2(600, 46), UiTheme.Gold);
+
+        UiKit.CloseButton(_card, () => OnBackClicked());
 
         BuildQuickMatchCard();
         BuildSocialHint();
-
-        MakeSmallButton(_panelRoot, "btn_back", Loc.T("BACK"),
-            new Vector2(0.5f, 0.06f), new Vector2(200, 72), OnBackClicked,
-            new Color(0.30f, 0.30f, 0.45f, 1f));
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnBackClicked;
         _panelRoot.SetActive(false);
@@ -196,7 +201,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 
     void BuildQuickMatchCard()
     {
-        var card = MakeCard(_panelRoot, "QuickMatchCard", new Vector2(0.5f, 0.55f), new Vector2(560, 260));
+        var card = MakeCard(_card, "QuickMatchCard", new Vector2(0.5f, 0.60f), new Vector2(760, 300));
 
         MakeText(card, "hdr", Loc.T("QUICK MATCH — RANKED"), 24, new Vector2(0.5f, 0.88f), new Vector2(500, 36), Color.white);
         MakeText(card, "hint", Loc.T("Win +30 trophies  •  Loss −20 trophies"), 14,
@@ -219,7 +224,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     /// ipucu plakası + SOSYAL kısayolu.</summary>
     void BuildSocialHint()
     {
-        var card = MakeCard(_panelRoot, "SocialHint", new Vector2(0.5f, 0.26f), new Vector2(560, 120));
+        var card = MakeCard(_card, "SocialHint", new Vector2(0.5f, 0.22f), new Vector2(760, 190));
 
         MakeText(card, "hint", Loc.T("Send an invite from the SOCIAL panel to play\nwith a friend — friendly match, trophies unaffected."), 15,
             new Vector2(0.5f, 0.68f), new Vector2(520, 48), TextSec);
@@ -248,6 +253,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = CardBg;
         UiKit.Round(img);
+        UiKit.Stroke(go, UiTheme.Stroke);
         UiKit.Shadow(go, 6f, 0.50f);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;

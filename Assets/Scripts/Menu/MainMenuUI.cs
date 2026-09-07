@@ -461,7 +461,7 @@ public class MainMenuUI : MonoBehaviour
             CosmicRumble.Cloud.LeaderboardManager.GetLeagueName(trophies), 22, FontStyles.Normal,
             TextDim, TextAlignmentOptions.Left,
             new Vector2(0f, 0.5f), new Vector2(230, 28), new Vector2(235, 0));
-        _trophyText.enableWordWrapping = false;
+        _trophyText.textWrappingMode = TextWrappingModes.NoWrap;
         _trophyText.overflowMode       = TextOverflowModes.Ellipsis;
 
         // ── Sağ-üst: ☰ menü (Ayarlar) + para plakaları ───────────────────
