@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.UI;
+using CosmicRumble.Localization;
 
 /// <summary>
 /// Canlı maç dumanı testi: menüden bot maçı başlatır, bir turu gerçekten oynar ve maç
@@ -112,6 +113,16 @@ public class MatchSmokeTestRunner : MonoBehaviour
               "tur etiketi doldu: \"" + turnLabel.text + "\"");
         Check(!string.IsNullOrEmpty(turnName.text),
               "tur adi doldu: \"" + turnName.text + "\"");
+        // Cevrimdisi hot-seat'te bot slotlari da ayni klavyeyle oynanir ama band "YOUR TURN"
+        // yerine "TURN" demeli - yoksa sira bottayken ekran "YOUR TURN / Bot_1" gosterir.
+        var owner = TurnManager.Instance.CurrentCharacter;
+        if (owner != null)
+        {
+            string expected = Loc.T(owner.isBot ? "TURN" : "YOUR TURN");
+            Check(turnLabel.text == expected,
+                  "band etiketi tur sahibiyle uyumlu (bot=" + owner.isBot + ", beklenen \"" +
+                  expected + "\", gelen \"" + turnLabel.text + "\")");
+        }
         int turnIndexBefore = TurnManager.Instance.CurrentTurnIndex;
 
         // -- 2. Duraklat butonu ---------------------------------------------
