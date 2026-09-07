@@ -258,7 +258,7 @@ public class MatchHudUI : MonoBehaviour
     void Update()
     {
         RefreshTurnBanner();
-        if (!_slotLabelsDone) TryAddSlotIndexLabels();
+        if (!_slotLabelsDone) StyleTrayOnce();
     }
 
     void RefreshTurnBanner()
@@ -307,37 +307,131 @@ public class MatchHudUI : MonoBehaviour
         return shooter.gameObject.name;
     }
 
-    // ── Tepsi slot numaraları (tasarımdaki 0..9 köşe etiketleri) ────────────
-    void TryAddSlotIndexLabels()
+    // ── Tepsi tek seferlik bicimleme ────────────────────────────────────────
+    void StyleTrayOnce()
     {
         var ui = UIManager.Instance;
         if (ui == null || ui.filterImages == null || ui.filterImages.Length == 0) return;
 
         PaintTrayBackground();
+        StyleTraySlots();
+        _slotLabelsDone = true;
+    }
 
-        for (int i = 0; i < ui.filterImages.Length; i++)
+    /// <summary>
+    /// Tepsi slotlarini tasarim 17'deki plakalara cevirir: her slot yuvarlak kose bir kutu,
+    /// ikon icinde, sol ustte slot numarasi, sag altta mermi/kilit yazisi; slotlar esit
+    /// aralikla tepsinin ortasina dizilir.
+    ///
+    /// Sahnede slotlar elle yerlestirilmis ciplak ikonlardi: kutu yok, aralar esitsiz,
+    /// numaralar ikonun uzerine biniyordu. Slotun kendi Image'i ikon tasidigi icin ikon
+    /// yeni bir cocuga tasinir (parent grafigi cocuklardan ONCE cizilir, plaka aksi halde
+    /// ikonu orterdi) ve slotun kendi Image'i plakaya donusur.
+    /// </summary>
+    void StyleTraySlots()
+    {
+        var ui = UIManager.Instance;
+        if (ui == null || ui.filterImages == null || ui.filterImages.Length == 0) return;
+
+        const float slotSize = 96f;
+        const float gap      = 12f;
+
+        int n = ui.filterImages.Length;
+        float totalW = n * slotSize + (n - 1) * gap;
+        float startX = -totalW * 0.5f + slotSize * 0.5f;
+
+        Transform container = null;
+
+        for (int i = 0; i < n; i++)
         {
             var filter = ui.filterImages[i];
             if (filter == null) continue;
-            var slot = filter.transform.parent != null ? filter.transform.parent : filter.transform;
-            if (slot.Find("SlotIndex") != null) continue;
+            var slot = filter.transform.parent;
+            if (slot == null) continue;
+            if (container == null) container = slot.parent;
 
-            var go = new GameObject("SlotIndex", typeof(RectTransform));
-            go.transform.SetParent(slot, false);
-            var txt = go.AddComponent<TextMeshProUGUI>();
-            txt.text          = i.ToString();
-            txt.fontSize      = 16f;
-            txt.color         = UiTheme.TextFaint;
-            txt.alignment     = TextAlignmentOptions.TopLeft;
-            txt.raycastTarget = false;
-            var rt = txt.rectTransform;
-            rt.anchorMin = new Vector2(0f, 1f);
-            rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot     = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(6f, -4f);
-            rt.sizeDelta = new Vector2(24f, 20f);
+            var slotImg = slot.GetComponent<Image>();
+            if (slotImg != null && slot.Find("Icon") == null)
+            {
+                if (slotImg.sprite != null)
+                {
+                    var iconGO = new GameObject("Icon", typeof(RectTransform));
+                    iconGO.transform.SetParent(slot, false);
+                    iconGO.transform.SetAsFirstSibling();
+                    var icon = iconGO.AddComponent<Image>();
+                    icon.sprite         = slotImg.sprite;
+                    icon.color          = Color.white;
+                    icon.preserveAspect = true;
+                    icon.raycastTarget  = false;
+                    var irt = icon.rectTransform;
+                    irt.anchorMin = Vector2.zero;
+                    irt.anchorMax = Vector2.one;
+                    irt.offsetMin = new Vector2(14f, 14f);
+                    irt.offsetMax = new Vector2(-14f, -14f);
+                }
+
+                slotImg.sprite = UiKit.RoundedSprite;
+                slotImg.type   = Image.Type.Sliced;
+                slotImg.pixelsPerUnitMultiplier = 1.6f;
+                slotImg.color  = UiTheme.Slot;
+                UiKit.Stroke(slot.gameObject, UiTheme.Stroke, 1.6f);
+            }
+
+            var srt = (RectTransform)slot;
+            srt.anchorMin = srt.anchorMax = new Vector2(0.5f, 0.5f);
+            srt.pivot     = new Vector2(0.5f, 0.5f);
+            srt.sizeDelta = new Vector2(slotSize, slotSize);
+            srt.anchoredPosition = new Vector2(startX + i * (slotSize + gap), 0f);
+
+            // Durum kaplamalari (filter + kontur animasyonu) plakayi tam ortmeli
+            StretchInside(filter.rectTransform, 2f);
+            var outline = slot.Find("OutlineAnimImage");
+            if (outline != null) StretchInside((RectTransform)outline, 0f);
+
+            // Slot numarasi sol ust, sayac sag alt
+            var number = slot.Find("Skill_Number");
+            if (number != null)
+            {
+                Corner((RectTransform)number, new Vector2(0f, 1f), new Vector2(6f, -4f), 26f);
+                var numTxt = number.GetComponent<TextMeshProUGUI>();
+                if (numTxt != null)
+                {
+                    numTxt.fontSize     = 16f;
+                    numTxt.color        = UiTheme.TextFaint;
+                    numTxt.alignment    = TextAlignmentOptions.TopLeft;
+                    numTxt.raycastTarget = false;
+                }
+            }
+            if (ui.countTexts != null && i < ui.countTexts.Length && ui.countTexts[i] != null)
+                Corner(ui.countTexts[i].rectTransform, new Vector2(1f, 0f), new Vector2(-6f, 4f), 34f);
         }
-        _slotLabelsDone = true;
+
+        // Slot satiri tepsinin tam ortasinda dursun
+        if (container is RectTransform crt)
+        {
+            crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0.5f);
+            crt.pivot     = new Vector2(0.5f, 0.5f);
+            crt.sizeDelta = new Vector2(totalW, slotSize);
+            crt.anchoredPosition = Vector2.zero;
+        }
+    }
+
+    static void StretchInside(RectTransform rt, float pad)
+    {
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = new Vector2(pad, pad);
+        rt.offsetMax = new Vector2(-pad, -pad);
+        rt.localScale = Vector3.one;
+    }
+
+    static void Corner(RectTransform rt, Vector2 corner, Vector2 offset, float width)
+    {
+        rt.anchorMin = rt.anchorMax = corner;
+        rt.pivot     = corner;
+        rt.sizeDelta = new Vector2(width, 22f);
+        rt.anchoredPosition = offset;
+        rt.localScale = Vector3.one;
     }
 
     /// <summary>
