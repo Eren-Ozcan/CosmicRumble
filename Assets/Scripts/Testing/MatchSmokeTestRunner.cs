@@ -146,21 +146,28 @@ public class MatchSmokeTestRunner : MonoBehaviour
 
         // -- 3. Karakter etiketleri (isim ustte, can bari altta) --------------
         // Artboard 16: isim ayri bir satir, can bari onun altinda. Ikisi de dunya uzayi
-        // canvas'i; karakter yuzeye gore dondugu icin her ikisi de her karede dik
-        // tutulmali, yoksa donen bar isim yazisinin uzerinden supuruyor.
+        // canvas'i. Kamera gezegen yuzeyine gore dondugu icin etiketler DUNYA eksenine
+        // degil KAMERAYA gore dik durmali; dunyaya sabitlenince oyuncu yurudukce ekranda
+        // yatiyorlardi. Ust/alt sirasi da bu yuzden kameranin yukari ekseninde olculur.
         Step("Karakter etiketleri: isim / can bari");
         var nameCanvas = shooter.transform.Find("NameTagCanvas");
-        var barCanvas  = shooter.transform.Find("HealthBarCanvas");
+        var barCanvas  = shooter.transform.Find("HealthBarCanvas") as RectTransform;
+        var viewCam    = Camera.main;
         if (nameCanvas == null || barCanvas == null)
         {
             Fail("NameTagCanvas veya HealthBarCanvas karakterde yok");
         }
+        else if (viewCam == null)
+        {
+            Fail("Camera.main yok - etiket hizasi olculemiyor");
+        }
         else
         {
-            Check(Quaternion.Angle(nameCanvas.rotation, Quaternion.identity) < 0.5f,
-                  "isim etiketi dik duruyor");
-            Check(Quaternion.Angle(barCanvas.rotation, Quaternion.identity) < 0.5f,
-                  "can bari dik duruyor");
+            Check(Quaternion.Angle(nameCanvas.rotation, viewCam.transform.rotation) < 0.5f,
+                  "isim etiketi ekranda dik duruyor (kamera hizasinda)");
+            Check(Quaternion.Angle(barCanvas.rotation, viewCam.transform.rotation) < 0.5f,
+                  "can bari ekranda dik duruyor (kamera hizasinda)");
+            var camAligned = viewCam.transform.rotation;
 
             var nameLabel = nameCanvas.GetComponentInChildren<TextMeshPro>();
             if (nameLabel == null)
@@ -169,14 +176,35 @@ public class MatchSmokeTestRunner : MonoBehaviour
             }
             else
             {
-                // Yazinin gercek cizim kutusu; punto kutudan tasarsa burada gorunur.
-                float nameBottom = nameLabel.GetComponent<Renderer>().bounds.min.y;
-                float barTop     = WorldTop(barCanvas as RectTransform);
+                // Yazinin gercek cizim kutusu olculur, kutusu degil: punto rect'ten
+                // tasarsa tasan glifler burada yakalanir.
+                Vector3 up = viewCam.transform.up;
+                float nameBottom = AxisExtent(TextWorldCorners(nameLabel), up, false);
+                float barTop     = AxisExtent(RectWorldCorners(barCanvas),  up, true);
                 Check(nameBottom > barTop,
                       "isim yazisi can barinin ustunde kaliyor (isim alti " +
                       nameBottom.ToString("F2") + " > bar ustu " + barTop.ToString("F2") + ")");
             }
+
+            // Mac basinda kamera acisi 0'a yakin olabilir; oyle bir karede "dunyaya
+            // sabit" ile "kameraya hizali" ayirt edilemez. Kamerayi bir kareligine
+            // egip etiketlerin onu takip ettigini dogruluyoruz (CameraController
+            // sonraki karelerde kendi acisina geri lerp'ler).
+            viewCam.transform.rotation = Quaternion.Euler(0f, 0f, 40f);
+            yield return null;
+            yield return null;
+            var camRot = viewCam.transform.rotation;
+            Check(Quaternion.Angle(camRot, Quaternion.identity) > 5f,
+                  "kamera egik durumda olculdu (" +
+                  Quaternion.Angle(camRot, Quaternion.identity).ToString("F1") + " derece)");
+            Check(Quaternion.Angle(nameCanvas.rotation, camRot) < 0.5f,
+                  "isim etiketi kamera egilince onunla birlikte dondu");
+            Check(Quaternion.Angle(barCanvas.rotation, camRot) < 0.5f,
+                  "can bari kamera egilince onunla birlikte dondu");
+            viewCam.transform.rotation = camAligned;   // olcum sonrasi eski aciyi geri ver
+            yield return null;
         }
+
 
         // -- 3. Nisan okumasi + gercek atis ---------------------------------
         Step("HUD: POWER % - derece okumasi ve atis");
@@ -255,15 +283,39 @@ public class MatchSmokeTestRunner : MonoBehaviour
     // -- Yardimcilar --------------------------------------------------------
 
     /// <summary>Tek karelik pointer durumu kuyruga atar ve islenmesi icin bir kare bekler.</summary>
-    /// <summary>Dunya uzayi bir RectTransform'un en ust dunya Y'si.</summary>
-    static float WorldTop(RectTransform rt)
+    /// <summary>Dunya uzayi bir RectTransform'un dort dunya kosesi.</summary>
+    static Vector3[] RectWorldCorners(RectTransform rt)
     {
-        if (rt == null) return float.NegativeInfinity;
         var corners = new Vector3[4];
         rt.GetWorldCorners(corners);
-        float top = corners[0].y;
-        for (int i = 1; i < 4; i++) top = Mathf.Max(top, corners[i].y);
-        return top;
+        return corners;
+    }
+
+    /// <summary>TMP yazisinin gercek cizim kutusunun dort dunya kosesi.</summary>
+    static Vector3[] TextWorldCorners(TextMeshPro label)
+    {
+        label.ForceMeshUpdate();
+        Bounds b = label.textBounds;
+        var t = label.transform;
+        return new[]
+        {
+            t.TransformPoint(new Vector3(b.min.x, b.min.y, 0f)),
+            t.TransformPoint(new Vector3(b.max.x, b.min.y, 0f)),
+            t.TransformPoint(new Vector3(b.min.x, b.max.y, 0f)),
+            t.TransformPoint(new Vector3(b.max.x, b.max.y, 0f)),
+        };
+    }
+
+    /// <summary>Kose kumesinin verilen eksendeki en ust (max) ya da en alt (min) izdusumu.</summary>
+    static float AxisExtent(Vector3[] corners, Vector3 axis, bool max)
+    {
+        float best = Vector3.Dot(corners[0], axis);
+        for (int i = 1; i < corners.Length; i++)
+        {
+            float v = Vector3.Dot(corners[i], axis);
+            best = max ? Mathf.Max(best, v) : Mathf.Min(best, v);
+        }
+        return best;
     }
 
     static IEnumerator Pointer(Vector2 screenPos, bool pressed)
