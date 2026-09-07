@@ -501,6 +501,7 @@ public class SocialPanelUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = color;
         UiKit.Round(img, 1.4f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(color), 5f, 1.4f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.colors = UiKit.ButtonColors(color);

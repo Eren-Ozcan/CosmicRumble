@@ -367,6 +367,7 @@ public class LeaderboardPanelUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = normal;
         UiKit.Round(img, 1.3f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(normal), 5f, 1.3f);
         UiKit.Shadow(go, 3f, 0.35f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;

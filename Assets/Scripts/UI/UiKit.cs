@@ -274,6 +274,36 @@ public static class UiKit
         lrt.offsetMin = lrt.offsetMax = Vector2.zero;
     }
 
+    /// <summary>
+    /// Tasarım kitinin imzası: butonun ALT kenarına koyu bir "kalınlık" şeridi ekler
+    /// (plakanın 3B hissi). Butonun kendi Image'ının üstüne çizilen bir alt bant olarak
+    /// uygulanır; raycast almaz, dolayısıyla tıklanabilirliği hiç etkilemez.
+    /// </summary>
+    /// <summary>Gövde renginden kit'in alt kenar tonunu türetir (koyultma).</summary>
+    public static Color EdgeOf(Color body) =>
+        new Color(body.r * 0.55f, body.g * 0.55f, body.b * 0.55f, body.a);
+
+    public static void BottomEdge(GameObject button, Color edgeColor,
+                                  float height = UiTheme.PlateEdgeHeight,
+                                  float cornerScale = UiTheme.CornerPlate)
+    {
+        if (button.transform.Find("Edge") != null) return;
+
+        var go = new GameObject("Edge");
+        go.transform.SetParent(button.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = edgeColor;
+        img.raycastTarget = false;
+        Round(img, cornerScale);
+
+        var rt = img.rectTransform;
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(1f, 0f);
+        rt.pivot     = new Vector2(0.5f, 0f);
+        rt.offsetMin = new Vector2(0f, 0f);
+        rt.offsetMax = new Vector2(0f, height);
+    }
+
     static Sprite BuildRoundedOutlineSprite(int size, int radius, float thickness)
     {
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)

@@ -303,6 +303,7 @@ public class ShopPanelUI : MonoBehaviour
         var buyImg = buyGO.AddComponent<Image>();
         buyImg.color = BuyGreen;
         UiKit.Round(buyImg, 1.5f);
+        UiKit.BottomEdge(buyGO, UiKit.EdgeOf(BuyGreen), 5f, 1.5f);
         UiKit.Shadow(buyGO, 3f, 0.35f);
         var buyBtn = buyGO.AddComponent<Button>();
         buyBtn.targetGraphic = buyImg;

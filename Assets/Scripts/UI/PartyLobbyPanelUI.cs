@@ -766,6 +766,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = color;
         UiKit.Round(img);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(color));
         UiKit.Shadow(go, 4f, 0.40f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
@@ -786,7 +787,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
     static GameObject MakeRowButton(GameObject parent, string name, string label, Color color,
         Vector2 anchoredPos, float width, UnityEngine.Events.UnityAction cb)
     {
-        var go = MakeButton(parent, name, label, color, new Vector2(1f, 0.5f), new Vector2(width, 44), cb);
+        var go = MakeButton(parent, name, label, color, new Vector2(1f, 0.5f), new Vector2(width, 72), cb);
         go.GetComponent<RectTransform>().anchoredPosition = anchoredPos;
         return go;
     }

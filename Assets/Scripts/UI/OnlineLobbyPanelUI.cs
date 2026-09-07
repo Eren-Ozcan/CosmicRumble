@@ -285,6 +285,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         var img = go.AddComponent<Image>();
         img.color = color;
         UiKit.Round(img);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(color));
         UiKit.Shadow(go, 4f, 0.40f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
