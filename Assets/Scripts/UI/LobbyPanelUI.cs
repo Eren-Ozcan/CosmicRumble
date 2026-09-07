@@ -302,6 +302,10 @@ public class LobbyPanelUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = normal;
+        // Kit plakasi: yuvarlak kose + alt kenar. Onceden duz keskin dikdortgenlerdi.
+        UiKit.Round(img, 1.4f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(normal), 5f, 1.4f);
+        UiKit.Shadow(go, 3f, 0.35f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
         btn.colors = new ColorBlock
@@ -314,6 +318,7 @@ public class LobbyPanelUI : MonoBehaviour
             fadeDuration     = 0.1f
         };
         btn.onClick.AddListener(callback);
+        UiKit.Press(go, 0.96f);
         UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
@@ -326,6 +331,7 @@ public class LobbyPanelUI : MonoBehaviour
         txt.text      = name;
         txt.fontSize  = 17;
         txt.color     = Color.white;
+        UiKit.BrawlText(txt);
         txt.alignment = TextAlignmentOptions.Center;
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
@@ -341,9 +347,13 @@ public class LobbyPanelUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = PrimaryBtn;
+        UiKit.Round(img, 1.6f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(PrimaryBtn), 5f, 1.6f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
+        btn.colors = UiKit.ButtonColors(PrimaryBtn);
         btn.onClick.AddListener(callback);
+        UiKit.Press(go, 0.95f);
         UiKit.Hover(go);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
@@ -356,6 +366,7 @@ public class LobbyPanelUI : MonoBehaviour
         txt.fontSize  = 22;
         txt.color     = Color.white;
         txt.alignment = TextAlignmentOptions.Center;
+        UiKit.BrawlText(txt);
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
