@@ -396,14 +396,22 @@ public class MatchHudUI : MonoBehaviour
                 var numTxt = number.GetComponent<TextMeshProUGUI>();
                 if (numTxt != null)
                 {
-                    numTxt.fontSize     = 16f;
+                    numTxt.fontSize     = 18f;
                     numTxt.color        = UiTheme.TextFaint;
                     numTxt.alignment    = TextAlignmentOptions.TopLeft;
                     numTxt.raycastTarget = false;
                 }
             }
             if (ui.countTexts != null && i < ui.countTexts.Length && ui.countTexts[i] != null)
-                Corner(ui.countTexts[i].rectTransform, new Vector2(1f, 0f), new Vector2(-6f, 4f), 34f);
+            {
+                var count = ui.countTexts[i];
+                Corner(count.rectTransform, new Vector2(1f, 0f), new Vector2(-8f, 6f), 56f);
+                // Sahnedeki sayaclar 0.5 olceke kucultulmus buyuk puntolardi; olcegi 1'e
+                // cekince telefonda "Lv10" plakanin disina tasti. Punto acikca verilir.
+                count.fontSize      = 22f;
+                count.alignment     = TextAlignmentOptions.BottomRight;
+                count.raycastTarget = false;
+            }
         }
 
         // Slot satiri tepsinin tam ortasinda dursun
@@ -429,7 +437,7 @@ public class MatchHudUI : MonoBehaviour
     {
         rt.anchorMin = rt.anchorMax = corner;
         rt.pivot     = corner;
-        rt.sizeDelta = new Vector2(width, 22f);
+        rt.sizeDelta = new Vector2(width, 26f);
         rt.anchoredPosition = offset;
         rt.localScale = Vector3.one;
     }
