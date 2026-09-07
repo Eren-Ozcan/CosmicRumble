@@ -3,8 +3,12 @@ using TMPro;
 
 /// <summary>
 /// Karakterin üzerinde adını WorldSpace canvas ile gösterir.
-/// LateUpdate'te her karede dünya koordinatlarında dik tutar.
+/// LateUpdate'te her karede kameraya göre dik tutulur (bkz. WorldTagOrientation).
 /// </summary>
+/// <remarks>Etiket kameraya gore hizalandigi icin CameraController'dan (varsayilan sira 0)
+/// SONRA calismali; ikisi de LateUpdate kullaniyor ve sirasiz birakilirsa etiket kameranin
+/// bir kare gerisinde kalip donerken titriyor.</remarks>
+[DefaultExecutionOrder(200)]
 public class CharacterNameTag : MonoBehaviour
 {
     // Artboard 16: isim can barının ÜSTÜNDE ayrı bir satır. HealthBarUI.verticalOffset
@@ -75,11 +79,13 @@ public class CharacterNameTag : MonoBehaviour
         _canvasTransform = canvasGO.transform;
     }
 
-    // ── LateUpdate: kamerayı yüzle, yer çekimi yönünden bağımsız dik tut ─
+    // ── LateUpdate: etiketi kameraya göre dik tut ────────────────────────
+    // Dünya eksenine (Quaternion.identity) sabitlemek YETMEZ: kamera gezegen yüzeyine
+    // göre döndüğü için oyuncu yürüdükçe etiketin ekrandaki açısı kayıyordu.
 
     void LateUpdate()
     {
         if (_canvasTransform != null)
-            _canvasTransform.rotation = Quaternion.identity;
+            _canvasTransform.rotation = WorldTagOrientation.Current;
     }
 }

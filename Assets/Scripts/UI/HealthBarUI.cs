@@ -2,6 +2,10 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <remarks>Etiket kameraya gore hizalandigi icin CameraController'dan (varsayilan sira 0)
+/// SONRA calismali; ikisi de LateUpdate kullaniyor ve sirasiz birakilirsa etiket kameranin
+/// bir kare gerisinde kalip donerken titriyor.</remarks>
+[DefaultExecutionOrder(200)]
 public class HealthBarUI : MonoBehaviour
 {
     // Artboard 16: isim etiketi ÜSTTE, can barı onun ALTINDA ayrı bir şerit.
@@ -102,11 +106,12 @@ public class HealthBarUI : MonoBehaviour
         _fillImage.color = Color.Lerp(UiTheme.Danger, UiTheme.Green, Mathf.Clamp01(ratio * 2f));
     }
 
-    // Karakter yüzeye göre döndüğü için barın da her karede dik tutulması gerekir —
-    // aksi halde dönen bar, üstündeki isim etiketinin üzerinden süpürüyordu.
+    // Karakter yüzeye göre döndüğü için bar her karede yeniden hizalanmalı — aksi halde
+    // dönen bar, üstündeki isim etiketinin üzerinden süpürüyordu. Hizanın dünya değil
+    // kamera dönüşü olması gerekiyor (bkz. WorldTagOrientation).
     void LateUpdate()
     {
         if (_canvasTransform != null)
-            _canvasTransform.rotation = Quaternion.identity;
+            _canvasTransform.rotation = WorldTagOrientation.Current;
     }
 }
