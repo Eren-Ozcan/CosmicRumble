@@ -154,9 +154,12 @@ public class MatchHudUI : MonoBehaviour
         var go = new GameObject("TurnBanner", typeof(RectTransform));
         go.transform.SetParent(parent, false);
         var rt = (RectTransform)go.transform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.pivot     = new Vector2(0.5f, 1f);
-        rt.anchoredPosition = new Vector2(0f, -22f);
+        // Tasarim 16'da tur plakasi SOL ustte durur; ust-ortayi tur sayaci ile SKIP kullanir.
+        // Banda ust-ortada oldugu icin sayac plakanin arkasinda kaliyor, ekranin tepesinden
+        // yalnizca ince bir dilim gorunuyordu.
+        rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+        rt.pivot     = new Vector2(0f, 1f);
+        rt.anchoredPosition = new Vector2(52f, -74f);   // ustteki XP/Gold/Gem seridinin altina
         rt.sizeDelta = new Vector2(420f, 64f);
 
         var edge = go.AddComponent<Image>();
