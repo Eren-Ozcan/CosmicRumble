@@ -13,19 +13,19 @@ public class AchievementsPanelUI : MonoBehaviour
     public static AchievementsPanelUI Instance { get; private set; }
 
     // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
-    static readonly Color CardBg       = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color PrimaryBtn   = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.21f,  1f);
-    static readonly Color RowBgAlt     = new Color(0.13f,  0.13f,  0.25f,  1f);
-    static readonly Color UnlockedGold = new Color(1.00f,  0.722f, 0.00f,  1f);
-    static readonly Color LockedGray   = new Color(0.35f,  0.35f,  0.45f,  1f);
-    static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color StrokeCol    = new Color(1f, 1f, 1f, 0.09f);
+    static readonly Color CardBg       = UiTheme.Card;
+    static readonly Color PrimaryBtn   = UiTheme.Blue;
+    static readonly Color RowBg        = UiTheme.Row;
+    static readonly Color RowBgAlt     = UiTheme.RowAlt;
+    static readonly Color UnlockedGold = UiTheme.Gold;
+    static readonly Color LockedGray   = UiTheme.TextFaint;
+    static readonly Color TextSec      = UiTheme.TextMuted;
+    static readonly Color StrokeCol    = UiTheme.Stroke;
 
-    static readonly Color RarityCommon    = new Color(0.67f, 0.67f, 0.67f, 1f);
-    static readonly Color RarityRare      = new Color(0.29f, 0.62f, 1.00f, 1f);
-    static readonly Color RarityEpic      = new Color(0.67f, 0.27f, 1.00f, 1f);
-    static readonly Color RarityLegendary = new Color(1.00f, 0.72f, 0.00f, 1f);
+    static readonly Color RarityCommon    = UiTheme.RarityCommon;
+    static readonly Color RarityRare      = UiTheme.RarityRare;
+    static readonly Color RarityEpic      = UiTheme.RarityEpic;
+    static readonly Color RarityLegendary = UiTheme.RarityLegendary;
 
     // ── Referanslar ───────────────────────────────────────────────────────
     GameObject      _panelRoot;

@@ -18,10 +18,10 @@ public class LoginScreenUI : MonoBehaviour
 {
     public static LoginScreenUI Instance { get; private set; }
 
-    static readonly Color GradTop      = new Color(0.17f, 0.10f, 0.40f, 1f);
-    static readonly Color GradBottom   = new Color(0.34f, 0.10f, 0.33f, 1f);
-    static readonly Color AccGold      = new Color(1.00f, 0.80f, 0.20f, 1f);
-    static readonly Color TextDim      = new Color(0.65f, 0.70f, 0.82f, 1f);
+    static readonly Color GradTop      = UiTheme.MenuGradTop;
+    static readonly Color GradBottom   = UiTheme.MenuGradBot;
+    static readonly Color AccGold      = UiTheme.Gold;
+    static readonly Color TextDim      = UiTheme.TextDim;
     static readonly Color GoogleWhite  = new Color(0.97f, 0.97f, 0.97f, 1f);
     static readonly Color PlateDark    = new Color(0.165f, 0.175f, 0.215f, 1f);
     static readonly Color ErrorRed     = new Color(1f, 0.35f, 0.35f, 1f);

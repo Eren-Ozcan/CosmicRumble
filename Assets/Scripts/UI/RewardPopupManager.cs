@@ -18,7 +18,7 @@ public class RewardPopupManager : MonoBehaviour
     const float ToastHeight   = 62f;
     const float ToastGap      = 8f;
 
-    static readonly Color BgColor        = new Color(0.05f, 0.05f, 0.13f, 0.95f);
+    static readonly Color BgColor        = UiTheme.Card;
     static readonly Color AccAchievement = new Color(0.48f, 0.20f, 0.85f, 1f); // purple
     static readonly Color AccLevel       = new Color(0.22f, 0.45f, 0.95f, 1f); // blue
     static readonly Color AccChest       = new Color(1.00f, 0.80f, 0.20f, 1f); // gold

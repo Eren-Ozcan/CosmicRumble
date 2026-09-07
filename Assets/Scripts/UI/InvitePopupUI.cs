@@ -18,10 +18,10 @@ public class InvitePopupUI : MonoBehaviour
 {
     public static InvitePopupUI Instance { get; private set; }
 
-    static readonly Color CardBg   = new Color(0.09f,  0.09f,  0.18f,  0.98f);
-    static readonly Color AccGreen = new Color(0.13f,  0.72f,  0.35f,  1f);
-    static readonly Color AccRed   = new Color(0.72f,  0.18f,  0.18f,  1f);
-    static readonly Color TextSec  = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color CardBg   = UiTheme.Card;
+    static readonly Color AccGreen = UiTheme.Green;
+    static readonly Color AccRed   = UiTheme.Danger;
+    static readonly Color TextSec  = UiTheme.TextMuted;
 
     GameObject      _root;
     TextMeshProUGUI _messageText;

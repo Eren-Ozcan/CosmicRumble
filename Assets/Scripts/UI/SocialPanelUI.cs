@@ -18,15 +18,15 @@ public class SocialPanelUI : MonoBehaviour
 {
     public static SocialPanelUI Instance { get; private set; }
 
-    static readonly Color BgColor    = new Color(0.051f, 0.051f, 0.102f, 0.97f);
+    static readonly Color BgColor    = UiTheme.Card;
     static readonly Color PlateDark  = new Color(0.165f, 0.175f, 0.215f, 1f);
-    static readonly Color RowBg      = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color AccGold    = new Color(1.00f,  0.80f,  0.20f,  1f);
-    static readonly Color AccGreen   = new Color(0.13f,  0.72f,  0.35f,  1f);
-    static readonly Color AccRed     = new Color(0.72f,  0.18f,  0.18f,  1f);
-    static readonly Color AccBlue    = new Color(0.29f,  0.62f,  1.00f,  1f);
+    static readonly Color RowBg      = UiTheme.Row;
+    static readonly Color AccGold    = UiTheme.Gold;
+    static readonly Color AccGreen   = UiTheme.Green;
+    static readonly Color AccRed     = UiTheme.Danger;
+    static readonly Color AccBlue    = UiTheme.Blue;
     static readonly Color TabIdle    = new Color(0.13f,  0.13f,  0.24f,  1f);
-    static readonly Color TextSec    = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color TextSec    = UiTheme.TextMuted;
     static readonly Color OnlineDot  = new Color(0.25f,  0.85f,  0.35f,  1f);
     static readonly Color AwayDot    = new Color(0.95f,  0.75f,  0.20f,  1f);
     static readonly Color OfflineDot = new Color(0.45f,  0.45f,  0.55f,  1f);
@@ -368,7 +368,7 @@ public class SocialPanelUI : MonoBehaviour
         UiKit.Round(idImg, 1.2f);
         var idRt = idImg.rectTransform;
         idRt.anchorMin = idRt.anchorMax = new Vector2(0.5f, 0.845f);
-        idRt.sizeDelta = new Vector2(700, 58);
+        idRt.sizeDelta = new Vector2(700, 76);
         idRt.anchoredPosition = Vector2.zero;
 
         _ownCodeText = MakeText(idPlate, "OwnCode", Loc.T("YOUR ID: ..."), 19,
@@ -407,11 +407,11 @@ public class SocialPanelUI : MonoBehaviour
         _addRow.transform.SetParent(_panelRoot.transform, false);
         var addRt = _addRow.AddComponent<RectTransform>();
         addRt.anchorMin = addRt.anchorMax = new Vector2(0.5f, 0.665f);
-        addRt.sizeDelta = new Vector2(700, 54);
+        addRt.sizeDelta = new Vector2(700, 76);
         addRt.anchoredPosition = Vector2.zero;
 
         _addInput = MakeInputField(_addRow, "addInput", Loc.T("Friend's ID (Name#1234)"),
-            new Vector2(0.32f, 0.5f), new Vector2(420, 50));
+            new Vector2(0.32f, 0.5f), new Vector2(420, 72));
         MakeRowButton(_addRow, "btn_add", Loc.T("ADD"), AccGreen, new Vector2(-40, 0), 150, OnAddClicked);
 
         _addStatusText = MakeText(_panelRoot, "AddStatus", "", 14,
@@ -480,7 +480,7 @@ public class SocialPanelUI : MonoBehaviour
         UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta = new Vector2(260, 52);
+        rt.sizeDelta = new Vector2(260, 72);
         rt.anchoredPosition = Vector2.zero;
 
         var txt = MakeText(go, "Lbl", label, 18, new Vector2(0.5f, 0.5f), new Vector2(240, 30), Color.white);
@@ -505,7 +505,7 @@ public class SocialPanelUI : MonoBehaviour
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
         rt.pivot = new Vector2(1f, 0.5f);
-        rt.sizeDelta = new Vector2(width, 46);
+        rt.sizeDelta = new Vector2(width, 72);
         rt.anchoredPosition = posFromRight;
 
         var txt = MakeText(go, "Lbl", label, 15, new Vector2(0.5f, 0.5f), new Vector2(width - 8, 26), Color.white);

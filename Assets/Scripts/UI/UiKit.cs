@@ -238,7 +238,7 @@ public static class UiKit
     /// Mobil oyun standardı kapatma butonu: kartın sağ-üst köşesinden hafif taşan kırmızı
     /// yuvarlatılmış kare, beyaz X. Kartın child'ı olarak eklenir.
     /// </summary>
-    public static void CloseButton(GameObject card, UnityEngine.Events.UnityAction onClose, float size = 58f)
+    public static void CloseButton(GameObject card, UnityEngine.Events.UnityAction onClose, float size = 76f)
     {
         var go = new GameObject("btn_close");
         go.transform.SetParent(card.transform, false);

@@ -24,12 +24,12 @@ public class LoginPanelUI : MonoBehaviour
 #endif
 
     // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
-    static readonly Color CardBg        = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color PrimaryBtn    = new Color(0.29f,  0.62f,  1.00f,  1f);
+    static readonly Color CardBg        = UiTheme.Card;
+    static readonly Color PrimaryBtn    = UiTheme.Blue;
     static readonly Color RegisterBtn   = new Color(0.16f,  0.72f,  0.26f,  1f);
-    static readonly Color InputBg       = new Color(0.12f,  0.12f,  0.22f,  1f);
-    static readonly Color TextSecondary = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color StrokeCol     = new Color(1f, 1f, 1f, 0.09f);
+    static readonly Color InputBg       = UiTheme.Slot;
+    static readonly Color TextSecondary = UiTheme.TextMuted;
+    static readonly Color StrokeCol     = UiTheme.Stroke;
 
     // ── Referanslar ───────────────────────────────────────────────────────
     GameObject        _root;

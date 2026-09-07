@@ -17,14 +17,14 @@ public class ShopPanelUI : MonoBehaviour
 {
     public static ShopPanelUI Instance { get; private set; }
 
-    static readonly Color CardBg     = new Color(0.07f,  0.07f,  0.16f,  0.97f);
+    static readonly Color CardBg     = UiTheme.Card;
     static readonly Color PackBg     = new Color(0.11f,  0.11f,  0.21f,  1f);
     static readonly Color PackBgTop  = new Color(0.16f,  0.16f,  0.30f,  1f);
     static readonly Color BuyGreen   = new Color(0.16f,  0.72f,  0.26f,  1f);
-    static readonly Color GemColor   = new Color(0.60f,  0.85f,  1.00f,  1f);
+    static readonly Color GemColor   = UiTheme.GemChip;
     static readonly Color BadgeGold  = new Color(1.00f,  0.72f,  0.00f,  1f);
-    static readonly Color TextSec    = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color StrokeCol  = new Color(1f, 1f, 1f, 0.09f);
+    static readonly Color TextSec    = UiTheme.TextMuted;
+    static readonly Color StrokeCol  = UiTheme.Stroke;
 
     /// <summary>Rozet gösterilecek paketler (indeks → etiket).</summary>
     const int PopularPackIndex   = 2; // gem_pack_1200
@@ -313,7 +313,7 @@ public class ShopPanelUI : MonoBehaviour
         UiKit.Hover(buyGO);
         var buyRt = buyImg.rectTransform;
         buyRt.anchorMin = buyRt.anchorMax = new Vector2(0.5f, 0f);
-        buyRt.sizeDelta = new Vector2(size.x - 28f, 58);
+        buyRt.sizeDelta = new Vector2(size.x - 28f, 76);
         buyRt.anchoredPosition = new Vector2(0, 46);
 
         _priceTexts[index] = MakeText(buyGO, "Price", "--", 17,

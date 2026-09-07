@@ -35,13 +35,13 @@ public class PartyLobbyPanelUI : MonoBehaviour
 {
     public static PartyLobbyPanelUI Instance { get; private set; }
 
-    static readonly Color BgColor   = new Color(0.051f, 0.051f, 0.102f, 0.97f);
-    static readonly Color CardBg    = new Color(0.09f,  0.09f,  0.18f,  1f);
+    static readonly Color BgColor   = UiTheme.Card;
+    static readonly Color CardBg    = UiTheme.Card;
     static readonly Color SlotBg    = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color AccGold   = new Color(1.00f,  0.80f,  0.20f,  1f);
-    static readonly Color AccGreen  = new Color(0.13f,  0.72f,  0.35f,  1f);
-    static readonly Color AccBlue   = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color TextSec   = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color AccGold   = UiTheme.Gold;
+    static readonly Color AccGreen  = UiTheme.Green;
+    static readonly Color AccBlue   = UiTheme.Blue;
+    static readonly Color TextSec   = UiTheme.TextMuted;
     static readonly Color ModeIdle  = new Color(0.13f,  0.13f,  0.24f,  1f);
     static readonly Color OnlineDot = new Color(0.25f,  0.85f,  0.35f,  1f);
 
@@ -589,7 +589,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
         };
 
         int cols = 4;
-        Vector2 cellSize = new Vector2(220, 64);
+        Vector2 cellSize = new Vector2(220, 76);
         float startX = 0.5f - (cols - 1) * 0.115f;
         for (int i = 0; i < modes.Length; i++)
         {
@@ -620,10 +620,10 @@ public class PartyLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.34f), new Vector2(700, 30), TextSec);
 
         MakeButton(_modeSelectRoot, "btn_create", Loc.T("CREATE PARTY"), AccGold,
-            new Vector2(0.5f, 0.20f), new Vector2(340, 70), OnCreatePartyClicked);
+            new Vector2(0.5f, 0.20f), new Vector2(340, 78), OnCreatePartyClicked);
 
         MakeButton(_modeSelectRoot, "btn_cancel_mode", Loc.T("CANCEL"), new Color(0.30f, 0.30f, 0.45f, 1f),
-            new Vector2(0.5f, 0.10f), new Vector2(220, 54), OnCancelClicked);
+            new Vector2(0.5f, 0.10f), new Vector2(220, 72), OnCancelClicked);
     }
 
     void BuildRosterRoot()
@@ -751,7 +751,7 @@ public class PartyLobbyPanelUI : MonoBehaviour
         scroll.content = _inviteListContent;
 
         MakeButton(_inviteListRoot, "btn_back", Loc.T("BACK"), new Color(0.30f, 0.30f, 0.45f, 1f),
-            new Vector2(0.5f, 0.10f), new Vector2(220, 54), () => _inviteListRoot.SetActive(false));
+            new Vector2(0.5f, 0.10f), new Vector2(220, 72), () => _inviteListRoot.SetActive(false));
 
         _inviteListRoot.SetActive(false);
     }

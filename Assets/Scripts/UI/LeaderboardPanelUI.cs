@@ -19,16 +19,16 @@ public class LeaderboardPanelUI : MonoBehaviour
     public static LeaderboardPanelUI Instance { get; private set; }
 
     // ── Renk paleti (AchievementsPanelUI ile uyumlu) ──────────────────────
-    static readonly Color CardBg       = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color PrimaryBtn   = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color PrimaryHover = new Color(0.42f,  0.71f,  1.00f,  1f);
-    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.20f,  1f);
-    static readonly Color RowBgAlt     = new Color(0.13f,  0.13f,  0.24f,  1f);
+    static readonly Color CardBg       = UiTheme.Card;
+    static readonly Color PrimaryBtn   = UiTheme.Blue;
+    static readonly Color PrimaryHover = Color.Lerp(UiTheme.Blue, Color.white, 0.18f);
+    static readonly Color RowBg        = UiTheme.Row;
+    static readonly Color RowBgAlt     = UiTheme.RowAlt;
     static readonly Color OwnRowBg     = new Color(0.16f,  0.28f,  0.16f,  1f);
-    static readonly Color GoldRank     = new Color(1.00f,  0.722f, 0.00f,  1f);
+    static readonly Color GoldRank     = UiTheme.Gold;
     static readonly Color SilverRank   = new Color(0.75f,  0.75f,  0.80f,  1f);
     static readonly Color BronzeRank   = new Color(0.80f,  0.50f,  0.20f,  1f);
-    static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color TextSec      = UiTheme.TextMuted;
 
     const int TopEntryCount = 50;
 
@@ -99,7 +99,7 @@ public class LeaderboardPanelUI : MonoBehaviour
         UiKit.CloseButton(card, Hide);
 
         MakeBtn(card, "btn_refresh", Loc.T("REFRESH"),
-            new Vector2(0.11f, 0.925f), new Vector2(120, 46),
+            new Vector2(0.11f, 0.925f), new Vector2(150, 72),
             PrimaryBtn, PrimaryHover, () => { if (!_loading) _ = PopulateAsync(); });
 
         _statusText = MakeTxt(card, "Status", "", 13, TextSec,

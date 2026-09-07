@@ -16,11 +16,11 @@ public class OnlineLobbyPanelUI : MonoBehaviour
 {
     public static OnlineLobbyPanelUI Instance { get; private set; }
 
-    static readonly Color BgColor      = new Color(0.051f, 0.051f, 0.102f, 0.97f);
-    static readonly Color CardBg       = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color PrimaryBtn   = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color PrimaryHover = new Color(0.42f,  0.71f,  1.00f,  1f);
-    static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
+    static readonly Color BgColor      = UiTheme.Card;
+    static readonly Color CardBg       = UiTheme.Card;
+    static readonly Color PrimaryBtn   = UiTheme.Blue;
+    static readonly Color PrimaryHover = Color.Lerp(UiTheme.Blue, Color.white, 0.18f);
+    static readonly Color TextSec      = UiTheme.TextMuted;
     static readonly Color CodeColor    = new Color(1.00f,  0.80f,  0.20f,  1f);
 
     GameObject      _panelRoot;
@@ -187,7 +187,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         BuildSocialHint();
 
         MakeSmallButton(_panelRoot, "btn_back", Loc.T("BACK"),
-            new Vector2(0.5f, 0.06f), new Vector2(200, 56), OnBackClicked,
+            new Vector2(0.5f, 0.06f), new Vector2(200, 72), OnBackClicked,
             new Color(0.30f, 0.30f, 0.45f, 1f));
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnBackClicked;
@@ -210,7 +210,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.24f), new Vector2(500, 90), CodeColor);
 
         _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", Loc.T("CANCEL"),
-            new Vector2(0.5f, 0.11f), new Vector2(220, 48), OnQuickMatchCancelClicked,
+            new Vector2(0.5f, 0.11f), new Vector2(220, 72), OnQuickMatchCancelClicked,
             new Color(0.30f, 0.30f, 0.45f, 1f));
         _quickMatchCancelBtn.SetActive(false);
     }
@@ -225,7 +225,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.68f), new Vector2(520, 48), TextSec);
 
         MakeSmallButton(card, "btn_social", Loc.T("SOCIAL"),
-            new Vector2(0.5f, 0.24f), new Vector2(220, 48),
+            new Vector2(0.5f, 0.24f), new Vector2(220, 72),
             () => { Hide(); SocialPanelUI.Instance?.Show(); },
             new Color(0.15f, 0.70f, 0.75f, 1f));
     }

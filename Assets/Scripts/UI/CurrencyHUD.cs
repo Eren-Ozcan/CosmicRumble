@@ -9,10 +9,10 @@ using CosmicRumble.Economy;
 /// </summary>
 public class CurrencyHUD : MonoBehaviour
 {
-    static readonly Color BgColor   = new Color(0.05f, 0.05f, 0.13f, 0.85f);
-    static readonly Color XpColor   = new Color(0.30f, 0.65f, 1.00f, 1f);
-    static readonly Color GoldColor = new Color(1.00f, 0.80f, 0.20f, 1f);
-    static readonly Color GemColor  = new Color(0.60f, 0.85f, 1.00f, 1f);
+    static readonly Color BgColor   = UiTheme.Card;
+    static readonly Color XpColor   = UiTheme.XpBar;
+    static readonly Color GoldColor = UiTheme.GoldChip;
+    static readonly Color GemColor  = UiTheme.GemChip;
 
     TextMeshProUGUI _xpText;
     TextMeshProUGUI _goldText;

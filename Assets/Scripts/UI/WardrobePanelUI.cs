@@ -21,16 +21,16 @@ public class WardrobePanelUI : MonoBehaviour
     const int CharacterCount = 5;
 
     // ── Renk paleti (UiKit mobil teması — QuestsPanelUI ile aynı) ─────────
-    static readonly Color CardBg     = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color CellBg     = new Color(0.11f,  0.11f,  0.21f,  1f);
-    static readonly Color CellBgLock = new Color(0.085f, 0.085f, 0.16f,  1f);
-    static readonly Color EquippedGr = new Color(0.30f,  0.85f,  0.40f,  1f);
-    static readonly Color PillOff    = new Color(0.15f,  0.15f,  0.27f,  1f);
-    static readonly Color GoldCol    = new Color(1.00f,  0.72f,  0.00f,  1f);
-    static readonly Color GemCol     = new Color(0.60f,  0.85f,  1.00f,  1f);
-    static readonly Color TextSec    = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color StrokeCol  = new Color(1f, 1f, 1f, 0.09f);
-    static readonly Color TitleGold  = new Color(1f, 0.80f, 0.20f, 1f);
+    static readonly Color CardBg     = UiTheme.Card;
+    static readonly Color CellBg     = UiTheme.Slot;
+    static readonly Color CellBgLock = UiTheme.Locked;
+    static readonly Color EquippedGr = UiTheme.Green;
+    static readonly Color PillOff    = UiTheme.Slot;
+    static readonly Color GoldCol    = UiTheme.GoldChip;
+    static readonly Color GemCol     = UiTheme.GemChip;
+    static readonly Color TextSec    = UiTheme.TextMuted;
+    static readonly Color StrokeCol  = UiTheme.Stroke;
+    static readonly Color TitleGold  = UiTheme.Gold;
 
     // ── Referanslar ───────────────────────────────────────────────────────
     GameObject      _panelRoot;

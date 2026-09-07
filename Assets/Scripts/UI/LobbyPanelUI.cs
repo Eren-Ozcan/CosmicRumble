@@ -13,16 +13,16 @@ public class LobbyPanelUI : MonoBehaviour
     public static LobbyPanelUI Instance { get; private set; }
 
     // ── Renk paleti ───────────────────────────────────────────────────────
-    static readonly Color BgColor       = new Color(0.051f, 0.051f, 0.102f, 0.96f);
-    static readonly Color CardBg        = new Color(0.09f,  0.09f,  0.18f,  1f);
-    static readonly Color PrimaryBtn    = new Color(0.29f,  0.62f,  1.00f,  1f);
-    static readonly Color PrimaryHover  = new Color(0.42f,  0.71f,  1.00f,  1f);
-    static readonly Color DangerBtn     = new Color(1.00f,  0.267f, 0.267f, 1f);
-    static readonly Color DangerHover   = new Color(1.00f,  0.40f,  0.40f,  1f);
-    static readonly Color SuccessColor  = new Color(0.267f, 1.00f,  0.533f, 1f);
-    static readonly Color AccentColor   = new Color(1.00f,  0.722f, 0.00f,  1f);
-    static readonly Color TextSecondary = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color BorderColor   = new Color(0.165f, 0.165f, 0.29f,  1f);
+    static readonly Color BgColor       = UiTheme.Card;
+    static readonly Color CardBg        = UiTheme.Card;
+    static readonly Color PrimaryBtn    = UiTheme.Blue;
+    static readonly Color PrimaryHover  = Color.Lerp(UiTheme.Blue, Color.white, 0.18f);
+    static readonly Color DangerBtn     = UiTheme.Danger;
+    static readonly Color DangerHover   = Color.Lerp(UiTheme.Danger, Color.white, 0.18f);
+    static readonly Color SuccessColor  = UiTheme.Green;
+    static readonly Color AccentColor   = UiTheme.Gold;
+    static readonly Color TextSecondary = UiTheme.TextMuted;
+    static readonly Color BorderColor   = UiTheme.Separator;
 
     // ── Runtime referanslar ───────────────────────────────────────────────
     GameObject      _root;
@@ -99,13 +99,13 @@ public class LobbyPanelUI : MonoBehaviour
 
         // ── Bottom buttons ─────────────────────────────────────────────────
         MakeButton(_root, "btn_back", "← BACK",
-            new Vector2(0.20f, 0.06f), new Vector2(160, 46),
+            new Vector2(0.20f, 0.06f), new Vector2(180, 72),
             new Color(0.2f, 0.2f, 0.35f), new Color(0.3f, 0.3f, 0.5f), OnBackClicked);
 
         _root.AddComponent<EscapeListener>().OnEscape = Hide;
 
         var startBtnGO = MakeButtonGO(_root, "btn_start",
-            new Vector2(0.65f, 0.06f), new Vector2(260, 52),
+            new Vector2(0.65f, 0.06f), new Vector2(260, 72),
             PrimaryBtn, PrimaryHover, OnStartClicked);
         _startBtn      = startBtnGO.GetComponent<Button>();
         _startBtnLabel = startBtnGO.GetComponentInChildren<TextMeshProUGUI>();
@@ -132,13 +132,13 @@ public class LobbyPanelUI : MonoBehaviour
 
         // [-] [0] [+]
         MakeSmallButton(card, "btn_botMinus", "−",
-            new Vector2(0.25f, 0.53f), new Vector2(44, 40), OnBotMinus);
+            new Vector2(0.25f, 0.53f), new Vector2(72, 72), OnBotMinus);
 
         _botCountText = MakeText(card, "bot_val", _botCount.ToString(), 22,
             new Vector2(0.5f, 0.53f), new Vector2(60, 40), Color.white);
 
         MakeSmallButton(card, "btn_botPlus", "+",
-            new Vector2(0.75f, 0.53f), new Vector2(44, 40), OnBotPlus);
+            new Vector2(0.75f, 0.53f), new Vector2(72, 72), OnBotPlus);
 
         // Preview
         _botPreviewText = MakeText(card, "bot_preview", GetBotPreviewText(), 12,

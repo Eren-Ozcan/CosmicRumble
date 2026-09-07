@@ -15,14 +15,14 @@ public class QuestsPanelUI : MonoBehaviour
     public static QuestsPanelUI Instance { get; private set; }
 
     // ── Renk paleti (UiKit mobil teması) ──────────────────────────────────
-    static readonly Color CardBg       = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color PrimaryBtn   = new Color(0.12f,  0.68f,  0.22f,  1f);
+    static readonly Color CardBg       = UiTheme.Card;
+    static readonly Color PrimaryBtn   = UiTheme.Blue;
     static readonly Color TabOff       = new Color(0.15f,  0.15f,  0.27f,  1f);
-    static readonly Color RowBg        = new Color(0.11f,  0.11f,  0.21f,  1f);
-    static readonly Color RowBgAlt     = new Color(0.13f,  0.13f,  0.25f,  1f);
-    static readonly Color CompletedGr  = new Color(0.30f,  0.85f,  0.40f,  1f);
-    static readonly Color TextSec      = new Color(0.533f, 0.533f, 0.667f, 1f);
-    static readonly Color StrokeCol    = new Color(1f, 1f, 1f, 0.09f);
+    static readonly Color RowBg        = UiTheme.Row;
+    static readonly Color RowBgAlt     = UiTheme.RowAlt;
+    static readonly Color CompletedGr  = UiTheme.Green;
+    static readonly Color TextSec      = UiTheme.TextMuted;
+    static readonly Color StrokeCol    = UiTheme.Stroke;
 
     enum Tab { Daily, Weekly, Monthly }
     Tab _currentTab = Tab.Daily;
@@ -152,7 +152,7 @@ public class QuestsPanelUI : MonoBehaviour
         UiKit.Hover(go);
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
-        rt.sizeDelta        = new Vector2(164, 44);
+        rt.sizeDelta        = new Vector2(176, 72);
         rt.anchoredPosition = Vector2.zero;
 
         var lbl = MakeTxt(go, "Lbl", label, 15, Color.white, new Vector2(0.5f, 0.5f), Vector2.zero);

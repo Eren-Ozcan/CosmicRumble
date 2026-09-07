@@ -13,11 +13,11 @@ public class AvatarPickerUI : MonoBehaviour
 {
     public static AvatarPickerUI Instance { get; private set; }
 
-    static readonly Color CardBg     = new Color(0.07f,  0.07f,  0.16f,  0.97f);
-    static readonly Color CellBg     = new Color(0.11f,  0.11f,  0.21f,  1f);
-    static readonly Color SelectedGr = new Color(0.30f,  0.85f,  0.40f,  1f);
-    static readonly Color TitleGold  = new Color(1f, 0.80f, 0.20f, 1f);
-    static readonly Color StrokeCol  = new Color(1f, 1f, 1f, 0.09f);
+    static readonly Color CardBg     = UiTheme.Card;
+    static readonly Color CellBg     = UiTheme.Slot;
+    static readonly Color SelectedGr = UiTheme.Green;
+    static readonly Color TitleGold  = UiTheme.Gold;
+    static readonly Color StrokeCol  = UiTheme.Stroke;
 
     GameObject _panelRoot;
     GameObject _contentParent;
