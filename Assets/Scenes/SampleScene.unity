@@ -3980,6 +3980,7 @@ MonoBehaviour:
   emptyColor: {r: 1, g: 0, b: 0, a: 0.5}
   noneColor: {r: 0, g: 0, b: 0, a: 0}
   lockedColor: {r: 0.12, g: 0.12, b: 0.16, a: 0.85}
+  useThemeColors: 1
 --- !u!1 &810894862
 GameObject:
   m_ObjectHideFlags: 0
@@ -4098,7 +4099,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: -394.7, y: -52.14}
+  m_AnchoredPosition: {x: -394.7, y: -5.8}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &872219360
@@ -5361,6 +5362,7 @@ MonoBehaviour:
   nextTurnKey: 9
   isTrainingMode: 0
   turnDuration: 15
+  migrationGraceSeconds: 3
 --- !u!4 &1123262119
 Transform:
   m_ObjectHideFlags: 0

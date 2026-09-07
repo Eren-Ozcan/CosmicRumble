@@ -310,6 +310,8 @@ public class MatchHudUI : MonoBehaviour
         var ui = UIManager.Instance;
         if (ui == null || ui.filterImages == null || ui.filterImages.Length == 0) return;
 
+        PaintTrayBackground();
+
         for (int i = 0; i < ui.filterImages.Length; i++)
         {
             var filter = ui.filterImages[i];
@@ -333,5 +335,27 @@ public class MatchHudUI : MonoBehaviour
             rt.sizeDelta = new Vector2(24f, 20f);
         }
         _slotLabelsDone = true;
+    }
+
+    /// <summary>
+    /// Silah tepsisinin zemini sahnede acik gri (%24 alfa) olarak serilesmisti ve gezegenin
+    /// uzerinde solgun bir bant gibi duruyordu. Tasarimda tepsi koyu bir plaka; UIManager
+    /// slot renklerini nasil calisma aninda tazeliyorsa zemin de burada temadan boyanir.
+    /// </summary>
+    void PaintTrayBackground()
+    {
+        var ui = UIManager.Instance;
+        if (ui == null || ui.filterImages == null || ui.filterImages.Length == 0) return;
+
+        var slot = ui.filterImages[0] != null ? ui.filterImages[0].transform : null;
+        // filter -> slot -> container -> tepsi paneli
+        var panel = slot != null && slot.parent != null && slot.parent.parent != null
+            ? slot.parent.parent.parent
+            : null;
+        if (panel == null) return;
+
+        var img = panel.GetComponent<Image>();
+        if (img == null) return;
+        img.color = UiTheme.Plate;
     }
 }
