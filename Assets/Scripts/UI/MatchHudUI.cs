@@ -358,7 +358,17 @@ public class MatchHudUI : MonoBehaviour
         if (panel == null) return;
 
         var img = panel.GetComponent<Image>();
-        if (img == null) return;
-        img.color = UiTheme.Plate;
+        if (img != null) img.color = UiTheme.Plate;
+
+        // Kilitli slotlarin "Lv10" yazisi 33x36'lik kucuk kutusunda uc satira sariyor ve
+        // tepsinin altindan tasiyordu; sayac yazilari tek satir kalmali.
+        if (ui.countTexts == null) return;
+        foreach (var t in ui.countTexts)
+        {
+            if (t == null) continue;
+            t.textWrappingMode = TextWrappingModes.NoWrap;
+            t.overflowMode     = TextOverflowModes.Overflow;
+            t.alignment        = TextAlignmentOptions.Center;
+        }
     }
 }
