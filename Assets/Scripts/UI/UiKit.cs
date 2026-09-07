@@ -257,8 +257,11 @@ public static class UiKit
 
         var rt = img.rectTransform;
         rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(1f, 1f);        // pivot köşede: taşma miktarı ölçüden bağımsız
         rt.sizeDelta = new Vector2(size, size);
-        rt.anchoredPosition = new Vector2(6f, 6f); // köşeden taşsın
+        // Kitteki "köşeye oturup hafifçe taşan" X: butonun ~dörtte biri kartın dışında kalır.
+        // (Pivot merkezdeyken buton yarı yarıya dışarı kayıp karttan kopuk görünüyordu.)
+        rt.anchoredPosition = new Vector2(size * 0.25f, size * 0.25f);
 
         var lblGO = new GameObject("Lbl");
         lblGO.transform.SetParent(go.transform, false);
