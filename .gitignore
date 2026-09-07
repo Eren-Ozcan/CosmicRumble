@@ -84,3 +84,7 @@ docs/store-assets-originals/
 /Assets/GeneratedLocalRepo/
 /Assets/GeneratedLocalRepo.meta
 /.utmp/
+
+
+# UI buton denetimi raporu (Tools > UI > Run Button Audit)
+ui-audit-report.txt
