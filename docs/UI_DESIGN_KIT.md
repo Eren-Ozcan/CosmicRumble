@@ -112,4 +112,23 @@ It exits 1 when there are failures.
 
 - **Wind indicator** (`WIND ▸ 12` in artboard 16) is not implemented: the game has no
   wind mechanic, and a HUD element showing a value nothing affects would be a lie.
+- **Wardrobe character carousel.** Artboard 09 pages through one character at a time with
+  `◀ CHARACTER 1 ▶`; the panel still shows all five characters as columns side by side.
+  The equipped name, the owned count and the per-card padlock are in.
+- **Icon art.** The design's icons are emoji stand-ins. The left rail, the trophy plate and
+  the costume padlock are drawn from UiKit primitives; the drawer rows and the achievement
+  rows still use letter badges and `?` placeholders until real icons exist.
+- **Avatar portraits.** Artboard 03 shows painted avatars; `AvatarDatabase` has no icons, so
+  the picker draws lettered colour discs. The main menu plate falls back to the equipped
+  costume art, which is real.
+- **Store prices.** Gem packs read `Unavailable` with BUY disabled on a device until the
+  products exist in Play Console — nothing is faked in the UI.
 - The portrait artboards' vertical layout is unused; see the orientation note above.
+
+## Device pass
+
+2026-09-07, Huawei POT-LX1 (Android 10, 2340x1080 landscape), guest-login APK: login, main
+menu, drawer, settings, wardrobe, shop, quests, achievements, leaderboard, social, online
+panel, bot lobby, match HUD and pause were walked by hand over `adb`. The screens that had
+never been through the kit — settings, social, the online panel, the bot lobby and the
+pause menu — were rebuilt against artboards 05-08 and 13-18 in that pass.

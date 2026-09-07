@@ -931,7 +931,9 @@ public class MainMenuUI : MonoBehaviour
         _drawerCol.anchorMin = _drawerCol.anchorMax = new Vector2(1f, 0.5f);
         _drawerCol.pivot = new Vector2(1f, 0.5f);
         _drawerCol.sizeDelta = new Vector2(340, 4 * 82 + 16);
-        _drawerCol.anchoredPosition = new Vector2(-16, 0);
+        // Kose X'i kartin disina tastigi icin cekmece sag kenardan 60 birim iceride durur;
+        // -16'da kapatma butonunun yarisi ekranin disinda kaliyordu.
+        _drawerCol.anchoredPosition = new Vector2(-60, 0);
 
         var drawerTitle = MakeTxt(colGO, "Title", Loc.T("MENU"), 26, FontStyles.Normal, AccGold,
             TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(240, 34), new Vector2(0, -34));

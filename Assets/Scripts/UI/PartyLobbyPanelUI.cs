@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
@@ -566,13 +566,30 @@ public class PartyLobbyPanelUI : MonoBehaviour
         _panelRoot.AddComponent<EscapeListener>().OnEscape = OnCancelClicked;
     }
 
+    /// <summary>
+    /// Panel govdesi: parti ekranlari da diger paneller gibi ortada bir kartin uzerinde durur.
+    /// Onceden dogrudan karartma perdesine ciziliyorlardi ve alt buton satiri (START/LEAVE)
+    /// ana menunun PLAY kumesiyle ust uste biniyordu.
+    /// </summary>
+    GameObject MakePartyCard(string name)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(_panelRoot.transform, false);
+        var img = go.AddComponent<Image>();
+        img.color = UiTheme.Card;
+        UiKit.Round(img);
+        UiKit.Shadow(go, 8f, 0.55f);
+        UiKit.Stroke(go, UiTheme.Stroke);
+        var rt = img.rectTransform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(1080, 800);
+        rt.anchoredPosition = Vector2.zero;
+        return go;
+    }
+
     void BuildModeSelectRoot()
     {
-        _modeSelectRoot = new GameObject("ModeSelect");
-        _modeSelectRoot.transform.SetParent(_panelRoot.transform, false);
-        var rt = _modeSelectRoot.AddComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        _modeSelectRoot = MakePartyCard("ModeSelect");
 
         var title = MakeText(_modeSelectRoot, "Title", Loc.T("CHOOSE MODE"), 34,
             new Vector2(0.5f, 0.90f), new Vector2(500, 48), AccGold);
@@ -628,14 +645,10 @@ public class PartyLobbyPanelUI : MonoBehaviour
 
     void BuildRosterRoot()
     {
-        _rosterRoot = new GameObject("Roster");
-        _rosterRoot.transform.SetParent(_panelRoot.transform, false);
-        var rt = _rosterRoot.AddComponent<RectTransform>();
-        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-        rt.offsetMin = rt.offsetMax = Vector2.zero;
+        _rosterRoot = MakePartyCard("Roster");
 
         var title = MakeText(_rosterRoot, "Title", Loc.T("PARTY LOBBY"), 34,
-            new Vector2(0.5f, 0.90f), new Vector2(500, 48), AccGold);
+            new Vector2(0.5f, 0.93f), new Vector2(500, 48), AccGold);
         UiKit.BrawlText(title);
 
         // 3x3 slot ızgarası (8 dolu + 1 boş kalır) — projedeki en büyük mod 8 oyuncu.
@@ -643,21 +656,21 @@ public class PartyLobbyPanelUI : MonoBehaviour
         {
             int col = i % 3;
             int row = i / 3;
-            var anchor = new Vector2(0.32f + col * 0.18f, 0.72f - row * 0.16f);
+            var anchor = new Vector2(0.30f + col * 0.20f, 0.74f - row * 0.18f);
             BuildSlot(anchor);
         }
 
         _rosterStatusText = MakeText(_rosterRoot, "Status", "", 17,
-            new Vector2(0.5f, 0.20f), new Vector2(760, 30), AccGold);
+            new Vector2(0.5f, 0.22f), new Vector2(760, 30), AccGold);
 
         _inviteBtn = MakeButton(_rosterRoot, "btn_invite_friends", Loc.T("INVITE FRIENDS"), AccBlue,
-            new Vector2(0.5f, 0.13f), new Vector2(320, 56), OnToggleInviteList);
+            new Vector2(0.5f, 0.15f), new Vector2(320, 60), OnToggleInviteList);
 
         _startBtn = MakeButton(_rosterRoot, "btn_start", Loc.T("START"), AccGold,
-            new Vector2(0.30f, 0.05f), new Vector2(240, 60), OnStartClicked);
+            new Vector2(0.32f, 0.07f), new Vector2(240, 64), OnStartClicked);
 
         MakeButton(_rosterRoot, "btn_cancel_roster", Loc.T("LEAVE"), new Color(0.30f, 0.30f, 0.45f, 1f),
-            new Vector2(0.70f, 0.05f), new Vector2(240, 60), OnCancelClicked);
+            new Vector2(0.68f, 0.07f), new Vector2(240, 64), OnCancelClicked);
 
         BuildInviteListRoot();
 
