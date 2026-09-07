@@ -25,11 +25,12 @@ public class SocialPanelUI : MonoBehaviour
     static readonly Color AccGreen   = UiTheme.Green;
     static readonly Color AccRed     = UiTheme.Danger;
     static readonly Color AccBlue    = UiTheme.Blue;
-    static readonly Color TabIdle    = new Color(0.13f,  0.13f,  0.24f,  1f);
+    static readonly Color TabIdle    = UiTheme.RowAlt;
     static readonly Color TextSec    = UiTheme.TextMuted;
-    static readonly Color OnlineDot  = new Color(0.25f,  0.85f,  0.35f,  1f);
-    static readonly Color AwayDot    = new Color(0.95f,  0.75f,  0.20f,  1f);
-    static readonly Color OfflineDot = new Color(0.45f,  0.45f,  0.55f,  1f);
+    static readonly Color OnlineDot  = UiTheme.StatusOnline;
+    static readonly Color InMatchDot = UiTheme.StatusInMatch;
+    static readonly Color AwayDot    = UiTheme.StatusAway;
+    static readonly Color OfflineDot = UiTheme.StatusOffline;
 
     GameObject      _panelRoot;
     TextMeshProUGUI _ownCodeText;
@@ -256,7 +257,11 @@ public class SocialPanelUI : MonoBehaviour
             dot.transform.SetParent(row.transform, false);
             var dotImg = dot.AddComponent<Image>();
             dotImg.sprite = UiKit.CircleSprite;
-            dotImg.color  = online ? OnlineDot : away ? AwayDot : OfflineDot;
+            // Tasarımda "In Match" ayrı bir renk (altın): oyuncu çevrimiçi ama davet
+            // edilebilir değil — nokta rengi bunu tek bakışta göstermeli.
+            dotImg.color  = online ? (inMatch ? InMatchDot : OnlineDot)
+                          : away   ? AwayDot
+                                   : OfflineDot;
             dotImg.raycastTarget = false;
             var dotRt = dotImg.rectTransform;
             dotRt.anchorMin = dotRt.anchorMax = new Vector2(0f, 0.5f);

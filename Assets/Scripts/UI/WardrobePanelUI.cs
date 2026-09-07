@@ -454,11 +454,11 @@ public class WardrobePanelUI : MonoBehaviour
 
     static Color RarityColor(CostumeRarity r) => r switch
     {
-        CostumeRarity.Uncommon  => new Color(0.30f, 0.85f, 0.40f, 1f),
-        CostumeRarity.Rare      => new Color(0.25f, 0.55f, 1.00f, 1f),
-        CostumeRarity.Epic      => new Color(0.65f, 0.35f, 1.00f, 1f),
-        CostumeRarity.Legendary => new Color(1.00f, 0.80f, 0.20f, 1f),
-        _                       => new Color(0.62f, 0.65f, 0.70f, 1f), // Common
+        CostumeRarity.Uncommon  => UiTheme.RarityUncommon,
+        CostumeRarity.Rare      => UiTheme.RarityRare,
+        CostumeRarity.Epic      => UiTheme.RarityEpic,
+        CostumeRarity.Legendary => UiTheme.RarityLegendary,
+        _                       => UiTheme.RarityCommon,
     };
 
     static string RarityName(CostumeRarity r) => r switch
