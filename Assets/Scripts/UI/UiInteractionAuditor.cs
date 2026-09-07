@@ -127,7 +127,7 @@ public class UiInteractionAuditor : MonoBehaviour
     }
 
     /// <summary>Giriş ekranı açıksa test misafir butonuna basıp menünün kurulmasını bekler.</summary>
-    static IEnumerator PassLoginGate()
+    public static IEnumerator PassLoginGate()
     {
         var guest = FindActiveButton("btn_guest_test");
         if (guest == null) yield break;
