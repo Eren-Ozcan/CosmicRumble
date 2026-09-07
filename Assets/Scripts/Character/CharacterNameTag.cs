@@ -7,8 +7,17 @@ using TMPro;
 /// </summary>
 public class CharacterNameTag : MonoBehaviour
 {
+    // Artboard 16: isim can barının ÜSTÜNDE ayrı bir satır. HealthBarUI.verticalOffset
+    // (1.72) + barın yarım yüksekliği (0.17) üstünde kalacak şekilde seçildi; ikisi
+    // birlikte değiştirilir, yoksa etiketler tekrar üst üste biner.
     [Tooltip("Karakterin merkezinden dikey ofseti (yerel birim).")]
-    public float verticalOffset = 1.4f;
+    public float verticalOffset = 2.22f;
+
+    // Etiket kutusunun dünya birimi ölçüsü ve yazının punto karşılığı. Eski 3f punto
+    // 0.6 birimlik kutuya sığmıyordu ve taşan yazı can barının üzerine düşüyordu.
+    const float TagWidth  = 3f;
+    const float TagHeight = 0.5f;
+    const float TextSize  = 0.42f;
 
     TextMeshPro _label;
     Transform   _canvasTransform;
@@ -45,14 +54,14 @@ public class CharacterNameTag : MonoBehaviour
         canvas.renderMode = RenderMode.WorldSpace;
 
         var rt = canvasGO.GetComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(3f, 0.6f);
+        rt.sizeDelta = new Vector2(TagWidth, TagHeight);
 
         // TextMeshPro (WorldSpace)
         var labelGO = new GameObject("Label");
         labelGO.transform.SetParent(canvasGO.transform, false);
         _label = labelGO.AddComponent<TextMeshPro>();
-        _label.fontSize        = 3f;
-        _label.color           = Color.white;
+        _label.fontSize        = TextSize;
+        _label.color           = UiTheme.TextPrimary;
         _label.alignment       = TextAlignmentOptions.Center;
         _label.fontStyle       = FontStyles.Bold;
         _label.outlineWidth    = 0.2f;
