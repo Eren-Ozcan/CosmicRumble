@@ -22,9 +22,13 @@ public class LoginScreenUI : MonoBehaviour
     static readonly Color GradBottom   = UiTheme.MenuGradBot;
     static readonly Color AccGold      = UiTheme.Gold;
     static readonly Color TextDim      = UiTheme.TextDim;
-    static readonly Color GoogleWhite  = new Color(0.97f, 0.97f, 0.97f, 1f);
-    static readonly Color PlateDark    = new Color(0.165f, 0.175f, 0.215f, 1f);
-    static readonly Color ErrorRed     = new Color(1f, 0.35f, 0.35f, 1f);
+    // Kit, giriş ekranında üç ayrı buton tipi kullanıyor: beyaz Google plakası,
+    // mavi birincil Cosmic ID ve yarı saydam "ghost" misafir butonu.
+    static readonly Color GoogleWhite  = UiTheme.Hex(0xF7F7F7);
+    static readonly Color GoogleEdge   = UiTheme.Hex(0xB9B9B9);
+    static readonly Color GoogleText   = UiTheme.Hex(0x26243A);
+    static readonly Color GhostBg      = UiTheme.Hex(0x2A2C37, 0.72f);
+    static readonly Color ErrorRed     = UiTheme.DangerLight;
 
     GameObject      _root;
     TextMeshProUGUI _statusText;
@@ -206,17 +210,17 @@ public class LoginScreenUI : MonoBehaviour
 
 #if UNITY_ANDROID && GPGS_INSTALLED
         _googleBtn = MakeBigButton(_root, "btn_google", Loc.T("CONTINUE WITH GOOGLE"),
-            new Vector2(0.5f, y), GoogleWhite, new Color(0.15f, 0.15f, 0.18f, 1f), OnGoogleClicked);
+            new Vector2(0.5f, y), GoogleWhite, GoogleText, OnGoogleClicked, 24, GoogleEdge);
         y -= 0.10f;
 #endif
 
         _cosmicBtn = MakeBigButton(_root, "btn_cosmic", Loc.T("SIGN IN WITH COSMIC ID"),
-            new Vector2(0.5f, y), PlateDark, Color.white, OnCosmicIdClicked);
+            new Vector2(0.5f, y), UiTheme.Blue, Color.white, OnCosmicIdClicked, 24, UiTheme.BlueDeep);
         y -= 0.10f;
 
 #if UNITY_EDITOR || CR_DEV_CLIENT
         MakeBigButton(_root, "btn_guest_test", Loc.T("CONTINUE AS GUEST (TEST)"),
-            new Vector2(0.5f, y), new Color(0.10f, 0.10f, 0.16f, 1f), TextDim, OnGuestClicked, 22);
+            new Vector2(0.5f, y), GhostBg, TextDim, OnGuestClicked, 22, UiTheme.PlateEdge);
         y -= 0.10f;
 #endif
 
@@ -235,13 +239,14 @@ public class LoginScreenUI : MonoBehaviour
 
     static Button MakeBigButton(GameObject parent, string name, string label,
         Vector2 anchor, Color bg, Color textColor,
-        UnityEngine.Events.UnityAction callback, int fontSize = 24)
+        UnityEngine.Events.UnityAction callback, int fontSize = 24, Color? edge = null)
     {
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = bg;
         UiKit.Round(img);
+        UiKit.BottomEdge(go, edge ?? UiKit.EdgeOf(bg), 7f);
         UiKit.Shadow(go, 4f, 0.4f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;

@@ -450,17 +450,29 @@ public class MainMenuUI : MonoBehaviour
         var editBadgeGO = new GameObject("btn_edit_avatar");
         editBadgeGO.transform.SetParent(avatarGO.transform, false);
         var editBadgeImg = editBadgeGO.AddComponent<Image>();
-        editBadgeImg.sprite = UiKit.CircleSprite;
-        editBadgeImg.color  = new Color(0.12f, 0.12f, 0.18f, 1f);
+        // Görünen rozet küçük kalsın ama dokunma hedefi kit'in alt sınırını tuttursun:
+        // butonun kendi Image'ı saydam ve 72 birim, içindeki daire yalnızca görsel.
+        editBadgeImg.color  = new Color(0f, 0f, 0f, 0f);
         var editBadgeBtn = editBadgeGO.AddComponent<Button>();
         editBadgeBtn.targetGraphic = editBadgeImg;
         editBadgeBtn.onClick.AddListener(() => { Click(); AvatarPickerUI.Instance?.Show(); });
         UiKit.Hover(editBadgeGO);
         var editBadgeRt = editBadgeImg.rectTransform;
         editBadgeRt.anchorMin = editBadgeRt.anchorMax = new Vector2(1f, 0f);
-        editBadgeRt.sizeDelta = new Vector2(72, 72);
-        editBadgeRt.anchoredPosition = new Vector2(6, -6);
-        var editBadgeLbl = MakeTxt(editBadgeGO, "Lbl", "+", 30, FontStyles.Bold, Color.white,
+        editBadgeRt.sizeDelta = new Vector2(UiTheme.MinTouchSize, UiTheme.MinTouchSize);
+        editBadgeRt.anchoredPosition = new Vector2(10, -10);
+
+        var badgeDotGO = new GameObject("Dot");
+        badgeDotGO.transform.SetParent(editBadgeGO.transform, false);
+        var badgeDot = badgeDotGO.AddComponent<Image>();
+        badgeDot.sprite        = UiKit.CircleSprite;
+        badgeDot.color         = UiTheme.Blue;
+        badgeDot.raycastTarget = false;
+        var badgeDotRt = badgeDot.rectTransform;
+        badgeDotRt.anchorMin = badgeDotRt.anchorMax = new Vector2(0.5f, 0.5f);
+        badgeDotRt.sizeDelta = new Vector2(30, 30);
+        badgeDotRt.anchoredPosition = Vector2.zero;
+        var editBadgeLbl = MakeTxt(editBadgeGO, "Lbl", "+", 20, FontStyles.Bold, Color.white,
             TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         editBadgeLbl.raycastTarget = false;
         editBadgeLbl.rectTransform.anchorMin = Vector2.zero;
@@ -1510,11 +1522,15 @@ public class MainMenuUI : MonoBehaviour
 
     void BuildNebulaGlow(GameObject parent)
     {
-        // Soft colored glow blobs for depth
-        // Brawl Stars lobisi gibi: sol mavi, sağ pembe/kırmızı sahne ışığı
-        AddGlow(parent, new Color(0.12f, 0.30f, 0.85f, 0.40f), new Vector2(0.12f, 0.55f), new Vector2(1500, 1300));
-        AddGlow(parent, new Color(0.95f, 0.18f, 0.45f, 0.34f), new Vector2(0.90f, 0.50f), new Vector2(1400, 1250));
-        AddGlow(parent, new Color(0.55f, 0.20f, 0.85f, 0.30f), new Vector2(0.50f, 0.10f), new Vector2(1200, 700));
+        // Kit'in zemini derin bir uzay radyali: merkezde mor (#3A1F7A), kenarlarda gece
+        // mavisi. Eski parlak pembe/mavi lekeler plakaları yıkayıp kontrastı düşürüyordu;
+        // alfalar tasarımın seviyesine indirildi.
+        AddGlow(parent, new Color(UiTheme.BgSpaceTop.r, UiTheme.BgSpaceTop.g, UiTheme.BgSpaceTop.b, 0.45f),
+                new Vector2(0.50f, 0.92f), new Vector2(1900, 1300));
+        AddGlow(parent, new Color(0.12f, 0.30f, 0.85f, 0.16f), new Vector2(0.12f, 0.55f), new Vector2(1500, 1300));
+        AddGlow(parent, new Color(0.72f, 0.16f, 0.42f, 0.14f), new Vector2(0.90f, 0.50f), new Vector2(1400, 1250));
+        AddGlow(parent, new Color(UiTheme.BgDeep.r, UiTheme.BgDeep.g, UiTheme.BgDeep.b, 0.55f),
+                new Vector2(0.50f, 0.02f), new Vector2(2400, 900));
     }
 
     /// <summary>Zeminde soluk desen dokusu (Brawl Stars'ın kurukafa deseni karşılığı) —
