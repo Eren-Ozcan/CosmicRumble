@@ -61,6 +61,7 @@ namespace CosmicRumble.Localization
             ["{0} Wins!"] = new[] { "{0} Kazandı!", "{0} 获胜！", "¡{0} gana!", "{0}の勝利！", "{0} 승리!", "{0} gewinnt!" },
             ["Draw!"]     = new[] { "Berabere!", "平局！", "¡Empate!", "引き分け！", "무승부!", "Unentschieden!" },
             ["+{0} Gold"] = new[] { "+{0} Altın", "+{0} 金币", "+{0} de oro", "+{0}ゴールド", "+{0} 골드", "+{0} Gold" },
+            ["Mute switch and system volume still take priority."] = new[] { "Sessiz anahtari ve sistem sesi yine de oncelikli.", "静音开关和系统音量仍然优先。", "El interruptor de silencio y el volumen del sistema tienen prioridad.", "マナースイッチと本体の音量が優先されます。", "무음 스위치와 시스템 음량이 우선합니다.", "Stummschalter und Systemlautstärke haben weiterhin Vorrang." },
             ["Master Volume"]    = new[] { "Ana Ses", "总音量", "Volumen General", "マスター音量", "전체 음량", "Gesamtlautstärke" },
             ["Music"]            = new[] { "Müzik", "音乐", "Música", "音楽", "음악", "Musik" },
             ["Effects"]          = new[] { "Efektler", "音效", "Efectos", "効果音", "효과음", "Effekte" },

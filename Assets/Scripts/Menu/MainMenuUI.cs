@@ -58,6 +58,8 @@ public class MainMenuUI : MonoBehaviour
     const float PlayH       = 212f;
     const float PlayInset   = 104f;  // tasarim: right 52
     const float PlayBottom  = 72f;   // tasarim: bottom 36
+    const float SetInset    = 104f;  // ayarlar ekrani yan bosluk (tasarim: 52)
+    const float SetTop      = 68f;   // ayarlar baslik satiri (tasarim: 24 + plaka yarisi)
 
     static readonly Color PlateInk   = UiTheme.Ink;
     static readonly Color XpTrack    = UiTheme.Slot;
@@ -458,7 +460,7 @@ public class MainMenuUI : MonoBehaviour
         _trophyText = MakeTxt(trophyPlate, "League",
             CosmicRumble.Cloud.LeaderboardManager.GetLeagueName(trophies), 22, FontStyles.Normal,
             TextDim, TextAlignmentOptions.Left,
-            new Vector2(0f, 0.5f), new Vector2(230, 28), new Vector2(195, 0));
+            new Vector2(0f, 0.5f), new Vector2(230, 28), new Vector2(235, 0));
         _trophyText.enableWordWrapping = false;
         _trophyText.overflowMode       = TextOverflowModes.Ellipsis;
 
@@ -1141,8 +1143,11 @@ public class MainMenuUI : MonoBehaviour
     // ────────────────────────────────────────────────────────────────────────
 
     // BS ayarlar ekranı paleti (2. referans görüntü): parlak mavi zemin + mavi plakalar
-    static readonly Color SettingsBg   = UiTheme.Blue;
-    static readonly Color SettingsBtn  = UiTheme.BlueEdge;
+    static readonly Color SettingsBg    = UiTheme.SettingsTop;
+    static readonly Color SettingsBgBot = UiTheme.SettingsBot;
+    static readonly Color SettingsBtn   = UiTheme.BlueEdge;
+    static readonly Color SettingsCard  = UiTheme.SettingsCard;
+    static readonly Color SliderTrack   = UiTheme.SliderTrack;
 
     void BuildSettingsPanel()
     {
@@ -1151,16 +1156,22 @@ public class MainMenuUI : MonoBehaviour
         backdropGO.transform.SetParent(_settingsPanel.transform, false);
         var backdropImg = backdropGO.AddComponent<Image>();
         backdropImg.color = Color.white;
-        UiKit.Gradient(backdropImg, SettingsBg, UiTheme.BlueDeep);
+        UiKit.Gradient(backdropImg, SettingsBg, SettingsBgBot);
         var backdropRt  = backdropImg.rectTransform;
         backdropRt.anchorMin = Vector2.zero;
         backdropRt.anchorMax = Vector2.one;
         backdropRt.offsetMin = backdropRt.offsetMax = Vector2.zero;
         BuildPattern(backdropGO, 26);
 
-        // Header — beyaz konturlu büyük başlık, üst-orta
-        var hdr = MakeTxt(_settingsPanel, "hdr_settings", Loc.T("SETTINGS"), 36, FontStyles.Normal, Color.white,
-            TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(420, 48), new Vector2(0, -36));
+        // Baslik satiri (tasarim 06): solda "← Back" plakasi + sola yasli SETTINGS,
+        // sagda sekme satiri. Onceden baslik ortadaydi, sekmeler ortada, BACK/OK altta.
+        MakeSettingsButton(_settingsPanel, "btn_back", "\u2190 " + Loc.T("BACK"),
+            SettingsBtn, new Vector2(SetInset + 90, -SetTop), () => { Click(); ShowPanel(_mainPanel); },
+            new Vector2(180, 60), new Vector2(0f, 1f), new Vector2(0.5f, 0.5f));
+
+        var hdr = MakeTxt(_settingsPanel, "hdr_settings", Loc.T("SETTINGS"), 34, FontStyles.Normal, Color.white,
+            TextAlignmentOptions.Left, new Vector2(0f, 1f), new Vector2(420, 48),
+            new Vector2(SetInset + 400, -SetTop));
         UiKit.BrawlText(hdr);
 
         // Sürüm — alt köşe (footer kaldırıldı, buraya taşındı)
@@ -1172,13 +1183,25 @@ public class MainMenuUI : MonoBehaviour
         MakeLinkText(_settingsPanel, "lbl_privacy", Loc.T("Privacy Policy"), new Vector2(0, 32),
             () => Application.OpenURL(LegalLinks.PrivacyPolicyUrl));
 
-        // ── Tab row ──────────────────────────────────────────────────────────
-        MakeTabBtn("tab_audio",     Loc.T("AUDIO"),    -168, 170, () => ShowSettingsTab(_audioTab));
-        MakeTabBtn("tab_graphics",  Loc.T("GRAPHICS"),  -56, 170, () => ShowSettingsTab(_graphicsTab));
-        MakeTabBtn("tab_controls",  Loc.T("CONTROLS"),   56, 170, () => ShowSettingsTab(_controlsTab));
-        MakeTabBtn("tab_account",   Loc.T("ACCOUNT"),   168, 170, () => ShowSettingsTab(_accountTab));
+        // ── Sekme satiri — sag ust, aktif sekme altin plaka ─────────────────
+        _tabAudio    = MakeTabBtn("tab_audio",    Loc.T("AUDIO"),    -(SetInset + 570), -SetTop, () => ShowSettingsTab(_audioTab));
+        _tabGraphics = MakeTabBtn("tab_graphics", Loc.T("GRAPHICS"), -(SetInset + 390), -SetTop, () => ShowSettingsTab(_graphicsTab));
+        _tabControls = MakeTabBtn("tab_controls", Loc.T("CONTROLS"), -(SetInset + 200), -SetTop, () => ShowSettingsTab(_controlsTab));
+        _tabAccount  = MakeTabBtn("tab_account",  Loc.T("ACCOUNT"),  -(SetInset + 20),  -SetTop, () => ShowSettingsTab(_accountTab));
 
-        MakeSeparator(_settingsPanel, new Vector2(0, 145));
+        // Sekme icerigi tasarimdaki koyu lacivert bolum kartinin uzerinde durur.
+        var card = new GameObject("ContentCard");
+        card.transform.SetParent(_settingsPanel.transform, false);
+        var cardImg = card.AddComponent<Image>();
+        cardImg.color = SettingsCard;
+        UiKit.Round(cardImg, 1.1f);
+        cardImg.raycastTarget = false;
+        var cardRt = cardImg.rectTransform;
+        cardRt.anchorMin = new Vector2(0f, 0f);
+        cardRt.anchorMax = new Vector2(1f, 1f);
+        cardRt.offsetMin = new Vector2(SetInset, 96);
+        cardRt.offsetMax = new Vector2(-SetInset, -(SetTop + 90));
+        UiKit.Stroke(card, UiTheme.Stroke, 1.1f);
 
         // ── Tab content containers ──────────────────────────────────────────
         _audioTab    = MakePanel(_settingsPanel, "AudioTab");
@@ -1194,12 +1217,9 @@ public class MainMenuUI : MonoBehaviour
         // Back/OK butonları — yan yana, sekmelerin dışında, her zaman görünür. BACK hiçbir
         // pending değişikliği uygulamadan kapatır (zaten hiçbir kontrol cfg/dile doğrudan
         // yazmıyor); OK == ApplyPendingSettings, tüm bekleyen değişiklikleri tek seferde uygular.
-        MakeSettingsButton(_settingsPanel, "btn_back", Loc.T("BACK"),
-            PlateDark, new Vector2(-155, -230), () => { Click(); ShowPanel(_mainPanel); },
-            new Vector2(180, 52));
-        MakeSettingsButton(_settingsPanel, "btn_ok", Loc.T("OK"),
-            AccGreen, new Vector2(155, -230), ApplyPendingSettings,
-            new Vector2(180, 52));
+        MakeSettingsButton(_settingsPanel, "btn_ok", Loc.T("APPLY"),
+            AccGold, new Vector2(-(SetInset + 20), 34), ApplyPendingSettings,
+            new Vector2(200, 60), new Vector2(1f, 0f), new Vector2(0.5f, 0.5f));
 
         ShowSettingsTab(_audioTab);
     }
@@ -1262,21 +1282,31 @@ public class MainMenuUI : MonoBehaviour
         _controlsTab.SetActive(tab == _controlsTab);
         _accountTab.SetActive(tab == _accountTab);
 
+        PaintTab(_tabAudio,    tab == _audioTab);
+        PaintTab(_tabGraphics, tab == _graphicsTab);
+        PaintTab(_tabControls, tab == _controlsTab);
+        PaintTab(_tabAccount,  tab == _accountTab);
+
         if (tab == _accountTab)  RefreshAccountTab();
         if (tab == _controlsTab) RefreshControlsLabels();
     }
 
     void BuildAudioTab(GameObject parent)
     {
-        _masterSlider = MakeSliderRow(parent, Loc.T("Master Volume"), 100);
-        _musicSlider  = MakeSliderRow(parent, Loc.T("Music"),    40);
-        _sfxSlider    = MakeSliderRow(parent, Loc.T("Effects"), -20);
+        MakeSectionTitle(parent, Loc.T("AUDIO"), 300);
 
-        MakeSeparator(parent, new Vector2(0, -60));
+        _masterSlider = MakeSliderRow(parent, Loc.T("Master Volume"), 210);
+        _musicSlider  = MakeSliderRow(parent, Loc.T("Music"),         120);
+        _sfxSlider    = MakeSliderRow(parent, Loc.T("Effects"),        30);
 
-        MakeTxt(parent, "lbl_fs", Loc.T("Fullscreen"), 18, FontStyles.Normal, TextPrimary,
-            TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(200, 28), new Vector2(-70, -95));
-        _fsToggle = MakeToggle(parent, -95);
+        MakeTxt(parent, "lbl_audio_note", Loc.T("Mute switch and system volume still take priority."),
+            18, FontStyles.Normal, UiTheme.LinkHover, TextAlignmentOptions.Left,
+            new Vector2(0.5f, 0.5f), new Vector2(620, 24), new Vector2(0, -44));
+
+        // Tam ekran anahtari grafik sekmesine tasindi - tasarimda ses kartinda yok
+        // (ve mobilde zaten anlamsiz).
+        _fsToggle = MakeToggle(parent, -400);
+        _fsToggle.gameObject.SetActive(false);
 
         // OK'a basılana kadar sadece pending alanları güncellenir — ne cfg ne Screen ne AudioManager
         // burada dokunulur (bkz. ApplyPendingSettings).
@@ -1286,8 +1316,19 @@ public class MainMenuUI : MonoBehaviour
         _fsToggle.onValueChanged.AddListener(v     => _pendingFullscreen = v);
     }
 
+    /// <summary>Kart icindeki altin bolum basligi (tasarim 06: AUDIO / GRAPHICS ...).</summary>
+    void MakeSectionTitle(GameObject parent, string label, float y)
+    {
+        var t = MakeTxt(parent, "sec_" + label, label, 26, FontStyles.Normal, AccGold,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(620, 32), new Vector2(0, y));
+        UiKit.BrawlText(t);
+        t.raycastTarget = false;
+    }
+
     void BuildGraphicsTab(GameObject parent)
     {
+        MakeSectionTitle(parent, Loc.T("GRAPHICS"), 300);
+
         MakeTxt(parent, "lbl_res", Loc.T("Resolution"), 17, FontStyles.Normal, TextPrimary,
             TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-190, 100));
 
@@ -1476,7 +1517,8 @@ public class MainMenuUI : MonoBehaviour
     }
 
     GameObject MakeSettingsButton(GameObject parent, string name, string label, Color color,
-        Vector2 pos, UnityEngine.Events.UnityAction onClick, Vector2? size = null)
+        Vector2 pos, UnityEngine.Events.UnityAction onClick, Vector2? size = null,
+        Vector2? anchor = null, Vector2? pivot = null)
     {
         var go  = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
@@ -1493,7 +1535,8 @@ public class MainMenuUI : MonoBehaviour
         UiKit.Hover(go);
 
         var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.anchorMin = rt.anchorMax = anchor ?? new Vector2(0.5f, 0.5f);
+        rt.pivot     = pivot  ?? new Vector2(0.5f, 0.5f);
         rt.sizeDelta = size ?? new Vector2(BTN_W, BTN_H);
         rt.anchoredPosition = pos;
 
@@ -1501,10 +1544,11 @@ public class MainMenuUI : MonoBehaviour
         txtGO.transform.SetParent(go.transform, false);
         var txt = txtGO.AddComponent<TextMeshProUGUI>();
         txt.text      = label;
-        txt.fontSize  = 17;
+        txt.fontSize  = 22;
         txt.fontStyle = FontStyles.Bold;
         txt.alignment = TextAlignmentOptions.Center;
-        txt.color     = TextPrimary;
+        // Altin plakada koyu, koyu plakada acik yazi (tasarim: APPLY altin + koyu ink).
+        txt.color     = color == AccGold ? PlateInk : TextPrimary;
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
@@ -1573,14 +1617,13 @@ public class MainMenuUI : MonoBehaviour
     //  SMALL BUILDERS SHARED BY THE SETTINGS TABS
     // ────────────────────────────────────────────────────────────────────────
 
-    void MakeTabBtn(string name, string label, float xOffset, float yOffset, UnityEngine.Events.UnityAction cb)
+    GameObject MakeTabBtn(string name, string label, float xOffset, float yOffset, UnityEngine.Events.UnityAction cb)
     {
         var go  = new GameObject(name);
         go.transform.SetParent(_settingsPanel.transform, false);
         var img = go.AddComponent<Image>();
         img.color = SettingsBtn;
         UiKit.Round(img, 1.6f);
-        UiKit.Skew(img, 0.06f);
         UiKit.Shadow(go, 3f, 0.35f);
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = img;
@@ -1590,15 +1633,16 @@ public class MainMenuUI : MonoBehaviour
         UiKit.Hover(go);
 
         var rt = img.rectTransform;
-        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(110, 42);
+        rt.anchorMin = rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot     = new Vector2(1f, 0.5f);
+        rt.sizeDelta = new Vector2(176, 56);
         rt.anchoredPosition = new Vector2(xOffset, yOffset);
 
         var txtGO = new GameObject("Label");
         txtGO.transform.SetParent(go.transform, false);
         var txt = txtGO.AddComponent<TextMeshProUGUI>();
         txt.text      = label;
-        txt.fontSize  = 13;
+        txt.fontSize  = 22;
         txt.alignment = TextAlignmentOptions.Center;
         txt.color     = TextPrimary;
         UiKit.BrawlText(txt);
@@ -1606,6 +1650,24 @@ public class MainMenuUI : MonoBehaviour
         var trt = txt.rectTransform;
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
         trt.offsetMin = trt.offsetMax = Vector2.zero;
+        return go;
+    }
+
+    GameObject _tabAudio, _tabGraphics, _tabControls, _tabAccount;
+
+    /// <summary>Aktif sekme altin plaka + koyu yazi, digerleri mavi (tasarim 06).</summary>
+    void PaintTab(GameObject tab, bool active)
+    {
+        if (tab == null) return;
+        var img = tab.GetComponent<Image>();
+        if (img != null)
+        {
+            img.color = active ? AccGold : SettingsBtn;
+            var btn = tab.GetComponent<Button>();
+            if (btn != null) btn.colors = UiKit.ButtonColors(img.color);
+        }
+        var lbl = tab.GetComponentInChildren<TextMeshProUGUI>();
+        if (lbl != null) lbl.color = active ? PlateInk : TextPrimary;
     }
 
     CyclerControl MakeCycler(GameObject parent, string name, float yOffset, string[] options, int startIndex, System.Action<int> onChanged)
@@ -1955,14 +2017,30 @@ public class MainMenuUI : MonoBehaviour
         rt.anchoredPosition = pos;
     }
 
+    /// <summary>
+    /// Tasarim 06'daki ses satiri: ustte solda etiket / sagda yuzde, altta tam genislikte
+    /// altin dolgulu ray. Onceki hali "etiket | kisa slider" seklinde tek satirdi ve yuzde
+    /// hic gosterilmiyordu.
+    /// </summary>
     Slider MakeSliderRow(GameObject parent, string label, float yOffset)
     {
-        // Etiket rect'i slider'ın sol kenarından (x=-35) önce bitmeli, yoksa son harf altında kalır
-        MakeTxt(parent, "lbl_" + label, label, 17, FontStyles.Normal, TextPrimary,
-            TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(160, 26), new Vector2(-130, yOffset));
+        const float rowW = 620f;
 
-        return MakeSlider(parent, "sl_" + label, 0f, 1f, 0.7f,
-            new Vector2(0.5f, 0.5f), new Vector2(50, yOffset), 170);
+        var name = MakeTxt(parent, "lbl_" + label, label, 22, FontStyles.Bold, TextPrimary,
+            TextAlignmentOptions.Left, new Vector2(0.5f, 0.5f), new Vector2(rowW * 0.6f, 28),
+            new Vector2(-rowW * 0.2f, yOffset + 26));
+        name.raycastTarget = false;
+
+        var pct = MakeTxt(parent, "pct_" + label, "", 22, FontStyles.Bold, UiTheme.LinkHover,
+            TextAlignmentOptions.Right, new Vector2(0.5f, 0.5f), new Vector2(rowW * 0.35f, 28),
+            new Vector2(rowW * 0.325f, yOffset + 26));
+        pct.raycastTarget = false;
+
+        var slider = MakeSlider(parent, "sl_" + label, 0f, 1f, 0.7f,
+            new Vector2(0.5f, 0.5f), new Vector2(0, yOffset - 8), rowW);
+        slider.onValueChanged.AddListener(v => pct.text = Mathf.RoundToInt(v * 100f) + "%");
+        pct.text = Mathf.RoundToInt(slider.value * 100f) + "%";
+        return slider;
     }
 
     Slider MakeSlider(GameObject parent, string name, float min, float max, float val,
@@ -1975,12 +2053,13 @@ public class MainMenuUI : MonoBehaviour
 
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin        = rt.anchorMax = anchor;
-        rt.sizeDelta        = new Vector2(width, 16);
+        rt.sizeDelta        = new Vector2(width, 24);
         rt.anchoredPosition = pos;
 
         // Bg
         var bgGO  = new GameObject("Background"); bgGO.transform.SetParent(go.transform, false);
-        var bgImg = bgGO.AddComponent<Image>(); bgImg.color = BarBg;
+        var bgImg = bgGO.AddComponent<Image>(); bgImg.color = SliderTrack;
+        UiKit.Round(bgImg, 2.6f);
         var bgRt  = bgImg.rectTransform;
         bgRt.anchorMin = Vector2.zero; bgRt.anchorMax = Vector2.one;
         bgRt.offsetMin = bgRt.offsetMax = Vector2.zero;
@@ -1991,7 +2070,8 @@ public class MainMenuUI : MonoBehaviour
         faRt.anchorMin = new Vector2(0, 0.25f); faRt.anchorMax = new Vector2(1, 0.75f);
         faRt.offsetMin = new Vector2(5, 0); faRt.offsetMax = new Vector2(-5, 0);
         var fillGO  = new GameObject("Fill"); fillGO.transform.SetParent(fillArea.transform, false);
-        var fillImg = fillGO.AddComponent<Image>(); fillImg.color = AccBlue;
+        var fillImg = fillGO.AddComponent<Image>(); fillImg.color = AccGold;
+        UiKit.Round(fillImg, 2.6f);
         var fillRt  = fillImg.rectTransform;
         fillRt.anchorMin = Vector2.zero; fillRt.anchorMax = new Vector2(1, 1);
         fillRt.offsetMin = fillRt.offsetMax = Vector2.zero;
@@ -2002,8 +2082,10 @@ public class MainMenuUI : MonoBehaviour
         haRt.anchorMin = Vector2.zero; haRt.anchorMax = Vector2.one;
         haRt.offsetMin = new Vector2(8, 0); haRt.offsetMax = new Vector2(-8, 0);
         var handleGO  = new GameObject("Handle"); handleGO.transform.SetParent(handleArea.transform, false);
-        var handleImg = handleGO.AddComponent<Image>(); handleImg.color = Color.white;
-        var handleRt  = handleImg.rectTransform; handleRt.sizeDelta = new Vector2(16, 26);
+        var handleImg = handleGO.AddComponent<Image>();
+        handleImg.sprite = UiKit.CircleSprite;
+        handleImg.color  = Color.white;
+        var handleRt  = handleImg.rectTransform; handleRt.sizeDelta = new Vector2(34, 34);
 
         sl.fillRect      = fillRt;
         sl.handleRect    = handleRt;

@@ -66,6 +66,12 @@ public static class UiTheme
     // ── Metin ────────────────────────────────────────────────────────────────
     /// <summary>Sari/acik zemin uzerindeki koyu yazi (tasarim: PLAY etiketi, "+" rozeti).</summary>
     public static readonly Color Ink         = Hex(0x26243A);
+
+    // Ayarlar ekrani (tasarim 06/07: mavi gradyan zemin + koyu lacivert bolum kartlari)
+    public static readonly Color SettingsTop   = Hex(0x216BE6);
+    public static readonly Color SettingsBot   = Hex(0x0E357F);
+    public static readonly Color SettingsCard  = Hex(0x09193F, 0.72f);
+    public static readonly Color SliderTrack   = Hex(0x0B1E45);
     public static readonly Color TextPrimary = Hex(0xEDEBF6);
     public static readonly Color TextDim     = Hex(0xA6B3D1);
     public static readonly Color TextMuted   = Hex(0x8A8FB0);
