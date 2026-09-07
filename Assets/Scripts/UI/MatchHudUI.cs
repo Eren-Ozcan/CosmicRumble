@@ -24,7 +24,8 @@ public class MatchHudUI : MonoBehaviour
     RectTransform   _turnPlate;
     Image           _turnPlateImg;
 
-    int  _lastTurnIndex = -99;
+    int   _lastTurnIndex = -99;
+    float _nextBannerRefresh;
     bool _slotLabelsDone;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -262,10 +263,16 @@ public class MatchHudUI : MonoBehaviour
         var tm = TurnManager.Instance;
         if (tm == null || _turnPlate == null) return;
 
-        if (tm.CurrentTurnIndex == _lastTurnIndex) return;
-        _lastTurnIndex = tm.CurrentTurnIndex;
+        // Tur sahibi okunur, ateş eden değil: TurnManager.CurrentShooter yalnızca silah
+        // onaylanmış/mermi havadayken dolu olduğu için band turun büyük bölümünde "WAITING"de
+        // kalırdı. Ad ağ değişkeninden geç gelebildiği için sıra değişmese de yarım saniyede
+        // bir tazelenir (her kare string ayırmadan).
+        bool turnChanged = tm.CurrentTurnIndex != _lastTurnIndex;
+        if (!turnChanged && Time.unscaledTime < _nextBannerRefresh) return;
+        _lastTurnIndex     = tm.CurrentTurnIndex;
+        _nextBannerRefresh = Time.unscaledTime + 0.5f;
 
-        var shooter = tm.CurrentShooter;
+        var shooter = tm.CurrentCharacter;
         if (shooter == null)
         {
             _turnName.text  = "";

@@ -95,6 +95,14 @@ public class TurnManager : NetworkBehaviour
     /// için bir sonraki atışa kadar değişmez). CombatEventReporter'ın dostane ateş filtresi için.</summary>
     public GravityBody CurrentShooter => _currentShooter;
 
+    /// <summary>Sırası gelen karakter (turun sahibi). <see cref="CurrentShooter"/>'dan farkı:
+    /// shooter yalnızca silah onaylanmış/mermi havadayken doludur, bu ise tur boyunca doludur —
+    /// "sıra kimde" sorusunu soran UI bunu okumalı.</summary>
+    public GravityBody CurrentCharacter =>
+        (characters != null && currentIndex >= 0 && currentIndex < characters.Count)
+            ? characters[currentIndex]
+            : null;
+
     /// <summary>ProjectileBase.Start() tarafından çağrılır.</summary>
     public static void NotifyProjectileLaunched()
     {
