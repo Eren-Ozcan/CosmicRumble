@@ -201,6 +201,10 @@ public class WardrobePanelUI : MonoBehaviour
             new Vector2(76, 76), new Vector2(0.5f, 0.755f));
         var img = go.GetComponent<Image>();
         UiKit.Round(img, 1.4f);
+        // Plakanin kendi rengi koyu; konturu ve golgesi olmadan kitteki X butonu/kartlarin
+        // yanında duz siyah bir dikdortgen gibi duruyordu. Kapatma butonuyla ayni kaplama.
+        UiKit.Stroke(go, StrokeCol, 1.4f);
+        UiKit.Shadow(go, 3f, 0.4f);
         UiKit.BottomEdge(go, UiKit.EdgeOf(UiTheme.Plate), 5f, 1.4f);
 
         var btn = go.AddComponent<Button>();
@@ -210,7 +214,7 @@ public class WardrobePanelUI : MonoBehaviour
         UiKit.Press(go);
         UiKit.Hover(go);
 
-        var lbl = MakeTxt(go, "Lbl", glyph, 22, UiTheme.TextPrimary, new Vector2(0.5f, 0.5f), Vector2.zero);
+        var lbl = MakeTxt(go, "Lbl", glyph, 30, UiTheme.TextPrimary, new Vector2(0.5f, 0.5f), Vector2.zero);
         lbl.fontStyle     = FontStyles.Bold;
         lbl.raycastTarget = false;
         StretchFull(lbl.rectTransform);
