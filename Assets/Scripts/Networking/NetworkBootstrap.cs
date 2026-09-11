@@ -37,6 +37,11 @@ namespace CosmicRumble.Networking
         /// </summary>
         public bool IsRankedMatch { get; private set; }
 
+        /// <summary>Kurulmuş bir oturumu dereceli olmaktan çıkarır. Hızlı eşleşmede rakip
+        /// bulunamayıp maç bota karşı başlatıldığında çağrılır — bota karşı kupa kazanmak
+        /// sıralamayı anlamsız kılardı.</summary>
+        public void MarkUnranked() => IsRankedMatch = false;
+
         [Header("Reconnect (client-tarafı, kendi bağlantımız koparsa)")]
         [Tooltip("Beklenmedik kopuşta kaç kez yeniden katılma denenecek. Host taraflı " +
                  "NetworkPlayerSpawner artık disconnect anında RemoveDisconnectedPeerAsync ile " +

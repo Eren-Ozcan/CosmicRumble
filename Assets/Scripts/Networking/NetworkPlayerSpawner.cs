@@ -168,8 +168,55 @@ namespace CosmicRumble.Networking
                 i++;
             }
 
+            SpawnFillBots(nm, slots, allPlayers, modeDef, isTeamMode, ref i);
+
             TurnManager.Instance?.RegisterPlayers(allPlayers);
             TurnManager.Instance?.BeginMatch();
+        }
+
+        /// <summary>Hızlı eşleşmede rakip çıkmadığında maçı tek başına oynanır kılan botlar.
+        /// Sunucu sahipliğinde spawn edilirler (bir client'ın onları sürmesi yetkisiz olurdu) ve
+        /// BotBrain yalnızca sunucuda çalışır. Maçın kendisi bu durumda dereceli DEĞİLDİR —
+        /// bkz. OnlineLobbyPanelUI bot geri dönüşü.</summary>
+        void SpawnFillBots(NetworkManager nm, List<SpawnPositioning.SpawnSlot> slots,
+                           List<GravityBody> allPlayers, GameModeDefinition modeDef,
+                           bool isTeamMode, ref int i)
+        {
+            int wanted = LobbyData.OnlineBotFill;
+            LobbyData.OnlineBotFill = 0;   // tek maçlık — sonraki maça sızmasın
+            if (wanted <= 0) return;
+
+            for (int b = 0; b < wanted; b++)
+            {
+                var s = i < slots.Count
+                    ? slots[i]
+                    : new SpawnPositioning.SpawnSlot { position = Vector3.up * 3f, upDir = Vector3.up };
+
+                var go = Instantiate(playerPrefab, s.position, Quaternion.identity);
+                go.name         = $"Bot_{b + 1}";
+                go.transform.up = s.upDir;
+
+                var netObj = go.GetComponent<NetworkObject>();
+                if (netObj == null) { Destroy(go); i++; continue; }
+                netObj.Spawn();   // sunucu sahipliği: SpawnAsPlayerObject DEĞİL, botun client'ı yok
+
+                var gb = go.GetComponent<GravityBody>();
+                if (gb != null)
+                {
+                    gb.isBot        = true;
+                    gb.teamId.Value = isTeamMode ? (i % modeDef.TeamCount) : i;
+                    gb.ApplyTeamColor();
+                    gb.playerName.Value = go.name;   // isim etiketi her makinede replike olsun
+                    allPlayers.Add(gb);
+                }
+
+                // BotBrain ağa bağlı bir bileşen değil; yalnızca sunucuda gerekiyor ve
+                // zaten yalnızca sunucuda karar veriyor (bkz. BotBrain.HasAuthority).
+                if (go.GetComponent<BotBrain>() == null) go.AddComponent<BotBrain>();
+
+                Debug.Log($"[NET] Spawned fill bot {go.name} at {s.position}");
+                i++;
+            }
         }
 
         // ── Host migration: yeni host'ta maçı yeniden kurma ────────────────────────────────

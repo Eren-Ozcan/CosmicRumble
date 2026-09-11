@@ -26,6 +26,12 @@ public static class LobbyData
     /// kalır, hiçbir zaman hareket/ateş etmez — sadece hedef), maç oyuncu sayısı 1 diye bitmez.</summary>
     public static bool IsTraining = false;
 
+    /// <summary>Çevrimiçi maçta host'un ayrıca spawn edeceği bot sayısı. Hızlı eşleşmede
+    /// rakip bulunamayınca (bkz. OnlineLobbyPanelUI bot geri dönüşü) 1 olur; maç kurulunca
+    /// NetworkPlayerSpawner tüketip sıfırlar. Böyle kurulan maç DERECELİ DEĞİLDİR — bota karşı
+    /// kupa kazanmak kupa sistemini anlamsız kılardı.</summary>
+    public static int OnlineBotFill = 0;
+
     /// <summary>Bu maç bir arkadaş daveti (PartyLobbyPanelUI) ile mi kuruldu — arkadaşın PlayerId'si.
     /// Quick Match/hotseat'te null. TurnManager.FinishMatchLocally KOZMIK_EKIP için okuyup temizler.</summary>
     public static string FriendOpponentId = null;
