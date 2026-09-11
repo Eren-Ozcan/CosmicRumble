@@ -243,6 +243,15 @@ public class BotBrain : MonoBehaviour
                            System.Action<Shot> report)
     {
         var ignore = new HashSet<Collider2D>(GetComponentsInChildren<Collider2D>());
+
+        // Namlu ucunun ZATEN icinde oldugu collider'lar da yok sayilir. queriesStartInColliders
+        // acik oldugu icin boyle bir collider her simule atisin ILK linecast adiminda isabet
+        // dondururuyor; her aday ayni puani aliyor ve arama sessizce oluyor. Normalde bu kume bos
+        // (namlu yuzeyin disinda); yalnizca bot bir seyin icine gomuldugunde devreye giriyor ve
+        // orada "icinden cikamadigim seye carptim" demek yerine atisin yolunu izlemek dogru olan.
+        var atOrigin = Physics2D.OverlapPointAll(origin);
+        for (int k = 0; k < atOrigin.Length; k++)
+            if (atOrigin[k] != null) ignore.Add(atOrigin[k]);
         var best   = new Shot { valid = false, score = float.MaxValue };
         int tried  = 0;
 
