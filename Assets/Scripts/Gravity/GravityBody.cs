@@ -37,6 +37,18 @@ public class GravityBody : NetworkBehaviour
     /// </summary>
     [HideInInspector] public bool isBot = false;
 
+    /// <summary>Botun yurume girisi (-1..1) — insan oyuncunun klavye/dokunmatik ekseninin
+    /// yerine gecer. BotBrain her karede yazar, tur bitince 0'a doner.
+    /// Isaret duzeni klavyeyle ayni: +1 = MoveAxis yonu.</summary>
+    [HideInInspector] public float botMoveInput = 0f;
+
+    /// <summary>Botun bu karede ziplamak istedigi. BotBrain set eder, Update tuketir.</summary>
+    [HideInInspector] public bool botWantsJump = false;
+
+    /// <summary>Yuzey boyunca "pozitif yurume" yonu (yercekimine dik). BotBrain hedefe hangi
+    /// isaretle yurumesi gerektigini bundan cikarir; FixedUpdate'teki moveDir ile aynidir.</summary>
+    public Vector2 MoveAxis => new Vector2(_gravDir.y, -_gravDir.x);
+
     /// <summary>true iken yürüme ve zıplama inputu engellenir; silah ateşleme etkilenmez.</summary>
     [HideInInspector] public bool movementLocked = false;
 
@@ -203,6 +215,7 @@ public class GravityBody : NetworkBehaviour
         if (movementLocked)
         {
             cachedHorizontalInput = 0f;
+            botMoveInput = 0f;
             return;
         }
 
@@ -213,16 +226,31 @@ public class GravityBody : NetworkBehaviour
         KeyCode jumpKey  = cfg != null ? cfg.JumpKey      : KeyCode.Space;
 
         float h = 0f;
-        if (Input.GetKey(leftKey))  h += 1f;
-        if (Input.GetKey(rightKey)) h -= 1f;
-        // Mobilde klavye yok: ekran üstü ◀ ▶ butonları aynı isaret duzeniyle katkida bulunur
-        // (bkz. TouchControlsUI — masaustunde hic olusturulmaz, o yuzden burasi 0 kalir).
-        if (Mathf.Approximately(h, 0f)) h = TouchControlsUI.Horizontal;
+        bool  wantsJump;
+
+        if (isBot)
+        {
+            // Bot karakterler klavyeyi/dokunmatigi hic okumaz — yoksa hotseat'te insanin
+            // tuslari sira bottayken botu da surerdi. Tek giris kaynagi BotBrain.
+            h = Mathf.Clamp(botMoveInput, -1f, 1f);
+            wantsJump = botWantsJump;
+            botWantsJump = false;
+        }
+        else
+        {
+            if (Input.GetKey(leftKey))  h += 1f;
+            if (Input.GetKey(rightKey)) h -= 1f;
+            // Mobilde klavye yok: ekran üstü ◀ ▶ butonları aynı isaret duzeniyle katkida bulunur
+            // (bkz. TouchControlsUI — masaustunde hic olusturulmaz, o yuzden burasi 0 kalir).
+            if (Mathf.Approximately(h, 0f)) h = TouchControlsUI.Horizontal;
+            wantsJump = Input.GetKeyDown(jumpKey) || TouchControlsUI.ConsumeJump();
+        }
+
         cachedHorizontalInput = h;
 
         bool grounded = _isGrounded;
 
-        if (cooldownTimer <= 0f && (Input.GetKeyDown(jumpKey) || TouchControlsUI.ConsumeJump()))
+        if (cooldownTimer <= 0f && wantsJump)
         {
             if (grounded)
             {
@@ -496,6 +524,8 @@ public class GravityBody : NetworkBehaviour
     {
         cooldownTimer   = 0f;
         nextJumpIsSuper = false;
+        botMoveInput    = 0f;
+        botWantsJump    = false;
         ZeroHorizontalVelocity();
         jumpCount    = 0;
         canDoubleJump = true;
