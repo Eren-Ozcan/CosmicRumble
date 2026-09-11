@@ -10,7 +10,8 @@ using CosmicRumble.Localization;
 /// Online eşleşme paneli — tek akış: HIZLI EŞLEŞME (dereceli). Eski "KOD OLUŞTUR"/"KODA KATIL"
 /// kartları kaldırıldı; arkadaşla oynamak artık SOSYAL panelindeki davet sistemiyle yapılıyor
 /// (PartyLobbyPanelUI). Host tarafı 2. oyuncu bağlanınca (server olarak) Game sahnesini
-/// yükler — NGO bu yüklemeyi bağlı client'a otomatik yayar.
+/// yükler — NGO bu yüklemeyi bağlı client'a otomatik yayar. Kimse gelmezse
+/// <see cref="BotFallbackSeconds"/> sonunda maç bir bota karşı başlar (dereceli değil).
 /// </summary>
 public class OnlineLobbyPanelUI : MonoBehaviour
 {
@@ -29,6 +30,11 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     TextMeshProUGUI _quickMatchStatusText;
     bool            _waitingForOpponent;
     bool            _connectionActive;   // QuickMatch tıklandıktan sonra, LeaveSessionAsync'e kadar true
+    Coroutine       _botFallback;
+
+    /// <summary>Rakip beklerken bu süre dolarsa maç bir bota karşı başlar. Havuzda kimse
+    /// yokken oyuncuyu süresiz bekletmek, oyunun tek başına oynanamaz görünmesi demekti.</summary>
+    const float BotFallbackSeconds = 30f;
 
     void Awake()
     {
@@ -109,6 +115,7 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             _waitingForOpponent = true;
             _quickMatchCancelBtn.SetActive(true);
             NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+            _botFallback = StartCoroutine(BotFallbackCountdown());
         }
         else
         {
@@ -134,8 +141,42 @@ public class OnlineLobbyPanelUI : MonoBehaviour
         if (NetworkManager.Singleton.ConnectedClientsIds.Count < 2) return;
 
         _waitingForOpponent = false;
+        StopBotFallback();
         NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
         NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
+    }
+
+    /// <summary>Rakip beklerken geri sayar; süre dolunca maçı bir bota karşı başlatır.
+    /// Bu maç DERECELİ DEĞİLDİR — bota karşı kupa kazanmak sıralamayı anlamsız kılardı.</summary>
+    System.Collections.IEnumerator BotFallbackCountdown()
+    {
+        for (float left = BotFallbackSeconds; left > 0f; left -= 1f)
+        {
+            _quickMatchStatusText.text =
+                string.Format(Loc.T("Waiting for opponent... ({0})"), Mathf.CeilToInt(left));
+            yield return new WaitForSeconds(1f);
+        }
+
+        if (!_waitingForOpponent || NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer) yield break;
+
+        _quickMatchStatusText.text = Loc.T("No opponent found - starting against a bot");
+        _waitingForOpponent = false;
+        _botFallback        = null;
+        NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+
+        LobbyData.OnlineBotFill = 1;
+        NetworkBootstrap.Instance?.MarkUnranked();
+
+        yield return new WaitForSeconds(1f);
+        NetworkManager.Singleton.SceneManager.LoadScene(SceneNames.Game, LoadSceneMode.Single);
+    }
+
+    void StopBotFallback()
+    {
+        if (_botFallback == null) return;
+        StopCoroutine(_botFallback);
+        _botFallback = null;
     }
 
     // Maç başladıktan sonraki bağlantı kopmaları artık burada değil,
@@ -148,6 +189,8 @@ public class OnlineLobbyPanelUI : MonoBehaviour
     {
         if (NetworkManager.Singleton != null)
             NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        StopBotFallback();
+        LobbyData.OnlineBotFill = 0;
         _waitingForOpponent = false;
         _connectionActive = false;
         await NetworkBootstrap.Instance.LeaveSessionAsync();
