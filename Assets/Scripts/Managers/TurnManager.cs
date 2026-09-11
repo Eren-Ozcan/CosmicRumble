@@ -7,7 +7,7 @@ using CosmicRumble.Economy;
 
 // +100: GameInitializer [+10] RegisterPlayers'ı tamamladıktan sonra çalışır.
 [DefaultExecutionOrder(100)]
-public class TurnManager : NetworkBehaviour
+public partial class TurnManager : NetworkBehaviour
 {
     public static TurnManager Instance { get; private set; }
 
@@ -265,6 +265,7 @@ public class TurnManager : NetworkBehaviour
             turnDuration = GameConfig.Instance.TurnDuration;
 
         _matchStartTime = Time.time;
+        BeginAttestation();
         AchievementEvents.FirePlayerCountInMatch(characters.Count);
         ActivateCharacter(0);
     }
@@ -567,6 +568,9 @@ public class TurnManager : NetworkBehaviour
             ulong[] winnerClientIds = hasWinner
                 ? winningTeam.ConvertAll(gb => gb.OwnerClientId).ToArray()
                 : Array.Empty<ulong>();
+            // Kadro sonuçtan ÖNCE gitmeli: her iki taraf da kupa bildirimini yaparken rakibinin
+            // gerçek PlayerId'sini bilmek zorunda (bkz. TurnManager.Attestation).
+            BroadcastRoster();
             AnnounceMatchResultClientRpc(winnerClientIds, winnerName ?? "", matchDuration, _totalShots);
         }
         else
@@ -596,7 +600,13 @@ public class TurnManager : NetworkBehaviour
         bool ranked = CosmicRumble.Networking.NetworkBootstrap.Instance != null &&
                       CosmicRumble.Networking.NetworkBootstrap.Instance.IsRankedMatch;
         if (!isDraw && ranked)
-            CosmicRumble.Cloud.LeaderboardManager.Instance?.ReportOnlineMatchResult(localWon);
+        {
+            // Kendi sonucumuzu, maç kimliği ve rakibin gerçek PlayerId'siyle bildiririz; karşı
+            // taraf da kendi bildirimini yapar ve kupa ancak ikisi uyuşursa hareket eder
+            // (bkz. CosmicRumble.Cloud.MatchAttestation).
+            CosmicRumble.Cloud.LeaderboardManager.Instance?.ReportOnlineMatchResult(
+                localWon, MatchId, OpponentPlayerId());
+        }
 
         FinishMatchLocally(localWon, string.IsNullOrEmpty(winnerName) ? null : winnerName,
                            matchDuration, totalShots, ranked && !isDraw);
