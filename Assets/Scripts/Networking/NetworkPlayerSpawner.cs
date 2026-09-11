@@ -124,9 +124,17 @@ namespace CosmicRumble.Networking
 
             var sortedPlanets = SpawnPositioning.GetSortedPlanets();
             var clientIds = nm.ConnectedClientsIds;
-            var slots = SpawnPositioning.CalculateSpawnPositions(clientIds.Count, sortedPlanets);
 
-            while (slots.Count < clientIds.Count)
+            // Dolgu botlari da bir yuzey slotu hak ediyor. Slot sayisi yalnizca bagli client'lara
+            // gore hesaplaninca tek kisilik bir hizli maçta bota slot kalmiyor ve yedek konuma
+            // ((0,3,0) — gezegenin ICI) dusuyordu: bot gezegene gomulu dogdugu icin her simule
+            // atisi namlu ucunda katiya carpiyor ve butun adaylar ayni puanda beraberlige giriyordu
+            // (cihaz logunda on turda da miss=12.86). Slotlar oyuncu + bot toplamina gore uretilir.
+            int botFill     = Mathf.Max(0, LobbyData.OnlineBotFill);
+            int totalSpawns = clientIds.Count + botFill;
+            var slots = SpawnPositioning.CalculateSpawnPositions(totalSpawns, sortedPlanets);
+
+            while (slots.Count < totalSpawns)
                 slots.Add(new SpawnPositioning.SpawnSlot { position = Vector3.up * 3f, upDir = Vector3.up });
 
             // Takım modlarında (2v2 vb.) katılım sırasına göre round-robin dağıtılır (i % TeamCount)
@@ -168,7 +176,7 @@ namespace CosmicRumble.Networking
                 i++;
             }
 
-            SpawnFillBots(nm, slots, allPlayers, modeDef, isTeamMode, ref i);
+            SpawnFillBots(botFill, slots, allPlayers, modeDef, isTeamMode, ref i);
 
             TurnManager.Instance?.RegisterPlayers(allPlayers);
             TurnManager.Instance?.BeginMatch();
@@ -178,11 +186,10 @@ namespace CosmicRumble.Networking
         /// Sunucu sahipliğinde spawn edilirler (bir client'ın onları sürmesi yetkisiz olurdu) ve
         /// BotBrain yalnızca sunucuda çalışır. Maçın kendisi bu durumda dereceli DEĞİLDİR —
         /// bkz. OnlineLobbyPanelUI bot geri dönüşü.</summary>
-        void SpawnFillBots(NetworkManager nm, List<SpawnPositioning.SpawnSlot> slots,
+        void SpawnFillBots(int wanted, List<SpawnPositioning.SpawnSlot> slots,
                            List<GravityBody> allPlayers, GameModeDefinition modeDef,
                            bool isTeamMode, ref int i)
         {
-            int wanted = LobbyData.OnlineBotFill;
             LobbyData.OnlineBotFill = 0;   // tek maçlık — sonraki maça sızmasın
             if (wanted <= 0) return;
 
