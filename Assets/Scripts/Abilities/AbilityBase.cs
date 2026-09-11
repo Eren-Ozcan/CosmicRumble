@@ -141,6 +141,26 @@ public abstract class AbilityBase : NetworkBehaviour, IAbilitySelectable, ICoold
         TurnManager.NotifyWeaponConfirmed();
     }
 
+    // ── Bot girisi ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Botun programatik atesi. Insan oyuncu icin ates yolu tamamen pointer surukleme
+    /// uzerinden isliyor (OnFireUpdate); botun pointer'i olmadigi icin ayni ic ates
+    /// cagrisina dogrudan bir giris gerekiyor. Nisan yonu ve 0..1 guc verilir, silah
+    /// bunu kendi maxDragDistance/powerMultiplier'ina cevirir.
+    /// </summary>
+    /// <returns>Ates edildiyse true; cephane yoksa ya da silah botu desteklemiyorsa false.</returns>
+    public virtual bool BotFire(Vector2 aimDir, float power01) => false;
+
+    /// <summary>Botun bu silahi kullanabilmesi icin gereken cephane var mi.</summary>
+    public virtual bool BotHasAmmo => false;
+
+    /// <summary>Tam gucte (power01 = 1) cikis hizi — botun yorunge simulasyonu bunu kullanir.</summary>
+    public virtual float BotMuzzleSpeed => 0f;
+
+    /// <summary>Merminin dogdugu nokta — simulasyon buradan baslar.</summary>
+    public virtual Transform BotFirePoint => null;
+
     // ── ICooldownResettable ──────────────────────────────────────
     public virtual void ResetCooldown()
     {

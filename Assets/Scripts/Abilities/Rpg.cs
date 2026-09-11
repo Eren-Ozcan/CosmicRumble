@@ -85,6 +85,31 @@ public class RPG : AbilityBase
         }
     }
 
+    // ── Bot girisi ───────────────────────────────────────────────
+
+    public override bool BotHasAmmo => charAbilities == null || charAbilities.GetRpgAmmoRemaining() > 0;
+
+    public override float     BotMuzzleSpeed => maxDragDistance * powerMultiplier;
+    public override Transform BotFirePoint   => firePoint;
+
+    /// <summary>Bot atesi: pointer suruklemesi yerine dogrudan yon + guc.</summary>
+    public override bool BotFire(Vector2 aimDir, float power01)
+    {
+        if (aimDir.sqrMagnitude < 0.0001f) return false;
+        if (charAbilities != null && !charAbilities.UseRpg()) return false;
+
+        Vector2 initial = aimDir.normalized * Mathf.Clamp01(power01) * maxDragDistance * powerMultiplier;
+        if (IsSpawned) FireServerRpc(initial);
+        else           SpawnAndInit(initial);
+
+        cooldownTimer = cooldownTime;
+        charAbilities?.OnAbilityConsumed();
+        CancelAim();
+        fireAllowed = false;
+        isSelected  = false;
+        return true;
+    }
+
     private void Fire()
     {
         Vector2 pull = dragStart - PointerWorldPosition;
