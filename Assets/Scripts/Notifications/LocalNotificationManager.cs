@@ -77,7 +77,7 @@ namespace CosmicRumble.Notifications
                 // ~20 saat sonra — UTC gün değişiminden (streak'in gerçek kırılma anı) önce bir
                 // hatırlatma payı bırakır, saniyeye kadar kesin hesap gerekmiyor (diğer mobil
                 // oyunlardaki "yaklaşık bir gün sonra" hatırlatma deseniyle aynı).
-                NotificationCenter.ScheduleNotification(n, new NotificationIntervalSchedule(System.TimeSpan.FromHours(20)));
+                NotificationCenter.ScheduleNotification(n, new NotificationIntervalSchedule(StreakDelay()));
             }
 
             if (Economy.ChestManager.Instance != null && Economy.ChestManager.Instance.GetRemainingChests() > 0)
@@ -90,6 +90,28 @@ namespace CosmicRumble.Notifications
                 };
                 NotificationCenter.ScheduleNotification(n, new NotificationIntervalSchedule(System.TimeSpan.FromHours(4)));
             }
+#endif
+        }
+
+        /// <summary>
+        /// Streak hatırlatıcısının gecikmesi. Android'de kesin (exact) alarm kullanılamıyorsa
+        /// AlarmManager alarmı istenen gecikmenin %75'i kadar geciktirebiliyor: 20 saatlik bir alarm
+        /// pratikte 35 saate kayıyor ve hatırlatma streak kırıldıktan SONRA düşüyor. Kesin alarm
+        /// yoksa gecikmeyi 13 saate çekiyoruz — en kötü durumda bile (13 + %75 = ~22.7 saat)
+        /// hatırlatma gün değişiminden önce düşer.
+        ///
+        /// Kesin alarm için SCHEDULE_EXACT_ALARM izni bilerek İSTENMİYOR: Play politikası bu izni
+        /// çekirdek işlevi alarm/takvim olan uygulamalara ayırıyor, bir oyun için reddedilir.
+        /// Proje ayarı "ExactWhenAvailable" — izin gerektirmeyen Android 11 ve öncesinde kesin,
+        /// Android 12+ üzerinde otomatik olarak yaklaşık zamanlamaya düşer.
+        /// </summary>
+        static System.TimeSpan StreakDelay()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            bool exact = Unity.Notifications.Android.AndroidNotificationCenter.UsingExactScheduling;
+            return System.TimeSpan.FromHours(exact ? 20 : 13);
+#else
+            return System.TimeSpan.FromHours(20);
 #endif
         }
 
