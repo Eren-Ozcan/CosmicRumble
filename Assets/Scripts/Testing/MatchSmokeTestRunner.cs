@@ -206,6 +206,48 @@ public class MatchSmokeTestRunner : MonoBehaviour
         }
 
 
+        // -- 2b. OGRETMEN: mentor bagi + kredi olayi --------------------------
+        // Basarim MENTORUN cihazinda acilir ama kosul OGRENCININ cihazinda gerceklesir; iki
+        // cihazli akisin kendisi ancak iki gercek surecle dogrulanabilir, burada test edilen
+        // her iki YARI: (a) mentor bagi dogru kosullarda kuruluyor mu, (b) kredi olayi gelince
+        // basarim aciliyor mu.
+        Step("OGRETMEN: mentor bagi ve kredi olayi");
+        {
+            string savedMentor = PlayerPrefs.GetString("cr_mentor_id", "");
+            int    savedSent   = PlayerPrefs.GetInt("cr_mentor_credit_sent", 0);
+            int    savedSeen   = PlayerPrefs.GetInt("cr_tutorial_seen", 0);
+
+            // (a) Egitimi gormus biri "yeni oyuncu" degildir — bag KURULMAMALI.
+            PlayerPrefs.DeleteKey("cr_mentor_id");
+            PlayerPrefs.SetInt("cr_tutorial_seen", 1);
+            CosmicRumble.Social.MentorLink.RecordMentor("mentor_A");
+            Check(string.IsNullOrEmpty(CosmicRumble.Social.MentorLink.MentorId),
+                  "egitimi gormus oyuncuya mentor atanmiyor");
+
+            // (b) Yeni oyuncuya bag kurulur ve ILK davet eden mentor kalir.
+            PlayerPrefs.SetInt("cr_tutorial_seen", 0);
+            CosmicRumble.Social.MentorLink.RecordMentor("mentor_A");
+            CosmicRumble.Social.MentorLink.RecordMentor("mentor_B");
+            Check(CosmicRumble.Social.MentorLink.MentorId == "mentor_A",
+                  "ilk davet eden mentor kaliyor (gelen: " +
+                  (CosmicRumble.Social.MentorLink.MentorId ?? "yok") + ")");
+
+            // (c) Kredi olayi mentorun cihazinda basarimi aciyor mu.
+            var am = CosmicRumble.Achievements.AchievementManager.Instance;
+            if (am == null) Fail("AchievementManager yok - OGRETMEN kontrol edilemiyor");
+            else
+            {
+                CosmicRumble.Achievements.AchievementEvents.FireMenteeTutorialCompleted();
+                yield return null;
+                Check(am.IsUnlocked("OGRETMEN"), "kredi olayi gelince OGRETMEN acildi");
+            }
+
+            PlayerPrefs.SetString("cr_mentor_id", savedMentor);
+            PlayerPrefs.SetInt("cr_mentor_credit_sent", savedSent);
+            PlayerPrefs.SetInt("cr_tutorial_seen", savedSeen);
+            PlayerPrefs.Save();
+        }
+
         // -- 3. Bot turu (BotBrain gercekten oynuyor mu) ----------------------
         // Botlar uzun sure tamamen pasifti; simdi BotBrain hedef secip yorunge cozup ates
         // ediyor. Testin ayirt ettigi sey su: bot turu SURE DOLARAK degil, botun kendi
