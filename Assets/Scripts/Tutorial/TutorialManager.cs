@@ -90,6 +90,10 @@ namespace CosmicRumble.Tutorial
             _root.SetActive(false);
             PlayerPrefs.SetInt(SeenKey, 1);
             PlayerPrefs.Save();
+
+            // OGRETMEN: bizi davet eden bir mentor varsa krediyi ona yolla. Mentor o an
+            // cevrimdisiysa gonderim tutmaz ve sonraki acilista yeniden denenir.
+            CosmicRumble.Social.MentorLink.TryDeliverCredit();
         }
 
         void BuildUI()

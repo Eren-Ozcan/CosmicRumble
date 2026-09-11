@@ -28,6 +28,15 @@ namespace CosmicRumble.Social
         public string fromName;
     }
 
+    /// <summary>Öğrencinin eğitimi tamamladığını mentoruna bildiren kredi mesajı
+    /// (bkz. <see cref="MentorLink"/> — OGRETMEN başarımı).</summary>
+    [Serializable]
+    public class MentorCreditMessage
+    {
+        public string type = "mentor_credit";
+        public string fromName;
+    }
+
     /// <summary>
     /// UGS Friends servisi sarmalayıcısı. Kurallar:
     /// - InitializeAsync yalnızca oturum açıldıktan SONRA çağrılabilir; hesap değişiminde
@@ -100,6 +109,10 @@ namespace CosmicRumble.Social
                 SubscribeEvents();
                 await SetPresenceAsync(Availability.Online, CurrentActivityStatus());
                 OnRelationshipsChanged?.Invoke();
+
+                // OGRETMEN: mentor krediyi almadan (o an cevrimdisiydi) kaldiysa burada
+                // yeniden denenir — servis ancak simdi hazir oldu.
+                MentorLink.TryDeliverCredit();
             }
             catch (Exception e)
             {
@@ -125,10 +138,21 @@ namespace CosmicRumble.Social
         {
             try
             {
+                // Mesajın hangi tür olduğu yalnızca gövdesindeki "type" alanından anlaşılıyor;
+                // önce davet olarak okunur, tutmazsa mentor kredisi olarak denenir.
                 var invite = e.GetAs<MatchInviteMessage>();
-                if (invite == null || invite.type != "match_invite" || string.IsNullOrEmpty(invite.code))
+                if (invite != null && invite.type == "match_invite" && !string.IsNullOrEmpty(invite.code))
+                {
+                    OnMatchInvite?.Invoke(invite, e.UserId);
                     return;
-                OnMatchInvite?.Invoke(invite, e.UserId);
+                }
+
+                var credit = e.GetAs<MentorCreditMessage>();
+                if (credit != null && credit.type == "mentor_credit")
+                {
+                    // OGRETMEN: davet ettiğimiz yeni oyuncu eğitimi bitirdi.
+                    CosmicRumble.Achievements.AchievementEvents.FireMenteeTutorialCompleted();
+                }
             }
             catch (Exception ex)
             {
@@ -247,6 +271,20 @@ namespace CosmicRumble.Social
                 return (true, null);
             }
             catch (Exception e) { return (false, FriendlyError(e)); }
+        }
+
+        /// <summary>Mentora "davet ettiğin oyuncu eğitimi bitirdi" kredisini yollar.
+        /// Yalnızca ONLINE mentora ulaşır; ulaşmazsa MentorLink sonraki açılışta yeniden dener.</summary>
+        public async Task<bool> SendMentorCreditAsync(string mentorId)
+        {
+            if (!IsAvailable || string.IsNullOrEmpty(mentorId)) return false;
+            try
+            {
+                await FriendsService.Instance.MessageAsync(mentorId,
+                    new MentorCreditMessage { fromName = PlayerIdentity.Get() });
+                return true;
+            }
+            catch { return false; }
         }
 
         public async Task SetPresenceAsync(Availability availability, string status)

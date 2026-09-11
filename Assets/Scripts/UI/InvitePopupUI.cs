@@ -85,6 +85,10 @@ public class InvitePopupUI : MonoBehaviour
         bool ok = await NetworkBootstrap.Instance.JoinSessionAsync(_pendingCode);
         if (ok)
         {
+            // OGRETMEN: daveti kabul eden oyuncu HENUZ egitimi gormemisse davet eden kisi onun
+            // mentoru sayilir; egitimi bitirdiginde krediyi ona yollar (bkz. MentorLink).
+            CosmicRumble.Social.MentorLink.RecordMentor(_pendingFromId);
+
             _root.SetActive(false);
             PartyLobbyPanelUI.Instance?.ShowAsClient(_pendingFromName, _pendingFromId);
         }
