@@ -66,7 +66,12 @@ public class AuthManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-#if CR_DEV_CLIENT
+    // Cok-instance ayrimi YALNIZCA masaustunde anlamli: host migration testi ayni makinede
+    // ayni .exe'nin birden cok kopyasini calistiriyor. Android'de tek kopya var ve komut
+    // satirinda -logFile de yok, dolayisiyla ayrim process id'ye dusuyordu — her soguk
+    // acilis YENI bir profil/takma ad uretiyor, oyuncu her seferinde bastan basliyordu
+    // (telefonda "Meteor277" force-stop sonrasi "Roket476" olarak geri geldi).
+#if CR_DEV_CLIENT && !UNITY_ANDROID
     /// <summary>Bu process için kararlı, tekrar başlatmalarda AYNI kalan bir Authentication
     /// profile adı üretir — komut satırındaki <c>-logFile</c> argümanını kullanır (bkz.
     /// docs/HOST_MIGRATION_PLAN.md test akışı: hm01_host.log/hm01_client2.log/hm01_client3.log

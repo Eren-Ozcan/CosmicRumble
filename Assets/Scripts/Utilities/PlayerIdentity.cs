@@ -8,7 +8,12 @@ using UnityEngine;
 /// </summary>
 public static class PlayerIdentity
 {
-#if CR_DEV_CLIENT
+    // Cok-instance ayrimi YALNIZCA masaustunde anlamli: host migration testi ayni makinede
+    // ayni .exe'nin birden cok kopyasini calistiriyor. Android'de tek kopya var ve komut
+    // satirinda -logFile de yok, dolayisiyla ayrim process id'ye dusuyordu — her soguk
+    // acilis YENI bir profil/takma ad uretiyor, oyuncu her seferinde bastan basliyordu
+    // (telefonda "Meteor277" force-stop sonrasi "Roket476" olarak geri geldi).
+#if CR_DEV_CLIENT && !UNITY_ANDROID
     // Host migration testi aynı makinede aynı .exe'nin birden çok kopyasını çalıştırıyor.
     // PlayerPrefs (Windows'ta registry, Company+Product'a göre anahtarlanır) tüm kopyalar
     // için AYNI konumu paylaşır — düzeltilmezse hepsi aynı üretilmiş takma adı ("Kozmo509"
