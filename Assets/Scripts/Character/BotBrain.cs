@@ -278,6 +278,11 @@ public class BotBrain : MonoBehaviour
             {
                 var col = hits[h].collider;
                 if (col == null || ignore.Contains(col)) continue;
+                // Trigger'lar yolu KESMEZ. Gezegenlerin cekim/ic alan trigger'lari tum oyun
+                // alanini kapliyor ve bot her zaman onlarin ICINDE duruyor; queriesStartInColliders
+                // acik oldugu icin ilk linecast adimi daima namlu ucunda bir "isabet" donduruyordu.
+                // Sonuc: her aday ayni puani (namlu ucu - hedef mesafesi) aliyor, arama olu kaliyor.
+                if (col.isTrigger) continue;
                 bool isTarget = col.transform.root == target.root;
                 return isTarget ? 0f : Vector2.Distance(hits[h].point, target.position);
             }
