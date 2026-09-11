@@ -60,6 +60,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnMatchLost           += HandleMatchLost;
             AchievementEvents.OnRankedMatchCompleted += HandleRankedMatchCompleted;
             AchievementEvents.OnFriendMatchCompleted += HandleFriendMatchCompleted;
+            AchievementEvents.OnMenteeTutorialCompleted += HandleMenteeTutorialCompleted;
             AchievementEvents.OnLeaderboardRankKnown += HandleLeaderboardRankKnown;
             AchievementEvents.OnDamageDealt         += HandleDamageDealt;
             AchievementEvents.OnDamageTaken         += HandleDamageTaken;
@@ -92,6 +93,7 @@ namespace CosmicRumble.Achievements
             AchievementEvents.OnMatchLost           -= HandleMatchLost;
             AchievementEvents.OnRankedMatchCompleted -= HandleRankedMatchCompleted;
             AchievementEvents.OnFriendMatchCompleted -= HandleFriendMatchCompleted;
+            AchievementEvents.OnMenteeTutorialCompleted -= HandleMenteeTutorialCompleted;
             AchievementEvents.OnLeaderboardRankKnown -= HandleLeaderboardRankKnown;
             AchievementEvents.OnDamageDealt         -= HandleDamageDealt;
             AchievementEvents.OnDamageTaken         -= HandleDamageTaken;
@@ -343,6 +345,14 @@ namespace CosmicRumble.Achievements
             if (am == null) return;
             int best = Mathf.Max(am.GetProgress("KOZMIK_EKIP"), count);
             am.UpdateProgress("KOZMIK_EKIP", best);
+        }
+
+        /// <summary>OGRETMEN: davet ettigimiz yeni oyuncu egitimi tamamladi. Kosul KARSI cihazda
+        /// gerceklesir; buraya FriendsManager'in aldigi kredi mesajiyla ulasir
+        /// (bkz. CosmicRumble.Social.MentorLink).</summary>
+        private void HandleMenteeTutorialCompleted()
+        {
+            AchievementManager.Instance?.UnlockAchievement("OGRETMEN");
         }
 
         /// <summary>BIR_NUMARA/KOZMIK_AVCI: dereceli maç sonrası öğrenilen 0-tabanlı leaderboard

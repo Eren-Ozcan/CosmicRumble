@@ -34,6 +34,7 @@ namespace CosmicRumble.Achievements
 
         // ── SOSYAL (kalan 6, 2026-07-10) ────────────────────────────────────
         public static event Action         OnRankedMatchCompleted; // REKABETCI — dereceli maç bitti (kazan/kaybet fark etmez, 1v1'de her sonuç "top 3" içinde)
+        public static event Action         OnMenteeTutorialCompleted; // OGRETMEN — davet ettigimiz yeni oyuncu egitimi bitirdi (FriendsManager mesajiyla gelir)
         public static event Action<string> OnFriendMatchCompleted; // KOZMIK_EKIP — arkadaş daveti ile kurulan maç bitti, arkadaşın PlayerId'si
         public static event Action<int>    OnLeaderboardRankKnown; // BIR_NUMARA/KOZMIK_AVCI — dereceli maç sonrası öğrenilen 0-tabanlı sıralama
 
@@ -65,6 +66,7 @@ namespace CosmicRumble.Achievements
         public static void FireShieldBlocked(int amount)         => OnShieldBlocked?.Invoke(amount);
         public static void FireRankedMatchCompleted()             => OnRankedMatchCompleted?.Invoke();
         public static void FireFriendMatchCompleted(string friendId) => OnFriendMatchCompleted?.Invoke(friendId);
+        public static void FireMenteeTutorialCompleted()          => OnMenteeTutorialCompleted?.Invoke();
         public static void FireLeaderboardRankKnown(int rank)     => OnLeaderboardRankKnown?.Invoke(rank);
     }
 }
