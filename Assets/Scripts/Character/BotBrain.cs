@@ -31,8 +31,11 @@ public class BotBrain : MonoBehaviour
     [Tooltip("Bu mesafenin üstünde hedefe doğru yürümeyi dener.")]
     public float walkIfFartherThan = 6f;
 
-    [Tooltip("Tek turda en fazla bu kadar saniye yürür.")]
-    public float maxWalkSeconds = 1.2f;
+    [Tooltip("Tek turda toplam en fazla bu kadar saniye yürür (yaklaşma + yeniden konumlanma).")]
+    public float maxWalkSeconds = 3.5f;
+
+    [Tooltip("Bu kadar birimden yakına düşen atış isabet sayılır; daha kötüyse bot yeniden konumlanıp tekrar arar.")]
+    public float acceptableMiss = 2.5f;
 
     // ── Simülasyon sabitleri ──────────────────────────────────────────────
 
@@ -102,8 +105,9 @@ public class BotBrain : MonoBehaviour
         if (target == null) { EndTurn(); yield break; }
 
         // 1) Çok uzaktaysa yüzey boyunca hedefe doğru biraz yaklaş.
+        float walkBudget = maxWalkSeconds;
         if (Vector2.Distance(transform.position, target.position) > walkIfFartherThan)
-            yield return WalkToward(target);
+            yield return WalkToward(target, walkBudget, stopWhenClose: true, b => walkBudget = b);
 
         // 2) Kullanılabilir ilk silahı seç.
         var weapon = PickWeapon();
@@ -113,6 +117,19 @@ public class BotBrain : MonoBehaviour
         Vector2 origin = FireOrigin(weapon);
         Shot best = default;
         yield return SearchShot(origin, target, weapon, r => best = r);
+
+        // 3b) Durduğu yerden temiz bir çözüm yoksa (tipik olarak gezegen yolu kesiyor) yürüyüş
+        //     bütçesinin kalanıyla bir kez daha konumlanıp yeniden ara. Tek bir 1.2 sn'lik yürüyüş
+        //     bütçesi botu yarım gezegen öteye taşımaya yetmiyordu ve tur boşa gidiyordu.
+        if ((!best.valid || best.score > acceptableMiss) && walkBudget > 0.1f)
+        {
+            yield return WalkToward(target, walkBudget, stopWhenClose: false, b => walkBudget = b);
+
+            origin = FireOrigin(weapon);
+            Shot again = default;
+            yield return SearchShot(origin, target, weapon, r => again = r);
+            if (again.valid && (!best.valid || again.score < best.score)) best = again;
+        }
 
         if (!best.valid) { EndTurn(); yield break; }
 
@@ -181,16 +198,23 @@ public class BotBrain : MonoBehaviour
 
     /// <summary>Yüzey boyunca hedefe doğru yürür; yön, GravityBody'nin kendi hareket ekseninden
     /// çıkarılır, böylece gezegenin hangi tarafında olduğu fark etmez.</summary>
-    IEnumerator WalkToward(Transform target)
+    IEnumerator WalkToward(Transform target, float budgetSeconds, bool stopWhenClose,
+                           System.Action<float> reportRemaining)
     {
-        float until = Time.time + maxWalkSeconds;
+        float started = Time.time;
+        float until   = started + budgetSeconds;
         while (Time.time < until && _body.isActive.Value && !_body.movementLocked)
         {
+            if (stopWhenClose &&
+                Vector2.Distance(transform.position, target.position) <= walkIfFartherThan)
+                break;
+
             Vector2 toTarget = (Vector2)target.position - (Vector2)transform.position;
             _body.botMoveInput = Mathf.Sign(Vector2.Dot(toTarget, _body.MoveAxis));
             yield return null;
         }
         _body.botMoveInput = 0f;
+        reportRemaining(Mathf.Max(0f, until - Time.time));
 
         // Yürüyüş sonrası hız sıfırlansın, yoksa atış anında karakter hâlâ kayıyor olur.
         yield return new WaitForSeconds(0.25f);
