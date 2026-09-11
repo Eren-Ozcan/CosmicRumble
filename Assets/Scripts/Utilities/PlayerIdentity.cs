@@ -55,10 +55,43 @@ public static class PlayerIdentity
         string name = PlayerPrefs.GetString(PrefKey, "");
         if (string.IsNullOrEmpty(name))
         {
-            name = Prefixes[Random.Range(0, Prefixes.Length)] + Random.Range(100, 1000);
+            name = Generate();
             PlayerPrefs.SetString(PrefKey, name);
             PlayerPrefs.Save();
         }
         return name;
+    }
+
+    /// <summary>
+    /// Takma adi mumkunse UGS oyuncu kimliginden TURETIR, ancak kimlik yoksa rastgele secer.
+    /// Sebep: kayitli ad herhangi bir nedenle kaybolursa (uygulama verisi temizlenmesi, cihaz
+    /// tasima, PlayerPrefs'in yazilamadigi bir acilis) rastgele uretim her seferinde BASKA bir
+    /// oyuncu gibi gorunmeye yol aciyordu — telefonda force-stop sonrasi "Meteor277" oyuncusu
+    /// "Roket476" olarak geri geldi. Anonim UGS oturumu yeniden acilislarda korunuyor, dolayisiyla
+    /// ayni kimlikten ayni ad uretilince kimlik kendini onarir.
+    /// </summary>
+    static string Generate()
+    {
+        string id = null;
+        try
+        {
+            var auth = Unity.Services.Authentication.AuthenticationService.Instance;
+            if (auth != null && auth.IsSignedIn) id = auth.PlayerId;
+        }
+        catch { /* servis henuz kurulmadi — rastgele ada dus */ }
+
+        if (string.IsNullOrEmpty(id))
+            return Prefixes[Random.Range(0, Prefixes.Length)] + Random.Range(100, 1000);
+
+        uint h = Fnv1a(id);
+        return Prefixes[(int)(h % (uint)Prefixes.Length)] + (100 + (int)((h >> 8) % 900u));
+    }
+
+    /// <summary>Calismalar arasi ayni sonucu veren hash — string.GetHashCode bunu garanti etmiyor.</summary>
+    static uint Fnv1a(string s)
+    {
+        uint hash = 2166136261u;
+        foreach (char c in s) { hash ^= c; hash *= 16777619u; }
+        return hash;
     }
 }
