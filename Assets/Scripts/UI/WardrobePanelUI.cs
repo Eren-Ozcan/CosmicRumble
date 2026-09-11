@@ -7,8 +7,9 @@ using CosmicRumble.Economy;
 using CosmicRumble.Localization;
 
 /// <summary>
-/// Ana menüdeki GARDIROP butonu → kostüm paneli. 2026-07-16 yeniden tasarımı:
-/// 5 karakter sütunu × 3 kademe (Standard/Advanced/Elite), TOPLAM 15 kostüm.
+/// Ana menüdeki GARDIROP butonu → kostüm paneli. Artboard 09'a göre panel TEK karakter
+/// gösterir ve karakterler arasında "◀ CHARACTER 1 ▶" karuseliyle geçilir; daha önce
+/// 5 karakter sütunu yan yana sıkıştırılıyordu. Toplam 5 karakter × 3 kademe = 15 kostüm.
 /// Eski "yalnızca sahip olunanlar" davranışının aksine kilitli kostümler de görünür:
 /// Gold/Gem olanlar fiyat + satın alma (CostumeManager.TryPurchase, bakiye yetmiyorsa pasif),
 /// Level/Sandık/Başarım olanlar koşul etiketiyle listelenir. Sahip olunana dokunmak kuşandırır.
@@ -19,6 +20,11 @@ public class WardrobePanelUI : MonoBehaviour
     public static WardrobePanelUI Instance { get; private set; }
 
     const int CharacterCount = 5;
+
+    // Karusel tek karakter gosterdigi icin kartlar sutun duzenindekinden buyuk;
+    // hucre icindeki ofsetler bu iki olcuye gore ayarlandi.
+    const float CellW = 230f;
+    const float CellH = 290f;
 
     // ── Renk paleti (UiKit mobil teması — QuestsPanelUI ile aynı) ─────────
     static readonly Color CardBg     = UiTheme.Card;
@@ -38,6 +44,10 @@ public class WardrobePanelUI : MonoBehaviour
     TextMeshProUGUI _countText;
     TextMeshProUGUI _equippedText;
     TextMeshProUGUI _emptyText;
+    TextMeshProUGUI _carouselLabel;
+
+    /// <summary>Karuselde gosterilen karakter (1..CharacterCount).</summary>
+    int _currentCharacter = 1;
 
     void Awake()
     {
@@ -94,6 +104,24 @@ public class WardrobePanelUI : MonoBehaviour
         // instance'ı oluşturuyor, bu da TMP_Text'in OnEnable'ının çalışmış olmasını gerektirir —
         // inaktif hiyerarşide oluşturulan TMP objelerinde OnEnable ertelenir ve NullReferenceException'a yol açar.
         _panelRoot.SetActive(true);
+        JumpToEquippedCharacter();
+        Populate();
+    }
+
+    /// <summary>Panel acilinca karusel, uzerinde kusanili kostum olan karakterde baslasin —
+    /// aksi halde oyuncu her acilista 1'den kendi karakterine kadar ilerlemek zorunda kalir.</summary>
+    void JumpToEquippedCharacter()
+    {
+        var equipped = CostumeManager.Instance?.GetEquipped(CostumeType.Character);
+        if (equipped != null && equipped.characterId >= 1 && equipped.characterId <= CharacterCount)
+            _currentCharacter = equipped.characterId;
+    }
+
+    /// <summary>Karuseli kaydirir; iki ucta basa/sona sarar.</summary>
+    void StepCharacter(int delta)
+    {
+        _currentCharacter = ((_currentCharacter - 1 + delta + CharacterCount) % CharacterCount) + 1;
+        AudioManager.Instance?.PlayClick();
         Populate();
     }
 
@@ -143,6 +171,7 @@ public class WardrobePanelUI : MonoBehaviour
         _equippedText = MakeTxt(card, "EquippedInfo", "", 14, EquippedGr,
             new Vector2(0.5f, 0.815f), new Vector2(680, 22));
 
+        BuildCarousel(card);
         BuildScrollView(card);
 
         // Boş durum mesajı — yalnızca veritabanı/manager yoksa (normalde 15 kostüm hep görünür)
@@ -152,6 +181,39 @@ public class WardrobePanelUI : MonoBehaviour
 
         _panelRoot.AddComponent<EscapeListener>().OnEscape = Hide;
         _panelRoot.SetActive(false);
+    }
+
+    /// <summary>"◀ CHARACTER n ▶" satiri: iki yon plakasi ve aradaki karakter etiketi.</summary>
+    void BuildCarousel(GameObject parent)
+    {
+        _carouselLabel = MakeTxt(parent, "CarouselLabel", "", 20, TitleGold,
+            new Vector2(0.5f, 0.755f), new Vector2(300, 34));
+        _carouselLabel.fontStyle = FontStyles.Bold;
+
+        MakeArrow(parent, "PrevChar", "◀", -190f, -1);
+        MakeArrow(parent, "NextChar", "▶",  190f, +1);
+    }
+
+    void MakeArrow(GameObject parent, string name, string glyph, float x, int delta)
+    {
+        // 76x76: buton denetiminin en kucuk dokunma hedefi 72 tasarim birimi.
+        var go = MakePanel(parent, name, UiTheme.Plate, new Vector2(x, 0f),
+            new Vector2(76, 76), new Vector2(0.5f, 0.755f));
+        var img = go.GetComponent<Image>();
+        UiKit.Round(img, 1.4f);
+        UiKit.BottomEdge(go, UiKit.EdgeOf(UiTheme.Plate), 5f, 1.4f);
+
+        var btn = go.AddComponent<Button>();
+        btn.targetGraphic = img;
+        btn.colors = UiKit.ButtonColors(UiTheme.Plate);
+        btn.onClick.AddListener(() => StepCharacter(delta));
+        UiKit.Press(go);
+        UiKit.Hover(go);
+
+        var lbl = MakeTxt(go, "Lbl", glyph, 22, UiTheme.TextPrimary, new Vector2(0.5f, 0.5f), Vector2.zero);
+        lbl.fontStyle     = FontStyles.Bold;
+        lbl.raycastTarget = false;
+        StretchFull(lbl.rectTransform);
     }
 
     void BuildScrollView(GameObject parent)
@@ -166,8 +228,9 @@ public class WardrobePanelUI : MonoBehaviour
         var scrollRt = scrollGO.GetComponent<RectTransform>();
         scrollRt.anchorMin = new Vector2(0.5f, 0.5f);
         scrollRt.anchorMax = new Vector2(0.5f, 0.5f);
-        scrollRt.sizeDelta        = new Vector2(800, 470);
-        scrollRt.anchoredPosition = new Vector2(0, -45);
+        // Karusel satiri 0.755 ankorunda duruyor; liste onun altindan basliyor.
+        scrollRt.sizeDelta        = new Vector2(800, 400);
+        scrollRt.anchoredPosition = new Vector2(0, -80);
 
         var vpGO  = new GameObject("Viewport");
         vpGO.transform.SetParent(scrollGO.transform, false);
@@ -180,18 +243,17 @@ public class WardrobePanelUI : MonoBehaviour
         vpRt.offsetMin = vpRt.offsetMax = Vector2.zero;
         scrollRect.viewport = vpRt;
 
-        // İçerik: 5 karakter sütunu yan yana (her sütun kendi dikey grubu)
+        // Icerik: TEK karakterin kostumleri, 3'lu izgara (kademe basina bir kart).
         var contentGO = new GameObject("Content");
         contentGO.transform.SetParent(vpGO.transform, false);
 
-        var hlg = contentGO.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing                = 10f;
-        hlg.padding                = new RectOffset(4, 4, 4, 4);
-        hlg.childAlignment         = TextAnchor.UpperCenter;
-        hlg.childControlWidth      = false;
-        hlg.childControlHeight     = false;
-        hlg.childForceExpandWidth  = false;
-        hlg.childForceExpandHeight = false;
+        var grid = contentGO.AddComponent<GridLayoutGroup>();
+        grid.cellSize        = new Vector2(CellW, CellH);
+        grid.spacing         = new Vector2(14f, 14f);
+        grid.padding         = new RectOffset(4, 4, 4, 4);
+        grid.childAlignment  = TextAnchor.UpperCenter;
+        grid.constraint      = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 3;
 
         var csf = contentGO.AddComponent<ContentSizeFitter>();
         csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -240,53 +302,24 @@ public class WardrobePanelUI : MonoBehaviour
                 ? string.Format(Loc.T("Equipped: {0}"), Loc.T(equipped.displayName))
                 : "";
 
-        for (int ch = 1; ch <= CharacterCount; ch++)
+        if (_carouselLabel != null)
+            _carouselLabel.text = string.Format(Loc.T("CHARACTER {0}"), _currentCharacter);
+
+        var costumes = db.allCostumes
+            .Where(c => c != null && c.characterId == _currentCharacter)
+            .OrderBy(c => c.costumeId)
+            .ToList();
+
+        if (costumes.Count == 0)
         {
-            var column = BuildColumn(ch);
-            var costumes = db.allCostumes
-                .Where(c => c != null && c.characterId == ch)
-                .OrderBy(c => c.costumeId)
-                .ToList();
-            foreach (var def in costumes)
-                BuildCell(column, def,
-                    equipped != null && equipped.costumeId == def.costumeId,
-                    mgr.IsOwned(def.costumeId));
+            ShowEmpty(Loc.T("Wardrobe is currently unavailable."));
+            return;
         }
-    }
 
-    GameObject BuildColumn(int characterIndex)
-    {
-        var col = new GameObject($"Col_Char{characterIndex}");
-        col.transform.SetParent(_contentParent.transform, false);
-
-        var vlg = col.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing                = 10f;
-        vlg.childAlignment         = TextAnchor.UpperCenter;
-        // childControl=false: layout, çocukların KENDİ RectTransform boyutunu kullanır —
-        // bu yüzden aşağıda her çocuğa sizeDelta açıkça veriliyor (LayoutElement etkisiz olurdu).
-        vlg.childControlWidth      = false;
-        vlg.childControlHeight     = false;
-        vlg.childForceExpandWidth  = false;
-        vlg.childForceExpandHeight = false;
-
-        var colRt = col.GetComponent<RectTransform>();
-        colRt.sizeDelta = new Vector2(150, 0); // genişlik HLG için; yükseklik CSF'den
-
-        var csf = col.AddComponent<ContentSizeFitter>();
-        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        var headGO = new GameObject("Header");
-        headGO.transform.SetParent(col.transform, false);
-        var head = headGO.AddComponent<TextMeshProUGUI>();
-        head.text      = string.Format(Loc.T("CHARACTER {0}"), characterIndex);
-        head.fontSize  = 13;
-        head.fontStyle = FontStyles.Bold;
-        head.color     = TitleGold;
-        head.alignment = TextAlignmentOptions.Center;
-        head.overflowMode = TextOverflowModes.Ellipsis;
-        head.rectTransform.sizeDelta = new Vector2(150, 26);
-
-        return col;
+        foreach (var def in costumes)
+            BuildCell(_contentParent, def,
+                equipped != null && equipped.costumeId == def.costumeId,
+                mgr.IsOwned(def.costumeId));
     }
 
     void ShowEmpty(string msg)
@@ -299,15 +332,15 @@ public class WardrobePanelUI : MonoBehaviour
     //  HÜCRE
     // ════════════════════════════════════════════════════════════════════
 
-    void BuildCell(GameObject column, CostumeDefinition def, bool equipped, bool owned)
+    void BuildCell(GameObject parent, CostumeDefinition def, bool equipped, bool owned)
     {
         Color rarityCol = RarityColor(def.rarity);
 
         var cell = new GameObject($"Cell_{def.costumeId}");
-        cell.transform.SetParent(column.transform, false);
+        cell.transform.SetParent(parent.transform, false);
 
         var bg = cell.AddComponent<Image>();
-        bg.rectTransform.sizeDelta = new Vector2(150, 196); // VLG childControl=false → rect boyutu geçerli
+        bg.rectTransform.sizeDelta = new Vector2(CellW, CellH); // GridLayoutGroup zaten ezer, tek basina test icin
         bg.color = owned ? CellBg : CellBgLock;
         UiKit.Round(bg, 1.6f);
         UiKit.Stroke(cell,
@@ -377,7 +410,7 @@ public class WardrobePanelUI : MonoBehaviour
 
             string localizedName = Loc.T(def.displayName);
             string letter = string.IsNullOrEmpty(localizedName) ? "?" : localizedName.Substring(0, 1).ToUpperInvariant();
-            var lbl = MakeTxt(prevGO, "Lbl", letter, 34, new Color(1f, 1f, 1f, owned ? 1f : 0.5f),
+            var lbl = MakeTxt(prevGO, "Lbl", letter, 44, new Color(1f, 1f, 1f, owned ? 1f : 0.5f),
                 new Vector2(0.5f, 0.5f), Vector2.zero);
             UiKit.BrawlText(lbl);
             lbl.raycastTarget = false;
@@ -422,15 +455,15 @@ public class WardrobePanelUI : MonoBehaviour
             shRt.anchoredPosition = new Vector2(0, 6);
         }
 
-        var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 13,
-            owned ? Color.white : TextSec, new Vector2(0.5f, 0f), new Vector2(140, 18));
-        nameTxt.rectTransform.anchoredPosition = new Vector2(0, 70);
+        var nameTxt = MakeTxt(cell, "Name", Loc.T(def.displayName), 15,
+            owned ? Color.white : TextSec, new Vector2(0.5f, 0f), new Vector2(200, 22));
+        nameTxt.rectTransform.anchoredPosition = new Vector2(0, 104);
         nameTxt.fontStyle     = FontStyles.Bold;
         nameTxt.raycastTarget = false;
 
-        var rarityTxt = MakeTxt(cell, "Rarity", RarityName(def.rarity), 10, rarityCol,
-            new Vector2(0.5f, 0f), new Vector2(140, 14));
-        rarityTxt.rectTransform.anchoredPosition = new Vector2(0, 52);
+        var rarityTxt = MakeTxt(cell, "Rarity", RarityName(def.rarity), 12, rarityCol,
+            new Vector2(0.5f, 0f), new Vector2(200, 16));
+        rarityTxt.rectTransform.anchoredPosition = new Vector2(0, 84);
         rarityTxt.raycastTarget = false;
 
         BuildStatePill(cell, def, equipped, owned, purchasable);
@@ -481,10 +514,10 @@ public class WardrobePanelUI : MonoBehaviour
         UiKit.Round(pillImg, 2.5f);
         var pillRt = pillImg.rectTransform;
         pillRt.anchorMin = pillRt.anchorMax = new Vector2(0.5f, 0f);
-        pillRt.sizeDelta        = new Vector2(132, 26);
-        pillRt.anchoredPosition = new Vector2(0, 18);
+        pillRt.sizeDelta        = new Vector2(190, 32);
+        pillRt.anchoredPosition = new Vector2(0, 26);
 
-        var pillLbl = MakeTxt(pillGO, "Lbl", label, 11, lblCol, new Vector2(0.5f, 0.5f), Vector2.zero);
+        var pillLbl = MakeTxt(pillGO, "Lbl", label, 13, lblCol, new Vector2(0.5f, 0.5f), Vector2.zero);
         pillLbl.fontStyle     = FontStyles.Bold;
         pillLbl.raycastTarget = false;
         StretchFull(pillLbl.rectTransform);
@@ -493,8 +526,8 @@ public class WardrobePanelUI : MonoBehaviour
     static void PlacePreview(RectTransform rt)
     {
         rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-        rt.sizeDelta        = new Vector2(80, 80);
-        rt.anchoredPosition = new Vector2(0, -52);
+        rt.sizeDelta        = new Vector2(128, 128);
+        rt.anchoredPosition = new Vector2(0, -70);
     }
 
     // ════════════════════════════════════════════════════════════════════
