@@ -101,7 +101,7 @@ public class LeaderboardPanelUI : MonoBehaviour
         // Yenile dugmesi kartin sol ust kosesine sifirlanmisti ve kart kenarina yapisiyordu;
         // tasarimda baslik satirinin sagindaki kucuk bir plaka.
         MakeBtn(card, "btn_refresh", Loc.T("REFRESH"),
-            new Vector2(0.855f, 0.925f), new Vector2(150, 64),
+            new Vector2(0.855f, 0.925f), new Vector2(150, 72),
             PrimaryBtn, PrimaryHover, () => { if (!_loading) _ = PopulateAsync(); });
 
         // "Senin siran" satiri tasarimda listenin altinda sabit durur (basligin altinda degil).
