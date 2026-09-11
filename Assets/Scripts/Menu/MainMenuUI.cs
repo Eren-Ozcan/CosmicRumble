@@ -73,6 +73,7 @@ public class MainMenuUI : MonoBehaviour
 
     // ── Panel refs ────────────────────────────────────────────────────────────
     GameObject _mainPanel;
+    GameObject _mainSafe;   // _mainPanel'in guvenli alan (centik/nav bar) icine daraltilmis cocugu
     GameObject _settingsPanel;
 
     GameObject _audioTab, _graphicsTab, _controlsTab, _accountTab;
@@ -333,6 +334,13 @@ public class MainMenuUI : MonoBehaviour
     //  • İkincil özellikler sol kenarda dikey buton yığını.
     void BuildMainPanel()
     {
+        // Kenara yapisan her sey (profil, kupa, ☰, sol ray, PLAY kumesi, cekmece) guvenli
+        // alanin cocugu olur. Landscape'te uc tuslu gezinme cubugu sag kenardan ~90 px yiyor
+        // ve cekmecenin kirmizi X'i yarim ekran disinda kaliyordu. Dekor (gezegen/ay) tam
+        // ekranda kalir — onun kenara dayanmasi zaten istenen goruntu.
+        _mainSafe = MakePanel(_mainPanel, "SafeRoot");
+        _mainSafe.AddComponent<SafeArea>();
+
         BuildLobbyDecor();
         BuildTopBar();
         BuildLeftRail();
@@ -378,7 +386,7 @@ public class MainMenuUI : MonoBehaviour
         string playerName = PlayerIdentity.Get();
 
         // ── Profil plakası (sol-üst) → Sıralama açılır ───────────────────
-        var profile = MakePlate(_mainPanel, "ProfilePlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
+        var profile = MakePlate(_mainSafe, "ProfilePlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(TopBarInset, -TopBarTop), new Vector2(420, 124),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
@@ -445,7 +453,7 @@ public class MainMenuUI : MonoBehaviour
         BuildLevelRow(profile);
 
         // ── Kupa kutusu (profilin sağında) → Sıralama açılır ─────────────
-        var trophyPlate = MakePlate(_mainPanel, "TrophyPlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
+        var trophyPlate = MakePlate(_mainSafe, "TrophyPlate", new Vector2(0f, 1f), new Vector2(0f, 1f),
             new Vector2(TopBarInset + 440, -TopBarTop), new Vector2(430, 88),
             () => { Click(); LeaderboardPanelUI.Instance?.Show(); });
 
@@ -465,7 +473,7 @@ public class MainMenuUI : MonoBehaviour
         _trophyText.overflowMode       = TextOverflowModes.Ellipsis;
 
         // ── Sağ-üst: ☰ menü (Ayarlar) + para plakaları ───────────────────
-        var menuBtn = MakePlate(_mainPanel, "MenuBtn", new Vector2(1f, 1f), new Vector2(1f, 1f),
+        var menuBtn = MakePlate(_mainSafe, "MenuBtn", new Vector2(1f, 1f), new Vector2(1f, 1f),
             new Vector2(-TopBarInset, -TopBarTop), new Vector2(92, 92),
             () => { Click(); SetDrawer(true); });
         for (int i = 0; i < 3; i++)
@@ -547,7 +555,7 @@ public class MainMenuUI : MonoBehaviour
 
     TextMeshProUGUI BuildCurrencyChip(string name, Vector2 pos, Color accent, Color plusColor)
     {
-        var chip = MakePlate(_mainPanel, name, new Vector2(1f, 1f), new Vector2(1f, 1f),
+        var chip = MakePlate(_mainSafe, name, new Vector2(1f, 1f), new Vector2(1f, 1f),
             pos, new Vector2(210, 72),
             () => { Click(); ShopPanelUI.Instance?.Show(); });
 
@@ -757,7 +765,7 @@ public class MainMenuUI : MonoBehaviour
                             RailGlyph glyph, UnityEngine.Events.UnityAction callback)
     {
         var go = new GameObject(name);
-        go.transform.SetParent(_mainPanel.transform, false);
+        go.transform.SetParent(_mainSafe.transform, false);
         var edgeImg = go.AddComponent<Image>();
         edgeImg.color = edgeColor;
         UiKit.Round(edgeImg, 1.2f);
@@ -920,8 +928,17 @@ public class MainMenuUI : MonoBehaviour
         // surum satiri. Onceden basliksiz/kartsiz serbest bir plaka kolonuydu ve kolon
         // yuksekligi ogeleri tasidigi icin en alttaki satirlar PLAY kumesinin uzerine
         // biniyordu.
+        // Karartma tum ekrani kaplar (gezinme cubugunun altini da), kolon ise guvenli alanda
+        // durur: X butonu kartin disina tastigi icin cubuga denk gelince yarisi kayboluyordu.
+        var safeGO = new GameObject("SafeArea", typeof(RectTransform));
+        safeGO.transform.SetParent(_drawerRoot.transform, false);
+        var safeRt = (RectTransform)safeGO.transform;
+        safeRt.anchorMin = Vector2.zero; safeRt.anchorMax = Vector2.one;
+        safeRt.offsetMin = safeRt.offsetMax = Vector2.zero;
+        safeGO.AddComponent<SafeArea>();
+
         var colGO = new GameObject("Column");
-        colGO.transform.SetParent(_drawerRoot.transform, false);
+        colGO.transform.SetParent(safeGO.transform, false);
         var colImg = colGO.AddComponent<Image>();
         colImg.color = BgCard;
         UiKit.Round(colImg);
@@ -1037,7 +1054,7 @@ public class MainMenuUI : MonoBehaviour
     {
         // ── Mod cipi: PLAY'in hemen ustunde, onunla ayni sag kenara hizali (tasarim 04).
         // Onceden alt-ortadaydi; orada acilan panellerin alt buton satiriyla cakisiyordu.
-        var mode = MakePlate(_mainPanel, "ModePlate", new Vector2(1f, 0f), new Vector2(1f, 0f),
+        var mode = MakePlate(_mainSafe, "ModePlate", new Vector2(1f, 0f), new Vector2(1f, 0f),
             new Vector2(-PlayInset, PlayBottom + PlayH + 24), new Vector2(380, 96),
             () => { Click(); OnlineLobbyPanelUI.Instance?.Show(); });
         var modeTitle = MakeTxt(mode, "Title", Loc.T("QUICK MATCH"), 28, FontStyles.Normal, AccGold,
@@ -1051,7 +1068,7 @@ public class MainMenuUI : MonoBehaviour
 
         // ── Alt-sağ: BÜYÜK SARI OYNA ─────────────────────────────────────
         var go = new GameObject("btn_play_big");
-        go.transform.SetParent(_mainPanel.transform, false);
+        go.transform.SetParent(_mainSafe.transform, false);
         var edgeImg = go.AddComponent<Image>();
         edgeImg.color = YellowEdge;
         UiKit.Round(edgeImg);
