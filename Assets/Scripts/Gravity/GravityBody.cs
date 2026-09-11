@@ -171,7 +171,12 @@ public class GravityBody : NetworkBehaviour
         if (GetComponent<CharacterHealth>() != null)
         {
             playerName.OnValueChanged += (oldValue, newValue) => ApplyPlayerName(newValue.ToString());
-            if (IsOwner)
+            // IsOwner tek basina yetmiyor: dolgu botlari sunucunun sahip oldugu objeler olarak
+            // spawn ediliyor, dolayisiyla host'ta onlar da IsOwner. Duzeltilmeden once bot,
+            // host'un takma adini aliyor (ve ApplyPlayerName GameObject'i de yeniden
+            // adlandiriyordu) — maçta iki karakter de "Roket548" gorunuyordu. Gercek oyuncu
+            // objesi SpawnAsPlayerObject ile geliyor, bot Spawn() ile; ayrimi IsPlayerObject verir.
+            if (IsOwner && NetworkObject.IsPlayerObject)
                 playerName.Value = PlayerIdentity.Get();
             else if (!playerName.Value.IsEmpty)
                 ApplyPlayerName(playerName.Value.ToString());
