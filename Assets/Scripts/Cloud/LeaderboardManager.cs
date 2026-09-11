@@ -132,13 +132,36 @@ namespace CosmicRumble.Cloud
         /// kendi yerel sonucuyla çağrılır (beraberlikte hiç çağrılmaz — kupa değişimi yok).
         /// </summary>
         public void ReportOnlineMatchResult(bool localPlayerWon)
+            => ReportOnlineMatchResult(localPlayerWon, null, null);
+
+        /// <summary>
+        /// TurnManager.AnnounceMatchResultClientRpc tarafından her online maç sonunda, her makinede
+        /// kendi yerel sonucuyla çağrılır (beraberlikte hiç çağrılmaz — kupa değişimi yok).
+        ///
+        /// <para><paramref name="matchId"/> ve <paramref name="opponentPlayerId"/> verilirse kupa,
+        /// iki tarafın bildirimini karşılaştıran Cloud Code modülüne gönderilir; modül henüz
+        /// yayınlanmadıysa (ya da çağrı başarısız olursa) eski doğrudan gönderime düşülür.
+        /// Yerel gösterim her hâlükârda hemen güncellenir — oyuncu maç sonu ekranında kupasının
+        /// değiştiğini görmeli, ağın durumu bunu beklettirmemeli.</para>
+        /// </summary>
+        public void ReportOnlineMatchResult(bool localPlayerWon, string matchId, string opponentPlayerId)
         {
             int delta = localPlayerWon ? +TrophiesPerWin : -TrophiesPerLoss;
             int total = Mathf.Max(0, Trophies + delta);
 
             StoreTrophies(total);
 
-            _ = SubmitScoreAsync(total);
+            _ = SubmitResultAsync(total, localPlayerWon, matchId, opponentPlayerId);
+        }
+
+        /// <summary>Önce çift taraflı doğrulama, olmazsa eski tek taraflı gönderim.</summary>
+        private async Task SubmitResultAsync(int trophies, bool localPlayerWon,
+                                             string matchId, string opponentPlayerId)
+        {
+            bool attested = await MatchAttestation.SubmitAsync(matchId, opponentPlayerId, localPlayerWon);
+            if (attested) return;   // modül skoru kendisi yazdı
+
+            await SubmitScoreAsync(trophies);
         }
 
         private async Task SubmitScoreAsync(int trophies)
