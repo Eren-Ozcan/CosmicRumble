@@ -116,6 +116,7 @@ public class GameInitializer : MonoBehaviour
                 var gb = botGO.GetComponent<GravityBody>();
                 if (gb == null) continue;
                 gb.isBot = true;
+                AddBotBrain(botGO);
                 allPlayers.Add(gb);
             }
         }
@@ -195,5 +196,12 @@ public class GameInitializer : MonoBehaviour
     {
         var existing = go.GetComponent<HealthBarUI>();
         if (existing == null) go.AddComponent<HealthBarUI>();
+    }
+
+    /// <summary>Botu oynatan yapay zekâyı takar. Antrenman modunda ÇAĞRILMAZ: oradaki botlar
+    /// bilerek pasif hedef tahtası (bkz. yukarıdaki spawn döngüsü).</summary>
+    static void AddBotBrain(GameObject go)
+    {
+        if (go.GetComponent<BotBrain>() == null) go.AddComponent<BotBrain>();
     }
 }
