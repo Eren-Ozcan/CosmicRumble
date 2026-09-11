@@ -388,18 +388,28 @@ public class MatchHudUI : MonoBehaviour
             var outline = slot.Find("OutlineAnimImage");
             if (outline != null) StretchInside((RectTransform)outline, 0f);
 
-            // Slot numarasi sol ust, sayac sag alt
+            // Slot numarasi sol ust, sayac sag alt.
+            // Dokunmatikte klavye rakami anlamsiz: parmakla oynayan oyuncunun basacagi bir
+            // "3" tusu yok, rakam sadece ikonun uzerinde gorsel gurultu. Masaustunde durur.
             var number = slot.Find("Skill_Number");
             if (number != null)
             {
-                Corner((RectTransform)number, new Vector2(0f, 1f), new Vector2(6f, -4f), 26f);
-                var numTxt = number.GetComponent<TextMeshProUGUI>();
-                if (numTxt != null)
+                if (TouchTray)
                 {
-                    numTxt.fontSize     = 18f;
-                    numTxt.color        = UiTheme.TextFaint;
-                    numTxt.alignment    = TextAlignmentOptions.TopLeft;
-                    numTxt.raycastTarget = false;
+                    number.gameObject.SetActive(false);
+                }
+                else
+                {
+                    number.gameObject.SetActive(true);
+                    Corner((RectTransform)number, new Vector2(0f, 1f), new Vector2(6f, -4f), 26f);
+                    var numTxt = number.GetComponent<TextMeshProUGUI>();
+                    if (numTxt != null)
+                    {
+                        numTxt.fontSize     = 18f;
+                        numTxt.color        = UiTheme.TextFaint;
+                        numTxt.alignment    = TextAlignmentOptions.TopLeft;
+                        numTxt.raycastTarget = false;
+                    }
                 }
             }
             if (ui.countTexts != null && i < ui.countTexts.Length && ui.countTexts[i] != null)
@@ -411,6 +421,12 @@ public class MatchHudUI : MonoBehaviour
                 count.fontSize      = 22f;
                 count.alignment     = TextAlignmentOptions.BottomRight;
                 count.raycastTarget = false;
+
+                // Sayac dogrudan ikonun uzerine biniyor ve kilitli slotlardaki "Lv10" okunmuyordu
+                // (teleport/sandik ikonlari acik renk). Yazinin arkasina kitteki kucuk koyu rozet
+                // konur; rozet sayactan ONCE cizilsin diye hemen onune sokulur.
+                CountBadge(count.rectTransform);
+                count.transform.SetAsLastSibling();
             }
         }
 
@@ -431,6 +447,41 @@ public class MatchHudUI : MonoBehaviour
         rt.offsetMin = new Vector2(pad, pad);
         rt.offsetMax = new Vector2(-pad, -pad);
         rt.localScale = Vector3.one;
+    }
+
+    /// <summary>Tepsi dokunmatik modda mi (klavye kisayollari gecersiz).</summary>
+    static bool TouchTray => Application.isMobilePlatform || TouchControlsUI.ForceEnabled;
+
+    /// <summary>Sayac yazisinin arkasina koyu, yuvarlak kose bir rozet koyar (bir kez).</summary>
+    static void CountBadge(RectTransform countRt)
+    {
+        // Rozet sayacla AYNI ebeveyne konur: sayac sahnede slotun altinda da olabilir, baska bir
+        // ara objenin altinda da — ankor/konum degerleri ancak ayni ebeveynde anlam tasir.
+        var parent   = countRt.parent;
+        var existing = parent.Find("CountBadge");
+        RectTransform badgeRt;
+        if (existing != null)
+        {
+            badgeRt = (RectTransform)existing;
+        }
+        else
+        {
+            var go = new GameObject("CountBadge", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>();
+            img.sprite        = UiKit.RoundedSprite;
+            img.type          = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = 2.4f;
+            img.color         = new Color(0f, 0f, 0f, 0.72f);
+            img.raycastTarget = false;
+            badgeRt = img.rectTransform;
+        }
+
+        badgeRt.anchorMin = badgeRt.anchorMax = countRt.anchorMin;
+        badgeRt.pivot     = countRt.pivot;
+        badgeRt.sizeDelta = countRt.sizeDelta + new Vector2(6f, 2f);
+        badgeRt.anchoredPosition = countRt.anchoredPosition + new Vector2(3f, -1f);
+        badgeRt.SetSiblingIndex(countRt.GetSiblingIndex());
     }
 
     static void Corner(RectTransform rt, Vector2 corner, Vector2 offset, float width)
