@@ -145,6 +145,11 @@ public class BotBrain : MonoBehaviour
         _abilities?.ConfirmSkill(weapon.SlotIndex);
         yield return null;
 
+        // Projedeki [TURN]/[NET] loglariyla ayni desen: cozumun gercekten aday aday degistigini
+        // (eskiden her tur 0 derece / 0.35 guc geliyordu) cihaz logundan dogrulanabilir kilar.
+        Debug.Log($"[BOT] {name} shot angle={best.angleDeg:F1} power={best.power01:F2} " +
+                  $"miss={best.score:F2} -> fired angle={angle:F1} power={power:F2} weapon={weapon.GetType().Name}");
+
         if (!weapon.BotFire(AngleToDir(angle), power))
         {
             EndTurn();   // cephane son anda tükendiyse turu kilitleme
