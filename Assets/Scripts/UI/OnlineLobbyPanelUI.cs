@@ -254,11 +254,14 @@ public class OnlineLobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.54f), new Vector2(340, 72), OnQuickMatchClicked,
             new Color(0.13f, 0.72f, 0.35f, 1f));
 
+        // Durum yazisi 0.24 ankorunda 90 yuksekliginde duruyordu: 300 birimlik kartta 27-117
+        // araligini kapliyor, 0.11'deki 72 birimlik CANCEL ise -3..69'u — "Rakip bekleniyor"
+        // butonun altinda kaliyordu. Yazi yukari alinip kisaltildi, buton kartin icine cekildi.
         _quickMatchStatusText = MakeText(card, "status", "", 16,
-            new Vector2(0.5f, 0.24f), new Vector2(500, 90), CodeColor);
+            new Vector2(0.5f, 0.34f), new Vector2(500, 44), CodeColor);
 
         _quickMatchCancelBtn = MakeSmallButton(card, "btn_quickmatch_cancel", Loc.T("CANCEL"),
-            new Vector2(0.5f, 0.11f), new Vector2(220, 72), OnQuickMatchCancelClicked,
+            new Vector2(0.5f, 0.13f), new Vector2(220, 72), OnQuickMatchCancelClicked,
             new Color(0.30f, 0.30f, 0.45f, 1f));
         _quickMatchCancelBtn.SetActive(false);
     }
