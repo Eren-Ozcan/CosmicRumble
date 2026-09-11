@@ -206,6 +206,49 @@ public class MatchSmokeTestRunner : MonoBehaviour
         }
 
 
+        // -- 3. Bot turu (BotBrain gercekten oynuyor mu) ----------------------
+        // Botlar uzun sure tamamen pasifti; simdi BotBrain hedef secip yorunge cozup ates
+        // ediyor. Testin ayirt ettigi sey su: bot turu SURE DOLARAK degil, botun kendi
+        // aksiyonuyla bitmeli — pasif bir bot turu her seferinde turnDuration kadar surer.
+        Step("Bot turu: BotBrain hedefe ates ediyor");
+        var tmForBot = TurnManager.Instance;
+        tmForBot.RequestEndTurn();
+
+        GravityBody botShooter = null;
+        for (float t = 0f; t < 20f; t += 0.25f)
+        {
+            var cur = tmForBot.CurrentCharacter;
+            if (cur != null && cur.isBot) { botShooter = cur; break; }
+            yield return new WaitForSecondsRealtime(0.25f);
+        }
+
+        if (botShooter == null)
+        {
+            Fail("20 sn icinde sira bota gecmedi");
+        }
+        else
+        {
+            Check(botShooter.GetComponent<BotBrain>() != null,
+                  "bot karakterde BotBrain var: " + botShooter.gameObject.name);
+
+            int   botTurnIndex = tmForBot.CurrentTurnIndex;
+            float started      = Time.realtimeSinceStartup;
+            float limit        = tmForBot.turnDuration + 8f;
+            bool  moved        = false;
+
+            while (Time.realtimeSinceStartup - started < limit)
+            {
+                if (tmForBot.CurrentTurnIndex != botTurnIndex) { moved = true; break; }
+                yield return new WaitForSecondsRealtime(0.25f);
+            }
+
+            float elapsed = Time.realtimeSinceStartup - started;
+            Check(moved, "bot turu ilerledi (" + elapsed.ToString("F1") + " sn)");
+            Check(moved && elapsed < tmForBot.turnDuration,
+                  "bot turu sure dolmadan bitti — yani bot aksiyon aldi (" +
+                  elapsed.ToString("F1") + " sn < " + tmForBot.turnDuration.ToString("F0") + " sn)");
+        }
+
         // -- 3. Nisan okumasi + gercek atis ---------------------------------
         Step("HUD: POWER % - derece okumasi ve atis");
         var abilities = shooter.GetComponent<CharacterAbilities>();
