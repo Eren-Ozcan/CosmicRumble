@@ -107,7 +107,7 @@ public class AudioManager : MonoBehaviour
         // ses çalmazsa çalmaz, ama arayan taraf asla bundan dolayı kesintiye uğramaz.
         try
         {
-            var src = target.GetComponent<AudioSource>() ?? target.AddComponent<AudioSource>();
+            var src = EnsureSfxSource(target);
             src.clip        = clip;
             src.loop         = true;
             src.playOnAwake  = false;
@@ -123,6 +123,30 @@ public class AudioManager : MonoBehaviour
             return null;
         }
     }
+
+    /// <summary>
+    /// Mermiye ait dongusel ses kaynagi. Kaynak merminin KENDI uzerine degil, "__sfx" adli bir
+    /// cocuk objeye eklenir: mermi prefablarinda AudioSource yok ve prefab ornegine dogdugu karede
+    /// AddComponent cagrisi native tarafta yarim kurulmus bir bilesen dondurup her atista
+    /// uyari uretiyordu. Yeni olusturulan bos bir GameObject bu durumdan etkilenmiyor; cocuk
+    /// mermiyle birlikte yok oldugu icin yasam suresi de degismiyor.
+    /// </summary>
+    static AudioSource EnsureSfxSource(GameObject target)
+    {
+        var existing = target.GetComponent<AudioSource>();
+        if (existing != null) return existing;
+
+        var holder = target.transform.Find(SfxChildName);
+        if (holder == null)
+        {
+            var go = new GameObject(SfxChildName);
+            go.transform.SetParent(target.transform, false);
+            holder = go.transform;
+        }
+        return holder.GetComponent<AudioSource>() ?? holder.gameObject.AddComponent<AudioSource>();
+    }
+
+    const string SfxChildName = "__sfx";
 
     float CurrentSfxVolume()
     {
