@@ -237,6 +237,11 @@ namespace CosmicRumble.Localization
 
             // ── Online lobby (Quick Match) ──────────────────────────────────
             ["LOBBY"] = new[] { "LOBİ", "大厅", "SALA", "ロビー", "로비", "LOBBY" },
+            ["CREATE LOBBY"] = new[] { "LOBİ OLUŞTUR", "创建大厅", "CREAR SALA", "ロビーを作成", "로비 생성", "LOBBY ERSTELLEN" },
+            ["SELECT MAP"] = new[] { "HARİTA SEÇ", "选择地图", "SELECCIONAR MAPA", "マップを選択", "맵 선택", "KARTE WÄHLEN" },
+            ["GAME MODE"] = new[] { "OYUN MODU", "游戏模式", "MODO DE JUEGO", "ゲームモード", "게임 모드", "SPIELMODUS" },
+            ["START GAME"] = new[] { "OYUNU BAŞLAT", "开始游戏", "INICIAR PARTIDA", "ゲーム開始", "게임 시작", "SPIEL STARTEN" },
+            ["Bot Count (Test)"] = new[] { "Bot Sayısı (Test)", "机器人数量（测试）", "Número de bots (prueba)", "ボット数（テスト）", "봇 수 (테스트)", "Bot-Anzahl (Test)" },
             ["ONLINE"] = new[] { "ÇEVRİMİÇİ", "在线", "EN LÍNEA", "オンライン", "온라인", "ONLINE" },
             ["Searching for opponent..."] = new[] { "Rakip aranıyor...", "正在寻找对手...", "Buscando oponente...", "対戦相手を探しています...", "상대를 찾는 중...", "Suche nach Gegner..." },
             ["Matchmaking failed, try again."] = new[] { "Eşleşme başarısız, tekrar dene.", "匹配失败，请重试。", "Error al emparejar, inténtalo de nuevo.", "マッチングに失敗しました。もう一度お試しください。", "매칭에 실패했습니다. 다시 시도하세요.", "Matchmaking fehlgeschlagen, versuche es erneut." },

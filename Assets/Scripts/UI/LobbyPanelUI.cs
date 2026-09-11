@@ -121,7 +121,7 @@ public class LobbyPanelUI : MonoBehaviour
         // Kart
         var card = MakeCard(_card, "LeftCard", new Vector2(0.27f, 0.56f), new Vector2(420, 460));
 
-        MakeText(card, "hdr", "CREATE LOBBY", 18,
+        MakeText(card, "hdr", Loc.T("CREATE LOBBY"), 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
 
         // Player name — "Misafir/Guest" görünmez, PlayerIdentity tek kaynak
@@ -131,7 +131,7 @@ public class LobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.78f), new Vector2(280, 26), SuccessColor);
 
         // Bot count selector — test amaçlı, kontrol edilebilir bot ekler
-        MakeText(card, "bot_lbl", "Bot Count (Test)", 15,
+        MakeText(card, "bot_lbl", Loc.T("Bot Count (Test)"), 15,
             new Vector2(0.5f, 0.64f), new Vector2(280, 24), TextSecondary);
 
         // [-] [0] [+]
@@ -155,20 +155,22 @@ public class LobbyPanelUI : MonoBehaviour
         var card = MakeCard(_card, "RightCard", new Vector2(0.73f, 0.56f), new Vector2(420, 460));
 
         // Map
-        MakeText(card, "map_hdr", "SELECT MAP", 18,
+        MakeText(card, "map_hdr", Loc.T("SELECT MAP"), 18,
             new Vector2(0.5f, 0.90f), new Vector2(280, 30), Color.white);
 
         var mapCard = MakeCard(card, "MapCard",
             new Vector2(0.5f, 0.70f), new Vector2(220, 130));
-        mapCard.GetComponent<Image>().color = new Color(0.18f, 0.12f, 0.30f, 1f);
-        // Seçili border
-        AddBorder(mapCard, AccentColor);
+        mapCard.GetComponent<Image>().color = UiTheme.CardDeep;
+        // Secili kutu: kitin kendi konturu. Onceki "Border" hilesi karttan 2 px tasan duz bir
+        // Image'ti — koseleri kare kaliyor ve yuvarlak kosenin disina tasiyordu.
+        UiKit.Stroke(mapCard, AccentColor);
 
         // Renk dolgu (sprite gelince değiştirilir)
         var mapVisual = new GameObject("MapVisual");
         mapVisual.transform.SetParent(mapCard.transform, false);
         var mv = mapVisual.AddComponent<Image>();
-        mv.color = new Color(0.12f, 0.22f, 0.45f, 1f);
+        mv.color = UiTheme.Slot;
+        UiKit.Round(mv, 1.4f);
         var mvRt = mv.rectTransform;
         mvRt.anchorMin = new Vector2(0.05f, 0.30f);
         mvRt.anchorMax = new Vector2(0.95f, 0.95f);
@@ -178,13 +180,13 @@ public class LobbyPanelUI : MonoBehaviour
             new Vector2(0.5f, 0.12f), new Vector2(200, 22), Color.white);
 
         // Game mode
-        MakeText(card, "mode_hdr", "GAME MODE", 18,
+        MakeText(card, "mode_hdr", Loc.T("GAME MODE"), 18,
             new Vector2(0.5f, 0.36f), new Vector2(280, 30), Color.white);
 
         var modeCard = MakeCard(card, "ModeCard",
             new Vector2(0.5f, 0.18f), new Vector2(220, 52));
-        modeCard.GetComponent<Image>().color = new Color(0.12f, 0.22f, 0.18f, 1f);
-        AddBorder(modeCard, AccentColor);
+        modeCard.GetComponent<Image>().color = UiTheme.CardDeep;
+        UiKit.Stroke(modeCard, AccentColor);
         MakeText(modeCard, "mode_name", "Deathmatch", 16,
             new Vector2(0.5f, 0.5f), new Vector2(200, 34), Color.white);
     }
@@ -220,7 +222,7 @@ public class LobbyPanelUI : MonoBehaviour
     {
         // Mobil akış: oturum açılışta sessizce kurulur (misafir varsayılan), giriş kapısı yok.
         if (_startBtnLabel == null) return;
-        _startBtnLabel.text = "START GAME";
+        _startBtnLabel.text = Loc.T("START GAME");
     }
 
     void OnStartClicked()
@@ -265,25 +267,16 @@ public class LobbyPanelUI : MonoBehaviour
         go.transform.SetParent(parent.transform, false);
         var img = go.AddComponent<Image>();
         img.color = CardBg;
+        // Kart, kitteki diger panellerle ayni kaplama: yuvarlak kose + ince kontur + golge.
+        // Onceden duz gri bir dikdortgendi ve menunun geri kalanina yabanci duruyordu.
+        UiKit.Round(img);
+        UiKit.Stroke(go, UiTheme.Stroke);
+        UiKit.Shadow(go, 6f, 0.50f);
         var rt  = img.rectTransform;
         rt.anchorMin = rt.anchorMax = anchor;
         rt.sizeDelta = size;
         rt.anchoredPosition = Vector2.zero;
         return go;
-    }
-
-    static void AddBorder(GameObject card, Color color)
-    {
-        var borderGO = new GameObject("Border");
-        borderGO.transform.SetParent(card.transform, false);
-        var img = borderGO.AddComponent<Image>();
-        img.color = color;
-        var rt  = img.rectTransform;
-        rt.anchorMin = Vector2.zero;
-        rt.anchorMax = Vector2.one;
-        rt.offsetMin = new Vector2(-2, -2);
-        rt.offsetMax = new Vector2(2, 2);
-        borderGO.transform.SetAsFirstSibling();
     }
 
     void MakeButton(GameObject parent, string name, string label,
