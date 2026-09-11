@@ -112,9 +112,6 @@ It exits 1 when there are failures.
 
 - **Wind indicator** (`WIND ▸ 12` in artboard 16) is not implemented: the game has no
   wind mechanic, and a HUD element showing a value nothing affects would be a lie.
-- **Wardrobe character carousel.** Artboard 09 pages through one character at a time with
-  `◀ CHARACTER 1 ▶`; the panel still shows all five characters as columns side by side.
-  The equipped name, the owned count and the per-card padlock are in.
 - **Icon art.** The design's icons are emoji stand-ins. The left rail, the trophy plate and
   the costume padlock are drawn from UiKit primitives; the drawer rows and the achievement
   rows still use letter badges and `?` placeholders until real icons exist.

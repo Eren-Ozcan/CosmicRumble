@@ -141,6 +141,7 @@ names into the other 6 languages.
    can be shrunk with a per-tier template + color variations.
 10. Map/planet variety: a single gameplay scene (SampleScene); `LobbyData.MapName` is unused.
     At least 2-3 different planet layouts (multi-planet scenes are the showcase for the gravity).
+    **Still open — this is now the largest remaining code item.**
 11. **Done (2026-07-10)** — Tutorial/onboarding: `Assets/Scripts/Tutorial/TutorialManager.cs`
     (new). During the first offline match played on this device (hotseat or Training — the local
     character spawned by `GameInitializer`) it shows 3 tip cards in sequence ("Move with A/D", "Jump
@@ -153,20 +154,45 @@ names into the other 6 languages.
     with a guest login; the 3 cards appeared in sequence in the correct language (Spanish, which was
     set at the time), closed automatically, the `PlayerPrefs` value was verified as 1, and there were
     no console errors.
-12. Bot AI: **Training mode done** (2026-07-10) — a "TRAINING" button available to real players in
-    the main menu ☰ drawer opens the Game scene directly with 2 completely passive bots (they never
-    move or fire — see the "Training Mode" section). Bot-filling when Quick Match has no opponent has
-    still not been done (separate, optional work).
+12. Bot AI: **DONE 2026-09-08.** `Assets/Scripts/Character/BotBrain.cs` plays a bot's turn: it picks
+    the nearest character on another team, walks along the surface toward it when it is far, chooses
+    the first weapon with ammo (RPG → grenade → pistol) and searches for a shot. The search is a
+    simulation, not a formula — projectiles fly through a multi-planet field with no closed-form
+    solution — integrating the same gravity strategy and time step `TrajectoryDots` uses, scoring each
+    candidate by how close it passes to the target, sweeping 12° × 4 power levels, refining around the
+    best and yielding every 24 candidates so it never costs a frame. `accuracy` (0..1) is the single
+    difficulty knob (angle/power jitter). It only drives a bot where the machine has authority —
+    always offline, server-only online — and abandons a half-finished plan if the turn is taken away.
+    Firing needed a new path: every weapon fired exclusively from a pointer drag, so `AbilityBase`
+    gained `BotFire`/`BotHasAmmo`/`BotMuzzleSpeed`/`BotFirePoint` (implemented by Pistol/RPG/grenade)
+    which convert direction + power into the same initial velocity and reuse the existing Fire path,
+    keeping the ServerRpc, the velocity clamp and the ammo accounting. Movement needed one too:
+    `GravityBody` reads `botMoveInput`/`botWantsJump` for bots instead of the keyboard (in hotseat the
+    human's keys used to steer the bot as well) and exposes `MoveAxis`.
+    **Quick Match bot filling: DONE 2026-09-08** — hosting with an empty pool now shows a 30 second
+    countdown and then starts against one fill bot (`LobbyData.OnlineBotFill` →
+    `NetworkPlayerSpawner.SpawnFillBots`, server-owned `Spawn`, not `SpawnAsPlayerObject`). Such a
+    match is marked **unranked** (`NetworkBootstrap.MarkUnranked`) — trophies must not move for
+    beating a bot. TRAINING's bots stay deliberately passive (no `BotBrain` is attached there).
+    Verified headlessly: the match smoke test ends the human's turn and requires the bot's turn to
+    finish in less than the full turn duration, which only happens if it actually fired (9.5s of 15s).
+    Not yet verified live: the online fill-bot path (needs a real session).
 13. Profile icons/avatars: **done** (2026-07-10) — the selectable 16-avatar system works and the top
     bar updates live. **Remaining: there is no real icon art** (see the "Profile Avatars" section) —
     added to the next work list; for now a color + initial placeholder.
 
 ### 4. Known rough edges / technical debt
-14. SOCIAL category achievements: **8/10 working** (2026-07-10) — `SOSYAL_KELEBEK`,
+14. SOCIAL category achievements: **10/10 as of 2026-09-08** (was 8/10 on 2026-07-10) — `SOSYAL_KELEBEK`,
     `HERKESE_MEYDAN`, `DUELLO_SAMPIYONU` (previous pass) + `INTIKAM`, `REKABETCI`, `KOZMIK_EKIP`,
-    `BIR_NUMARA`, `KOZMIK_AVCI` (this pass) are wired up; see the "Social Achievements" section. Only
-    `OGRETMEN` remains out of scope — it requires cross-client notification + a separate real
-    two-process test environment; the rationale is in that same section.
+    `BIR_NUMARA`, `KOZMIK_AVCI` (that pass) are wired up; see the "Social Achievements" section.
+    **`OGRETMEN` done 2026-09-08** — `Assets/Scripts/Social/MentorLink.cs` carries the credit between
+    the two devices: accepting a match invite records the inviter as your mentor, but only if you have
+    not seen the tutorial yet (inviting an experienced player is not mentoring) and only the first
+    inviter sticks; finishing the tutorial sends a `mentor_credit` message over the same Friends
+    messaging the match invites already use, and the mentor's `AchievementTracker` unlocks OGRETMEN on
+    it. Friends messages only reach online players, so an undelivered credit waits in PlayerPrefs and
+    is retried whenever the friends service comes up, landing exactly once. Both halves are covered by
+    the match smoke test; the actual two-device hop still needs two real processes to confirm.
 15. The `ui_button_hover` clip: **done** (2026-07-10) — `UiKit.Hover()` was added, wired to all
     programmatic buttons (29/30, with 1 deliberate exception), and play-tested. See "ui_button_hover
     wiring".
@@ -2120,6 +2146,20 @@ no fake/half "resolved" impression was given.
    Editor → add `IAP_RECEIPT_VALIDATION` to Player Settings → Scripting Define Symbols.
 
 ### Unresolved — requires backend/infrastructure investment (not left half-done on purpose, explicitly flagged)
+
+**Update 2026-09-08 — item 7 is now implemented client-side, item 6 is not.** The dual-attestation
+protocol described below was built: `TurnManager.Attestation.cs` gives the match a server-generated id
+and broadcasts the clientId→UGS-PlayerId roster back to both machines (the server was already
+collecting identities for reconnect checks but never sent them back, and the host never even
+registered its own), `Assets/Scripts/Cloud/MatchAttestation.cs` calls a `submit-match-result` Cloud
+Code module with (matchId, opponentId, won), and `LeaderboardManager` falls back to the old direct
+`AddPlayerScoreAsync` when the module is missing — except on a `rejected` answer, where falling back
+would be the way around the check. The module itself is written (`CloudCode/submit-match-result.js`)
+and `com.unity.services.cloudcode` 2.10.4 is in the manifest.
+**Left on item 7:** the deploy (`ugs login` + `ugs deploy`, an interactive Unity sign-in that only the
+account owner can do) and the two-process live verification — including the cheat case, where
+contradicting reports must move no trophies. Steps: `docs/cloud-code-setup.md`. Until that run
+happens, treat the protection as written-but-unverified.
 
 6. **`CloudSaveManager.PushAsync`** writes the raw contents of the local files (currency/progress/unlocks/
    quests/chests/streak/costumes) directly to UGS Cloud Save without any server-side validation — the HMAC
