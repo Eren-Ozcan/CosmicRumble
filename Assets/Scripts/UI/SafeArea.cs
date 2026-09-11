@@ -30,7 +30,7 @@ public class SafeArea : MonoBehaviour
 
     void Refresh()
     {
-        var safeArea = Screen.safeArea;
+        var safeArea = Intersect(Screen.safeArea, SystemBarArea());
         lastSafeArea = safeArea;
         lastScreenSize = new Vector2Int(Screen.width, Screen.height);
         lastOrientation = Screen.orientation;
@@ -46,5 +46,56 @@ public class SafeArea : MonoBehaviour
 
         rt.anchorMin = anchorMin;
         rt.anchorMax = anchorMax;
+    }
+
+    static Rect Intersect(Rect a, Rect b)
+    {
+        float xMin = Mathf.Max(a.xMin, b.xMin);
+        float yMin = Mathf.Max(a.yMin, b.yMin);
+        float xMax = Mathf.Min(a.xMax, b.xMax);
+        float yMax = Mathf.Min(a.yMax, b.yMax);
+        if (xMax <= xMin || yMax <= yMin) return a;   // saçma bir kesişim çıkarsa dokunma
+        return new Rect(xMin, yMin, xMax - xMin, yMax - yMin);
+    }
+
+    /// <summary>
+    /// Sistem çubuklarının (gezinme çubuğu, durum çubuğu) dışında kalan alan.
+    ///
+    /// <para><b>Neden gerekli:</b> <c>Screen.safeArea</c> Android'de yalnızca ekran çentiğini
+    /// hesaba katıyor. Test cihazında (Huawei POT-LX1, Android 10) yatay tutuşta çentik SOLDA
+    /// 81 px, üç tuşlu gezinme çubuğu ise SAĞDA ~90 px yer kaplıyor ve uygulama penceresi tüm
+    /// 2340 px'i kapladığı için çubuk arayüzün üstüne biniyor — çekmecenin kapatma butonu
+    /// bu yüzden yarım görünüyordu. Gezinme çubuğu safeArea'ya girmediginden pencere
+    /// insetlerini ayrıca sormak gerekiyor.</para>
+    /// </summary>
+    static Rect SystemBarArea()
+    {
+        var full = new Rect(0, 0, Screen.width, Screen.height);
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            using var player   = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            using var activity = player.GetStatic<AndroidJavaObject>("currentActivity");
+            if (activity == null) return full;
+            using var window = activity.Call<AndroidJavaObject>("getWindow");
+            using var decor  = window.Call<AndroidJavaObject>("getDecorView");
+            using var insets = decor.Call<AndroidJavaObject>("getRootWindowInsets");
+            if (insets == null) return full;
+
+            int left   = insets.Call<int>("getSystemWindowInsetLeft");
+            int right  = insets.Call<int>("getSystemWindowInsetRight");
+            int top    = insets.Call<int>("getSystemWindowInsetTop");
+            int bottom = insets.Call<int>("getSystemWindowInsetBottom");
+
+            // Android insetleri sol-ust kokenli, Unity ekran koordinatlari sol-alt kokenli.
+            return Rect.MinMaxRect(left, bottom, Screen.width - right, Screen.height - top);
+        }
+        catch
+        {
+            return full;   // eski/farkli bir cihazda API yoksa safeArea'ya guven
+        }
+#else
+        return full;
+#endif
     }
 }
